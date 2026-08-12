@@ -1,0 +1,7 @@
+.paused
+.sleep_tracker
+__pycache__/
+*.pyc
+pending_replies/
+archived_replies/
+data/reports/*.html
