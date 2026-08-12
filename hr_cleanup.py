@@ -27,13 +27,16 @@ REJECT_KW = [
 SYS_KW = ["您正在与Boss", "您的附件简历", "已读", "对方已读"]
 
 
-def classify(msg: str) -> str:
-    """返回: reject(拒绝) / system(系统) / interest(有意向)"""
-    if any(k in msg for k in SYS_KW):
-        return "system"
-    if any(k in msg for k in REJECT_KW):
-        return "reject"
-    return "interest"
+def classify(msg: str) -> tuple[str, str]:
+    """返回 (kind, reason)。kind: reject(明确拒绝) / system(系统) / interest(有意向)
+    改进(2026-08-12): 返回命中关键词作为分类依据，避免误归档时无法追溯。"""
+    for k in SYS_KW:
+        if k in msg:
+            return "system", f"系统关键词[{k}]"
+    for k in REJECT_KW:
+        if k in msg:
+            return "reject", f"拒绝关键词[{k}]"
+    return "interest", "无拒绝/系统信号"
 
 
 def main():
@@ -49,7 +52,7 @@ def main():
         except Exception:
             continue
         msg = d.get("message", "")
-        kind = classify(msg)
+        kind, basis = classify(msg)
         stats[kind] += 1
 
         if kind == "interest":
@@ -61,14 +64,16 @@ def main():
         else:
             label = "拒绝" if kind == "reject" else "系统消息"
             print(f"⏭️  [{label}] {d.get('company','')} | {d.get('message','')[:50]}")
+            print(f"    分类依据: {basis}")
             if clean:
-                # 归档：移到 archived，不删除
+                # 归档：移到 archived，不删除；保留原消息+分类结果+依据+时间
                 d["status"] = "archived"
                 d["archived_at"] = datetime.now().isoformat()
+                d["classify_basis"] = basis
                 dest = ARCHIVE_DIR / f.name
-                f.rename(dest)
-                # 写归档
                 dest.write_text(json.dumps(d, ensure_ascii=False, indent=2))
+                if dest.exists():
+                    f.unlink()  # 先写后删，确保归档成功才移除原文件
 
     print()
     print("=" * 50)
