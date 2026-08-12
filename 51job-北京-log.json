@@ -1,0 +1,35 @@
+{
+  "applied": [
+    {
+      "jobId": "171131446",
+      "job": "Ai数据工程师",
+      "salary": "8千-1.2万·14薪",
+      "area": "北京·东城区",
+      "score": 35,
+      "city": "北京",
+      "keyword": "RAG工程师",
+      "time": "2026-07-17T11:26:36.956439"
+    },
+    {
+      "jobId": "171461637",
+      "job": "AI应用开发工程师",
+      "salary": "1.5-3万",
+      "area": "北京",
+      "score": 35,
+      "city": "北京",
+      "keyword": "RAG工程师",
+      "time": "2026-07-17T11:26:41.081318"
+    },
+    {
+      "jobId": "172175436",
+      "job": "Intern-Aircraft Financial & Technical Service",
+      "salary": "600元/天",
+      "area": "北京",
+      "score": 35,
+      "city": "北京",
+      "keyword": "RAG工程师",
+      "time": "2026-07-17T11:26:52.415512"
+    }
+  ],
+  "skipped": []
+}
