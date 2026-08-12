@@ -1,0 +1,6 @@
+/Users/liuwendi/projects/job-hunter/run_daily.sh: line 43: 33393 Terminated: 15          PYTHONUTF8=1 python3 "$PROJECT_DIR/boss_apply.py" --daily 2>&1
+     33394 Done                    | tee -a "$RUN_LOG"
+/Users/liuwendi/projects/job-hunter/run_daily.sh: line 43: 83251 Terminated: 15          PYTHONUTF8=1 python3 "$PROJECT_DIR/boss_apply.py" --daily 2>&1
+     83252 Done                    | tee -a "$RUN_LOG"
+/Users/liuwendi/projects/job-hunter/run_daily.sh: line 43: 93314 Terminated: 15          PYTHONUTF8=1 python3 "$PROJECT_DIR/boss_apply.py" --daily 2>&1
+     93315 Done                    | tee -a "$RUN_LOG"

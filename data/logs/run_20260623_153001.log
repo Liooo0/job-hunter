@@ -1,0 +1,83 @@
+=== Job Hunter 开始 2026-06-23 15:30:01 ===
+⏳ 随机延迟 887s（模拟人类）...
+🔍 检查 Chrome 调试端口 9222...
+✅ Chrome 已就绪
+🚀 开始投递...
+
+╔══════════════════════════════════════╗
+║  🤖 Job Hunter v2 — Boss直聘        ║
+╠══════════════════════════════════════╣
+║  城市: 深圳, 上海, 广州, 北京, 武汉, 重庆, 杭州, 成都, 苏州         ║
+║  搜索: 智驾测试, ADAS测试, 自动驾驶测试, 实车测试, 车载测试        ║
+║  每任务上限: 15 份              ║
+║  最低评分: 30               ║
+║  时间: 2026-06-23 15:44           ║
+╚══════════════════════════════════════╝
+
+🔗 连接 Chrome（端口 9222）...
+
+============================================================
+📍 深圳 | 🔍 智驾测试 | 🎯 上限 15 份
+============================================================
+  待处理 4 个（第 1 页）
+  [ 65分] 北京芯辰启航科技 | 智驾测试工程师 | -K → 目标岗位:智驾测试、技能匹配:Shell/CAN/传感器、智驾
+    ✅ 已投递 (1/15)
+  [  0分] 纬致芯创科技 | 软件测试-双休 | -K·薪 → 缺少必须关键词: ADAS...
+  [  0分] 汉朔公司 | 初级测试 | -K → 缺少必须关键词: ADAS...
+  [  0分] 深圳市折跃科技 | 飞行测试工程师 | -K·薪 → 缺少必须关键词: ADAS...
+  待处理 1 个（第 2 页）
+  [  0分] 华美兴泰HAME | 并网认证测试工程师 | -K → 缺少必须关键词: ADAS...
+  本页全不匹配 (连续 1/3 页无匹配)
+  加载更多：14 → 29 个
+  待处理 1 个（第 4 页）
+  [  0分] 中软国际 | 急招深圳测试 | -K·薪 → 缺少必须关键词: ADAS...
+  本页全不匹配 (连续 2/3 页无匹配)
+  加载更多：29 → 44 个
+  加载更多：44 → 59 个
+
+  ☕ 休息 13s ...
+
+
+============================================================
+📍 深圳 | 🔍 ADAS测试 | 🎯 上限 15 份
+============================================================
+  待处理 1 个（第 1 页）
+  [ 10分] 洁亚环保 | 测试工程师（自动驾驶） | -K → 自动驾驶
+  本页全不匹配 (连续 1/3 页无匹配)
+  加载更多：14 → 29 个
+  待处理 1 个（第 3 页）
+  [  0分] 先地制像 | 精密测试工程师 | -K → 缺少必须关键词: ADAS...
+  本页全不匹配 (连续 2/3 页无匹配)
+  加载更多：29 → 44 个
+  加载更多：44 → 59 个
+  加载更多：59 → 74 个
+
+  ☕ 休息 12s ...
+
+
+============================================================
+📍 深圳 | 🔍 自动驾驶测试 | 🎯 上限 15 份
+============================================================
+  待处理 4 个（第 1 页）
+  [ 55分] 深圳市鸿源瑞投资企业 | 自动驾驶安全员 | -K → 目标岗位:安全员、技能匹配:Linux/LIN/Python、自动驾驶
+    ✅ 已投递 (1/15)
+Traceback (most recent call last):
+  File "/Users/liuwendi/projects/job-hunter/boss_apply.py", line 404, in <module>
+    main()
+  File "/Users/liuwendi/projects/job-hunter/boss_apply.py", line 371, in main
+    a, s, f = run_single_cycle(
+  File "/Users/liuwendi/projects/job-hunter/boss_apply.py", line 160, in run_single_cycle
+    search_tab.run_js(f"""
+  File "/Users/liuwendi/Library/Python/3.9/lib/python/site-packages/DrissionPage/_pages/chromium_base.py", line 396, in run_js
+    return self._run_js(script, *args, as_expr=as_expr, timeout=timeout)
+  File "/Users/liuwendi/Library/Python/3.9/lib/python/site-packages/DrissionPage/_pages/chromium_base.py", line 403, in _run_js
+    return run_js(self, script, as_expr, self.timeouts.script if timeout is None else timeout, args)
+  File "/Users/liuwendi/Library/Python/3.9/lib/python/site-packages/DrissionPage/_elements/chromium_element.py", line 1229, in run_js
+    res = page._run_cdp('Runtime.callFunctionOn', functionDeclaration=script, objectId=obj_id,
+  File "/Users/liuwendi/Library/Python/3.9/lib/python/site-packages/DrissionPage/_pages/chromium_base.py", line 389, in _run_cdp
+    return r if __ERROR__ not in r else raise_error(r, self.browser, ignore)
+  File "/Users/liuwendi/Library/Python/3.9/lib/python/site-packages/DrissionPage/_functions/tools.py", line 199, in raise_error
+    raise r
+DrissionPage.errors.PageDisconnectedError: 
+The connection to the page has been disconnected.
+Version: 4.1.1.4

@@ -1,0 +1,6872 @@
+{
+  "applied": [
+    {
+      "company": "深圳融合文化发展",
+      "job": "AI工具测评与商业落地工程师",
+      "salary": "-K",
+      "score": 70,
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:10:09.404350"
+    },
+    {
+      "company": "GOLDCNC高德数控",
+      "job": "AI运营专员",
+      "salary": "-K",
+      "score": 35,
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:30:22.327431"
+    },
+    {
+      "company": "深圳市大数据研究...",
+      "job": "大模型RL训练加速方向访问学生（AI Infra）",
+      "salary": "-元/天",
+      "score": 40,
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T18:01:08.871554"
+    },
+    {
+      "company": "晟佑纺织",
+      "job": "AI运营师（阿里巴巴国际站方向）",
+      "salary": "-K",
+      "score": 35,
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-07-02T18:10:59.578456"
+    },
+    {
+      "company": "",
+      "job": "AI创作者社区运营/主理人",
+      "salary": "",
+      "score": 55,
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-07-02T18:11:14.407092"
+    }
+  ],
+  "skipped": [
+    {
+      "company": "同行者科技",
+      "job": "AI Agent开发工程师（车联网方向）",
+      "salary": "-K·薪",
+      "score": 100,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-27T19:06:28.085128"
+    },
+    {
+      "company": "万宝广场",
+      "job": "AI应用工程师",
+      "salary": "-K",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-27T19:06:31.989944"
+    },
+    {
+      "company": "万宝广场",
+      "job": "AI应用工程师",
+      "salary": "-K",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-27T19:06:34.416045"
+    },
+    {
+      "company": "万宝广场",
+      "job": "AI应用工程师",
+      "salary": "-K",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-27T19:06:38.432428"
+    },
+    {
+      "company": "山东振航农业发展",
+      "job": "ai应用工程师",
+      "salary": "-K",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-27T19:06:41.734252"
+    },
+    {
+      "company": "万宝广场",
+      "job": "AI应用工程师",
+      "salary": "-K",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-27T19:06:44.162544"
+    },
+    {
+      "company": "山东振航农业发展",
+      "job": "ai应用工程师",
+      "salary": "-K",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-27T19:06:47.349444"
+    },
+    {
+      "company": "万宝广场",
+      "job": "AI应用工程师",
+      "salary": "-K",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-27T19:06:51.031318"
+    },
+    {
+      "company": "新境界",
+      "job": "FDE工程师（AI应用方向 文科可投）",
+      "salary": "-K·薪",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-27T19:06:53.252149"
+    },
+    {
+      "company": "冠艺国际",
+      "job": "AI应用工程师（人工智能研究、引入和应用）",
+      "salary": "-K·薪",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-27T19:06:56.651059"
+    },
+    {
+      "company": "河北铭嘉工程设计",
+      "job": "AI 技术应用工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-27T19:06:59.193936"
+    },
+    {
+      "company": "万宝广场",
+      "job": "AI应用工程师",
+      "salary": "-K",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-27T19:07:02.466055"
+    },
+    {
+      "company": "万宝广场",
+      "job": "AI应用工程师",
+      "salary": "-K",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-27T19:07:04.926866"
+    },
+    {
+      "company": "山东振航农业发展",
+      "job": "ai应用工程师",
+      "salary": "-K",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-27T19:07:08.817407"
+    },
+    {
+      "company": "图启",
+      "job": "AI全栈应用工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 全栈",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-27T19:07:21.551586"
+    },
+    {
+      "company": "星澜纪元",
+      "job": "AI 应用 / Agent 工程师",
+      "salary": "-K",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-27T19:07:24.961697"
+    },
+    {
+      "company": "AIOTAGRO爱农云联",
+      "job": "AI Agent 应用工程师",
+      "salary": "-K",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-27T19:07:28.801891"
+    },
+    {
+      "company": "马卡鲁科技",
+      "job": "AI应用工程师（接受应届生）",
+      "salary": "-K",
+      "score": 100,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-27T19:07:31.084209"
+    },
+    {
+      "company": "易商",
+      "job": "外贸IT技术支持 AI人工智能",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-27T19:07:42.114887"
+    },
+    {
+      "company": "萃丰科技",
+      "job": "AI人工智能应用工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-27T19:07:46.127268"
+    },
+    {
+      "company": "镇江美拿电子商务科技",
+      "job": "见习AI应用工程师",
+      "salary": "-K",
+      "score": 100,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-27T19:07:49.364660"
+    },
+    {
+      "company": "泛联通信",
+      "job": "AI语音应用工程师（应届生）",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-27T19:07:53.321621"
+    },
+    {
+      "company": "邯郸市凌越智能科技",
+      "job": "数据标注/AI训练师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 数据标注",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-27T19:08:04.873636"
+    },
+    {
+      "company": "山西远达众赢信息科技",
+      "job": "数据标注/AI训练师计时",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 数据标注",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-27T19:08:07.912633"
+    },
+    {
+      "company": "广东盈峰环境数字科技",
+      "job": "数据标注/ai训练师",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 数据标注",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-27T19:08:20.003176"
+    },
+    {
+      "company": "一霖网络",
+      "job": "医师AI训练师",
+      "salary": "-K",
+      "score": 65,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-27T19:08:23.255118"
+    },
+    {
+      "company": "成都佳音鸢飞",
+      "job": "周末双休AI训练师",
+      "salary": "-K",
+      "score": 65,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-27T19:08:26.459668"
+    },
+    {
+      "company": "衡水弘硕商贸有限公司",
+      "job": "AI训练师助理",
+      "salary": "-K",
+      "score": 65,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-27T19:08:29.072516"
+    },
+    {
+      "company": "濮阳点一科技有限公司",
+      "job": "ai训练师",
+      "salary": "-K",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-27T19:08:32.919195"
+    },
+    {
+      "company": "濮阳点一科技有限公司",
+      "job": "ai训练师",
+      "salary": "-K",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-27T19:08:36.949356"
+    },
+    {
+      "company": "广东盈峰环境数字科技",
+      "job": "数据标注/ai训练师",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 数据标注",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-27T19:08:39.775391"
+    },
+    {
+      "company": "濮阳点一科技有限公司",
+      "job": "ai训练师",
+      "salary": "-K",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-27T19:08:43.510661"
+    },
+    {
+      "company": "艺兔科技",
+      "job": "AI训练师",
+      "salary": "-K",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-27T19:08:55.193565"
+    },
+    {
+      "company": "广州云上听数数字科技",
+      "job": "游戏采集AI训练师",
+      "salary": "-K",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-27T19:08:58.091449"
+    },
+    {
+      "company": "秦九",
+      "job": "AI 训练师",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-27T19:09:02.041890"
+    },
+    {
+      "company": "灵波微步",
+      "job": "AI训练师（太原基地）",
+      "salary": "-K",
+      "score": 65,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-27T19:09:05.057846"
+    },
+    {
+      "company": "河南埃克斯数据科技",
+      "job": "Ai 训练师（实习生可招）",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-27T19:09:08.852640"
+    },
+    {
+      "company": "点云数据阜新有限公司",
+      "job": "中文AI训练师",
+      "salary": "-K",
+      "score": 65,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-27T19:09:11.714142"
+    },
+    {
+      "company": "艺兔科技",
+      "job": "AI训练师",
+      "salary": "-K",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-27T19:09:15.767050"
+    },
+    {
+      "company": "泰盈科技集团",
+      "job": "7200+数据标注审核/ai训练师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 数据标注",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-27T19:09:31.160345"
+    },
+    {
+      "company": "财林科技",
+      "job": "AI训练师 接受实习+提供住宿",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-27T19:09:34.501219"
+    },
+    {
+      "company": "千玺",
+      "job": "AI小说剪辑师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 剪辑",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:09:58.426680"
+    },
+    {
+      "company": "轻象科技",
+      "job": "AI评测工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:10:13.434702"
+    },
+    {
+      "company": "探迹",
+      "job": "头部/工资有点高 接受无经验 AI独角兽企业",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:10:15.799543"
+    },
+    {
+      "company": "字节跳动",
+      "job": "大模型自动评测算法实习生-剪映CapCut",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:10:18.633615"
+    },
+    {
+      "company": "澳鹏科技",
+      "job": "后端研发工程师自动化评测AI Benchmark方向",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 后端",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:10:21.680926"
+    },
+    {
+      "company": "深圳少年亿小步教...",
+      "job": "青少年 AI 创业营产品经理导师",
+      "salary": "-元/天",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:10:25.279019"
+    },
+    {
+      "company": "深圳市拓界联商科技",
+      "job": "ai视频生成师",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:10:27.429590"
+    },
+    {
+      "company": "山东佳音成都分公司",
+      "job": "周末双休+AI Coding Agent评测后端工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 后端",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:10:30.519665"
+    },
+    {
+      "company": "深圳禅游科技",
+      "job": "游戏AI（强化学习）算法实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:10:33.284604"
+    },
+    {
+      "company": "深圳市星呈盛世文...",
+      "job": "AI短剧/影视制作（底薪+项目分红）",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:10:35.672268"
+    },
+    {
+      "company": "湖南鲲鹏教育科技",
+      "job": "AI大模型评测工程师助理",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:10:38.147739"
+    },
+    {
+      "company": "卓越际联科技有限公司",
+      "job": "【AI音乐评测工程师】周末双休+五险一金",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:10:40.681907"
+    },
+    {
+      "company": "",
+      "job": "AI测试工程师（大模型·Agent·评测）",
+      "salary": "",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:10:43.292037"
+    },
+    {
+      "company": "健康元",
+      "job": "AI管培生",
+      "salary": "-K·薪",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:10:49.474227"
+    },
+    {
+      "company": "林尧科技",
+      "job": "文本评测（巴葡/印尼语/日语/英语）",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:11:01.817502"
+    },
+    {
+      "company": "珍岛集团",
+      "job": "AI人工智能销售综合薪资1.5W+/上市公司",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 销售",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:11:04.172217"
+    },
+    {
+      "company": "重庆沐晨人工智能科技",
+      "job": "AI模型训练与评测工程师（Agent方向）",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 模型训练",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:11:06.795276"
+    },
+    {
+      "company": "深圳市音和乐文化科技",
+      "job": "AI音乐制作",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:11:09.434242"
+    },
+    {
+      "company": "CloudBU",
+      "job": "AI模型评测工程师",
+      "salary": "-元/天",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:11:13.059193"
+    },
+    {
+      "company": "浙江天猫技术有限公司",
+      "job": "AI Agent优化工程师-训练/数据/评测",
+      "salary": "-元/天",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:11:16.580172"
+    },
+    {
+      "company": "西安华为云计算技术",
+      "job": "AI模型工程师-AI模型评测",
+      "salary": "-元/天",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:11:18.722954"
+    },
+    {
+      "company": "道通智能航空技术",
+      "job": "AI产品实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:11:22.010222"
+    },
+    {
+      "company": "腾讯云雀",
+      "job": "AI视频评测专家(J12629)",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:11:24.866035"
+    },
+    {
+      "company": "阿里集团",
+      "job": "AI评测研发工程师",
+      "salary": "-元/天",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:11:27.920675"
+    },
+    {
+      "company": "阿里云",
+      "job": "AI产品评测专家/工程师-杭州/北京",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:11:31.153669"
+    },
+    {
+      "company": "腾讯",
+      "job": "AI多模态图像模型数据策略专家",
+      "salary": "-K·薪",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:11:35.128255"
+    },
+    {
+      "company": "广东深恋发展有限公司",
+      "job": "AI商业全球化进程实习团队",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:11:38.399992"
+    },
+    {
+      "company": "深圳桓杰科技有限公司",
+      "job": "AI视频制作（接受应届生）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:11:41.394988"
+    },
+    {
+      "company": "网聚云联",
+      "job": "AI及云计算销售经理",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 销售",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:11:53.515244"
+    },
+    {
+      "company": "深圳远虑科技有限公司",
+      "job": "嵌入式软件工程师(AI)",
+      "salary": "-K·薪",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:11:56.325943"
+    },
+    {
+      "company": "图拉斯",
+      "job": "电商AI智能体训练师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:11:58.690467"
+    },
+    {
+      "company": "古特拉",
+      "job": "ai实习生/可接受应届生/可实习",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:12:01.723487"
+    },
+    {
+      "company": "聚宽投资",
+      "job": "AI算法实习生（深圳）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:12:04.472810"
+    },
+    {
+      "company": "深圳市稳卖科技",
+      "job": "ai创造工程师",
+      "salary": "-元/天",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:12:06.899361"
+    },
+    {
+      "company": "缔零科技",
+      "job": "AI策略运营",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:12:09.029232"
+    },
+    {
+      "company": "唯高汽配",
+      "job": "AI应用与自动化专员/助理工程师（双休）",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:12:11.722087"
+    },
+    {
+      "company": "西安美一创新商贸",
+      "job": "AI应用总监（头部女装跨境电商）",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 总监",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:12:14.509333"
+    },
+    {
+      "company": "创视智谷",
+      "job": "AI 数据标注工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 数据标注",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:12:18.037251"
+    },
+    {
+      "company": "火眼智能",
+      "job": "AI短视频剪辑（龙岗中心城）",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 剪辑",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:12:20.898789"
+    },
+    {
+      "company": "爱莫科技",
+      "job": "ai产品实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:12:24.110388"
+    },
+    {
+      "company": "Shopee",
+      "job": "AI质量平台/评测开发工程师",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:12:27.677958"
+    },
+    {
+      "company": "微播",
+      "job": "AI游戏素材广告剪辑师（应届/实习/高潜）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-27T19:12:31.050857"
+    },
+    {
+      "company": "致邃投资",
+      "job": "AI Agent / LLM 应用工程师",
+      "salary": "-元/天",
+      "score": 60,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:12:57.165640"
+    },
+    {
+      "company": "东方海外珠海货讯通",
+      "job": "AI Agent技术工程师（2026届） (MJ000099)",
+      "salary": "-K·薪",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:12:59.623031"
+    },
+    {
+      "company": "湘潭平安商务",
+      "job": "ai应用工程师（六险一金+包吃住）",
+      "salary": "-K",
+      "score": 50,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:13:01.803385"
+    },
+    {
+      "company": "武汉齐智火星登陆科技",
+      "job": "Agent工程师",
+      "salary": "-K·薪",
+      "score": 55,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:13:04.444079"
+    },
+    {
+      "company": "银华信息",
+      "job": "Agent应用工程师",
+      "salary": "-K",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:13:07.899615"
+    },
+    {
+      "company": "银华信息",
+      "job": "Agent应用工程师",
+      "salary": "-K",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:13:10.696084"
+    },
+    {
+      "company": "温州瓯海美加云向...",
+      "job": "AI Agent 工程师·0 号员工",
+      "salary": "-K",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:13:13.695918"
+    },
+    {
+      "company": "淘宝",
+      "job": "【可转正】27届AI Agent 应用开发工程师",
+      "salary": "-元/天",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:13:16.125922"
+    },
+    {
+      "company": "蜂小蜜",
+      "job": "ai agent 开发工程师",
+      "salary": "-K",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:13:18.327483"
+    },
+    {
+      "company": "北京问题不大文化",
+      "job": "AI Agent应用工程师｜应届可投｜北京｜杭州",
+      "salary": "-K",
+      "score": 85,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:13:22.378380"
+    },
+    {
+      "company": "龙成集团",
+      "job": "AI应用开发工程师（大模型/Agent方向）",
+      "salary": "-K",
+      "score": 60,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:13:25.792026"
+    },
+    {
+      "company": "云南浮舍科技有限公司",
+      "job": "AI Agent现场工程师",
+      "salary": "-K·薪",
+      "score": 55,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:13:39.066049"
+    },
+    {
+      "company": "君看文化科技有限公司",
+      "job": "AI 应用工程师（Agent / RAG）",
+      "salary": "-K",
+      "score": 60,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:13:41.443725"
+    },
+    {
+      "company": "卷积应用",
+      "job": "agent应用开发工程师",
+      "salary": "-K",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:13:45.060010"
+    },
+    {
+      "company": "华为",
+      "job": "AI agent应用开发工程师",
+      "salary": "-元/天",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:13:48.280258"
+    },
+    {
+      "company": "深度智投",
+      "job": "agent工程师",
+      "salary": "-元/天",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:13:50.662588"
+    },
+    {
+      "company": "宁波美鹰家居集团...",
+      "job": "AI/Agent应用开发工程师",
+      "salary": "-K·薪",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:13:53.729823"
+    },
+    {
+      "company": "河南多鲸",
+      "job": "AI 全栈工程师（Agent / AIGC 方向）",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 全栈",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:13:55.893032"
+    },
+    {
+      "company": "来乾信息",
+      "job": "AIGC agent应用工程师",
+      "salary": "-元/天",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:13:58.105784"
+    },
+    {
+      "company": "清鹏智能",
+      "job": "AI Agent算法工程师",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:14:02.109872"
+    },
+    {
+      "company": "哆咔互娱(DECA)",
+      "job": "AI Agent 开发工程师（暑期实习）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:14:05.625992"
+    },
+    {
+      "company": "蚂蚁集团",
+      "job": "agent应用工程师",
+      "salary": "-元/天",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:14:09.561632"
+    },
+    {
+      "company": "华宜车联",
+      "job": "AI营销工程师(agent方向）",
+      "salary": "-K",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:14:12.678182"
+    },
+    {
+      "company": "码全科技",
+      "job": "Agent应用开发工程师",
+      "salary": "-K",
+      "score": 55,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:14:16.737678"
+    },
+    {
+      "company": "seeed",
+      "job": "AI Agent工程师",
+      "salary": "-K",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:14:19.762900"
+    },
+    {
+      "company": "",
+      "job": "电商Ai 工作流Agent智能体，RPA搭建工程师",
+      "salary": "",
+      "score": 65,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:14:31.939062"
+    },
+    {
+      "company": "阿里巴巴集团",
+      "job": "【可转正】27届 - AI Agent应用开发工程师",
+      "salary": "-元/天",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:14:34.771943"
+    },
+    {
+      "company": "语核科技",
+      "job": "AI Agent销售专员",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 销售",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:14:37.250948"
+    },
+    {
+      "company": "北京密链文化传播...",
+      "job": "Agent 工程师",
+      "salary": "-元/天",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:14:39.466642"
+    },
+    {
+      "company": "阿里巴巴公司",
+      "job": "淘天27届暑期实习 Agent 应用开发工程师",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:14:42.717343"
+    },
+    {
+      "company": "知微行易",
+      "job": "Agent工程师（AI 智能体/Agent研发工程师）",
+      "salary": "-K",
+      "score": 60,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:14:45.897955"
+    },
+    {
+      "company": "杭州希语未来智能科技",
+      "job": "AI agent 开发工程师",
+      "salary": "-K",
+      "score": 55,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:14:48.600947"
+    },
+    {
+      "company": "华尔街见闻",
+      "job": "AI Agent 工程师",
+      "salary": "-K·薪",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:14:52.559336"
+    },
+    {
+      "company": "阿里巴巴集团",
+      "job": "AI Agent 应用开发工程师",
+      "salary": "-元/天",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:14:56.194081"
+    },
+    {
+      "company": "字节跳动",
+      "job": "Agent应用开发工程师-ArkClaw",
+      "salary": "-K·薪",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:15:00.115710"
+    },
+    {
+      "company": "普渡机器人",
+      "job": "Agent开发工程师",
+      "salary": "-K·薪",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-27T19:15:02.494637"
+    },
+    {
+      "company": "龙岩市慧通信息技术",
+      "job": "工业互联网解决方案工程师",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:15:15.906567"
+    },
+    {
+      "company": "大连奥托",
+      "job": "人工智能模型算法工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:15:18.374704"
+    },
+    {
+      "company": "四川凌速科技有限公司",
+      "job": "ai解决方案工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:15:31.963322"
+    },
+    {
+      "company": "浙江工企",
+      "job": "AI解决方案工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:15:35.902986"
+    },
+    {
+      "company": "天马集团",
+      "job": "AI解决方案工程师 (MJ000430)",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:15:38.585991"
+    },
+    {
+      "company": "卓梦芸创",
+      "job": "Ai 解决方案销售经理/大客户人工智能方向",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 销售",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:15:42.282370"
+    },
+    {
+      "company": "微播易",
+      "job": "AI解决方案实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:15:45.238119"
+    },
+    {
+      "company": "浙江工企",
+      "job": "AI解决方案工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:15:47.752370"
+    },
+    {
+      "company": "广东云创享科技有...",
+      "job": "AI实施解决方案工程师",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:15:51.147118"
+    },
+    {
+      "company": "浙江工企",
+      "job": "AI解决方案工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:15:54.341368"
+    },
+    {
+      "company": "浙江工企",
+      "job": "AI解决方案工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:15:56.785364"
+    },
+    {
+      "company": "沈阳阅准科技有限公司",
+      "job": "AI 行业解决方案专家（Agent/大模型方向）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:16:00.352618"
+    },
+    {
+      "company": "郑州引力琥珀人工...",
+      "job": "企业级AI解决方案工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:16:04.514682"
+    },
+    {
+      "company": "浙江工企",
+      "job": "AI解决方案工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:16:07.894801"
+    },
+    {
+      "company": "智成飞桨",
+      "job": "ai算法工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:16:22.192925"
+    },
+    {
+      "company": "北京字跳网络技术",
+      "job": "AI制造售前解决方案专家-飞书",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:16:26.036128"
+    },
+    {
+      "company": "控网科技",
+      "job": "AI后端应用开发工程师",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 后端",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:16:29.418414"
+    },
+    {
+      "company": "指享未来",
+      "job": "钉钉 AI 解决方案顾问",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 顾问",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:16:32.051790"
+    },
+    {
+      "company": "大熵智能",
+      "job": "售前解决方案工程师",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:16:35.586016"
+    },
+    {
+      "company": "智源云析",
+      "job": "AI售前解决方案专家 (兼品牌推广)",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 推广",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:16:38.636236"
+    },
+    {
+      "company": "博士林科技",
+      "job": "AI实施工程师",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:16:42.434959"
+    },
+    {
+      "company": "上海人工智能创新中心",
+      "job": "数据解决方案实习生（AI4S）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:16:45.551648"
+    },
+    {
+      "company": "华为",
+      "job": "AI解决方案专家架构师上海",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 架构师",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:16:48.147811"
+    },
+    {
+      "company": "江苏中东集团",
+      "job": "AI工程师（可接受实习）",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:16:52.274632"
+    },
+    {
+      "company": "益海嘉里丰益信息",
+      "job": "FDE（AI解决方案专家）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:17:03.894419"
+    },
+    {
+      "company": "永动科技",
+      "job": "ai开发工程师",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:17:07.377733"
+    },
+    {
+      "company": "依图",
+      "job": "【校招/实习】AI解决方案工程师",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:17:10.036403"
+    },
+    {
+      "company": "北京乐玩云科技",
+      "job": "售前解决方案架构师 (SA) - AI云平台方向",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 架构师",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:17:12.595967"
+    },
+    {
+      "company": "Classin",
+      "job": "AI解决方案顾问",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 顾问",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:17:14.933705"
+    },
+    {
+      "company": "华苏科技",
+      "job": "行业解决方案经理（ICT/云计算 / AI）",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:17:18.137762"
+    },
+    {
+      "company": "华为技术有限公司",
+      "job": "ai行业解决方案架构师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 架构师",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:17:21.210168"
+    },
+    {
+      "company": "星汉激光",
+      "job": "人工智能解决方案专家",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:17:24.179367"
+    },
+    {
+      "company": "华为",
+      "job": "ai 算法工程师",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:17:27.584217"
+    },
+    {
+      "company": "帆软软件",
+      "job": "Ai产品解决方案工程师",
+      "salary": "-元/天",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:17:31.080367"
+    },
+    {
+      "company": "来福谐波",
+      "job": "AI工程师（应届生/毕业生）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:17:33.840256"
+    },
+    {
+      "company": "阿里云",
+      "job": "产品经理-AI解决方案（北京/杭州/深圳）",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:17:37.015329"
+    },
+    {
+      "company": "吉客印",
+      "job": "AI解决方案专家【上市企业】高薪-六险一金",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:17:40.661701"
+    },
+    {
+      "company": "北京无问芯穹科技",
+      "job": "实习生（解决方案方向）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-27T19:17:43.177293"
+    },
+    {
+      "company": "纬致芯创科技",
+      "job": "多模态大模型评测工程师-音频方向",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:18:07.996498"
+    },
+    {
+      "company": "德衍睿通西安",
+      "job": "AI 大模型应用工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:18:10.234911"
+    },
+    {
+      "company": "京东集团",
+      "job": "多模态大模型算法工程师",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:18:13.940699"
+    },
+    {
+      "company": "合肥英诺科仪器",
+      "job": "AI大模型应用工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:18:16.711339"
+    },
+    {
+      "company": "京东集团",
+      "job": "多模态大模型算法工程师",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:18:19.922638"
+    },
+    {
+      "company": "智乐活",
+      "job": "AI大模型应用开发实习生【居家办公】",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:18:24.043515"
+    },
+    {
+      "company": "青岛万镁传媒有限公司",
+      "job": "AI大模型应用开发工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:18:26.242179"
+    },
+    {
+      "company": "杭州赢云贸易有限公司",
+      "job": "Python 大模型应用工程师 岗位代码 PY01",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:18:30.375479"
+    },
+    {
+      "company": "德赛西威",
+      "job": "大模型算法应用工程师（网联）",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:18:33.679925"
+    },
+    {
+      "company": "宜春市星智文化传媒",
+      "job": "大模型算法工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:18:36.424146"
+    },
+    {
+      "company": "上海智学星途人工...",
+      "job": "大模型应用工程师",
+      "salary": "-元/天",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:18:39.543156"
+    },
+    {
+      "company": "量锐科技",
+      "job": "AI大模型应用工程师（量化交易方向）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:18:42.362229"
+    },
+    {
+      "company": "合肥灵心科技有限公司",
+      "job": "生成式大模型应用工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:18:55.385743"
+    },
+    {
+      "company": "塘前燕机器人",
+      "job": "大模型应用开发工程师",
+      "salary": "-元/天",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:18:58.698850"
+    },
+    {
+      "company": "喜马拉雅",
+      "job": "AI 工程师（服务端/大模型应用方向）",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:19:01.624333"
+    },
+    {
+      "company": "京东科技集团",
+      "job": "大模型算法工程师（LLM ＆ VLM）",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:19:05.317150"
+    },
+    {
+      "company": "塘前燕机器人",
+      "job": "大模型应用开发工程师",
+      "salary": "-元/天",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:19:07.994738"
+    },
+    {
+      "company": "亿达信息",
+      "job": "多模态大模型评测工程师【音视频方向】",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:19:11.579889"
+    },
+    {
+      "company": "塘前燕机器人",
+      "job": "大模型应用开发工程师",
+      "salary": "-元/天",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:19:14.688164"
+    },
+    {
+      "company": "非凸科技",
+      "job": "大模型应用开发实习工程师",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:19:17.656708"
+    },
+    {
+      "company": "SenseTime",
+      "job": "AI领航员-大装置-大模型算法应用开发工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:19:20.363490"
+    },
+    {
+      "company": "字节跳动",
+      "job": "大模型算法工程师-急招",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:19:33.567865"
+    },
+    {
+      "company": "云孚科技",
+      "job": "大模型应用全栈工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 全栈",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:19:36.585372"
+    },
+    {
+      "company": "上海语生科学技术",
+      "job": "大模型应用算法工程师（校园招聘）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:19:39.678163"
+    },
+    {
+      "company": "商泰汽车",
+      "job": "（上海）大模型应用开发工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:19:42.162925"
+    },
+    {
+      "company": "广州可粒传媒科技",
+      "job": "AI短视频生成/应用工程师",
+      "salary": "-元/天",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:19:45.812374"
+    },
+    {
+      "company": "百度",
+      "job": "智能运维方向大模型应用开发工程师(J97699)",
+      "salary": "-元/天",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-27T19:19:47.982467"
+    },
+    {
+      "company": "苏州同泰新能源科技",
+      "job": "LLM应用工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:20:00.029298"
+    },
+    {
+      "company": "熵创未来",
+      "job": "Agent应用开发",
+      "salary": "-元/天",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:20:02.739403"
+    },
+    {
+      "company": "南京览众科技",
+      "job": "LLM应用程序开发工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:20:05.287218"
+    },
+    {
+      "company": "金誉通",
+      "job": "AI大模型算法工程师（LLM方向）",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:20:18.719920"
+    },
+    {
+      "company": "魔镜洞察",
+      "job": "Python 工程师（AI / LLM 方向）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:20:21.810163"
+    },
+    {
+      "company": "Shopee",
+      "job": "LLM-大模型算法工程师-SH、BJ",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:20:25.321073"
+    },
+    {
+      "company": "久胜科技",
+      "job": "AI应用开发工程师（Node.js/LLM方向）",
+      "salary": "-K",
+      "score": 100,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:20:28.177176"
+    },
+    {
+      "company": "ASML",
+      "job": "LLM应用开发实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:20:30.940494"
+    },
+    {
+      "company": "久胜科技",
+      "job": "AI应用开发工程师（Node.js/LLM方向）",
+      "salary": "-K",
+      "score": 100,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:20:34.010289"
+    },
+    {
+      "company": "铭剑电子",
+      "job": "产品应用工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:20:37.726056"
+    },
+    {
+      "company": "茂泰",
+      "job": "Al应用工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:20:50.511456"
+    },
+    {
+      "company": "华勤技术股份有限公司",
+      "job": "【26届春招】数据处理工程师(LLM相关)",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:20:53.522110"
+    },
+    {
+      "company": "伴芯科技",
+      "job": "LLM工程师",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:20:57.063358"
+    },
+    {
+      "company": "云科出海",
+      "job": "LLM应用开发工程师（跨境电商Agent方向）",
+      "salary": "-K",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:21:00.929419"
+    },
+    {
+      "company": "三态股份",
+      "job": "LLM 应用开发工程师 / 实习生",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:21:04.897626"
+    },
+    {
+      "company": "德曼新能源",
+      "job": "管道应用工程师（接受熟练平面CAD应届生）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:21:08.430523"
+    },
+    {
+      "company": "唯客润物流",
+      "job": "AI工程师（LLM+Ontology方向）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:21:12.092408"
+    },
+    {
+      "company": "字节跳动",
+      "job": "LLM 应用 / Agent / AI 平台研发工程师",
+      "salary": "-K·薪",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:21:14.323948"
+    },
+    {
+      "company": "腾讯",
+      "job": "微信-LLM应用开发工程师-Agent",
+      "salary": "-K·薪",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:21:16.867215"
+    },
+    {
+      "company": "人本集团有限公司",
+      "job": "应用工程师",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:21:19.381844"
+    },
+    {
+      "company": "泰则半导体",
+      "job": "LLM应用实习开发工程师",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:21:23.192157"
+    },
+    {
+      "company": "北京无隅智循科技",
+      "job": "LLM Agent 后端开发工程师（Python）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 后端开发",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:21:25.448040"
+    },
+    {
+      "company": "华算科技",
+      "job": "LLM工程师/ AI Agent工程师",
+      "salary": "-K·薪",
+      "score": 100,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:21:29.111926"
+    },
+    {
+      "company": "人本集团有限公司",
+      "job": "应用工程师",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:21:32.586971"
+    },
+    {
+      "company": "宁帆科技",
+      "job": "LLM工程师（大型语言模型工程师）​​",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:21:47.448298"
+    },
+    {
+      "company": "米哈游",
+      "job": "【实习】LLM Posttrain Infra工程师",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:21:49.737164"
+    },
+    {
+      "company": "卫宁健康",
+      "job": "AI应用工程师（27届）-山西",
+      "salary": "-元/天",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:21:52.329363"
+    },
+    {
+      "company": "重流智能科技",
+      "job": "算法工程师 - LLM后训练",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:21:56.057104"
+    },
+    {
+      "company": "天鹜科技",
+      "job": "AI应用工程师实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:21:58.429602"
+    },
+    {
+      "company": "乌鸫科技",
+      "job": "大模型评测工程师-LLM",
+      "salary": "-K",
+      "score": 100,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-27T19:22:02.195316"
+    },
+    {
+      "company": "爱得",
+      "job": "全栈开发工程师 – AI知识库（嵌入式行业）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 全栈",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:22:16.689700"
+    },
+    {
+      "company": "安克创新",
+      "job": "硬件测试工程师",
+      "salary": "-K·薪",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:22:20.103568"
+    },
+    {
+      "company": "山东中创软件商用...",
+      "job": "全栈开发工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 全栈",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:22:34.797568"
+    },
+    {
+      "company": "欣旺达动力科技",
+      "job": "AQE工程师-EVB",
+      "salary": "-K·薪",
+      "score": 30,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:22:38.308543"
+    },
+    {
+      "company": "域贤光电",
+      "job": "26届机械工程师招聘",
+      "salary": "-K·薪",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:22:40.609133"
+    },
+    {
+      "company": "麦格米特",
+      "job": "车载驱动器测试工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:22:43.052388"
+    },
+    {
+      "company": "武汉致科诚科技",
+      "job": "半导体设备工程师",
+      "salary": "-K·薪",
+      "score": 30,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:22:46.011559"
+    },
+    {
+      "company": "深圳拉塞特机器人",
+      "job": "现场测试工程师",
+      "salary": "-K·薪",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:22:50.062270"
+    },
+    {
+      "company": "云尚智动",
+      "job": "测试与运维交付工程师",
+      "salary": "-K·薪",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:22:53.033901"
+    },
+    {
+      "company": "华林证券",
+      "job": "知识库与数据平台工程师(A257613)",
+      "salary": "-K·薪",
+      "score": 60,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:22:55.526371"
+    },
+    {
+      "company": "浮木科技",
+      "job": "AI知识工程师（实习生）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:22:59.254276"
+    },
+    {
+      "company": "深圳金谷田",
+      "job": "海外售后工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 售后",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:23:02.681226"
+    },
+    {
+      "company": "深圳市菲森影像科技",
+      "job": "产品质量工程师",
+      "salary": "-K·薪",
+      "score": 30,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:23:05.456426"
+    },
+    {
+      "company": "澜潮科技",
+      "job": "技术支持工程师fae",
+      "salary": "-K·薪",
+      "score": 30,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:23:08.845056"
+    },
+    {
+      "company": "斯坦德机器人",
+      "job": "机器人应用工程师-AE（具身机器人）",
+      "salary": "-K·薪",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:23:22.845317"
+    },
+    {
+      "company": "微雪",
+      "job": "英文技术支持工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:23:26.806005"
+    },
+    {
+      "company": "皓鹏国际",
+      "job": "rpa开发工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:23:30.728985"
+    },
+    {
+      "company": "阳和通",
+      "job": "QE品质工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:23:33.057433"
+    },
+    {
+      "company": "劢微机器人",
+      "job": "韩语规划工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:23:35.627122"
+    },
+    {
+      "company": "富士康科技集团",
+      "job": "Apple品质开发工程师",
+      "salary": "-K·薪",
+      "score": 30,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:23:39.521890"
+    },
+    {
+      "company": "华汉伟业",
+      "job": "机器视觉应用工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:23:43.049026"
+    },
+    {
+      "company": "先进院科技",
+      "job": "电磁屏蔽材料工程师",
+      "salary": "-K·薪",
+      "score": 30,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:23:46.977481"
+    },
+    {
+      "company": "治牧建设",
+      "job": "注册工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:23:49.168820"
+    },
+    {
+      "company": "深圳嘉盛海洋智能科技",
+      "job": "监控安装调试工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:23:51.411594"
+    },
+    {
+      "company": "TUV莱茵",
+      "job": "安规认证工程师",
+      "salary": "-K·薪",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:23:55.477845"
+    },
+    {
+      "company": "深圳云策新知科技服务",
+      "job": "装调工程师",
+      "salary": "-K·薪",
+      "score": 30,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:23:58.140873"
+    },
+    {
+      "company": "深圳市域兴达科技",
+      "job": "机器视觉工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:24:00.809159"
+    },
+    {
+      "company": "安芯易电子",
+      "job": "FDE前线部署工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:24:03.245784"
+    },
+    {
+      "company": "联智合创",
+      "job": "deepseek高级工程师",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 高级",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:24:06.549757"
+    },
+    {
+      "company": "海利普科贸",
+      "job": "软件测试工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:24:20.464016"
+    },
+    {
+      "company": "深圳市新凯来技术",
+      "job": "装配工程师",
+      "salary": "-K·薪",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:24:23.729890"
+    },
+    {
+      "company": "安信检测技术有限公司",
+      "job": "安规实验室工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:24:27.649722"
+    },
+    {
+      "company": "字节跳动",
+      "job": "大模型知识和记忆系统架构工程师",
+      "salary": "-K·薪",
+      "score": 65,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:24:31.126632"
+    },
+    {
+      "company": "深圳市折跃科技",
+      "job": "飞行测试工程师",
+      "salary": "-K·薪",
+      "score": 30,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:24:34.135999"
+    },
+    {
+      "company": "信碟科技",
+      "job": "电动滑轮车工程师",
+      "salary": "-K·薪",
+      "score": 30,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:24:37.310326"
+    },
+    {
+      "company": "美好医疗",
+      "job": "材料工程师",
+      "salary": "-K·薪",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:24:40.630944"
+    },
+    {
+      "company": "世格赛思",
+      "job": "医疗器械研发工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:24:43.889507"
+    },
+    {
+      "company": "大族激光智能装备集团",
+      "job": "安全工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-27T19:24:47.142801"
+    },
+    {
+      "company": "广东睿云",
+      "job": "初级应用开发工程师（智能体）",
+      "salary": "-K·薪",
+      "score": 60,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:24:57.445694"
+    },
+    {
+      "company": "海龟教育",
+      "job": "AI智能体交付工程师",
+      "salary": "-K",
+      "score": 65,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:25:00.050250"
+    },
+    {
+      "company": "启明合心",
+      "job": "AI Agent 智能体工程师",
+      "salary": "-元/天",
+      "score": 70,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:25:02.636456"
+    },
+    {
+      "company": "海龟教育",
+      "job": "AI智能体交付工程师",
+      "salary": "-K",
+      "score": 65,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:25:05.900057"
+    },
+    {
+      "company": "信创智能科技",
+      "job": "AI 智能体工程师",
+      "salary": "-K",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:25:08.872464"
+    },
+    {
+      "company": "广东方柚科技有限公司",
+      "job": "AI智能体研发工程师",
+      "salary": "-K",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:25:11.054303"
+    },
+    {
+      "company": "北京睿匠科技有限公司",
+      "job": "智能体开发/设计工程师",
+      "salary": "-K·薪",
+      "score": 60,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:25:14.674988"
+    },
+    {
+      "company": "郑州埃文九章科技",
+      "job": "智能体开发工程师（初级）",
+      "salary": "-K",
+      "score": 60,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:25:28.963378"
+    },
+    {
+      "company": "自媒体、电商、带货",
+      "job": "Coze智能体工作流工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:25:32.190605"
+    },
+    {
+      "company": "火星人智能科技(昆明)",
+      "job": "智能体开发工程师（培训生）",
+      "salary": "-K",
+      "score": 60,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:25:35.441108"
+    },
+    {
+      "company": "平果市新威时代科技",
+      "job": "AI智能体部署工程师",
+      "salary": "-K",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:25:39.493209"
+    },
+    {
+      "company": "咪咕视讯",
+      "job": "智能体工程师实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:25:51.074620"
+    },
+    {
+      "company": "北京噶杯信息技术...",
+      "job": "智能体工程师",
+      "salary": "-元/天",
+      "score": 60,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:25:54.679002"
+    },
+    {
+      "company": "武汉馨选优品科技",
+      "job": "AI智能体工程师（包吃）五险一金",
+      "salary": "-K",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:25:56.983092"
+    },
+    {
+      "company": "燧空智能",
+      "job": "AI智能体应用开发工程师",
+      "salary": "-K",
+      "score": 65,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:26:00.529933"
+    },
+    {
+      "company": "清研科技",
+      "job": "Python智能体后端开发工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 后端开发",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:26:04.626034"
+    },
+    {
+      "company": "厦门比电信息科技",
+      "job": "大模型智能体开发工程师",
+      "salary": "-K",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:26:08.675634"
+    },
+    {
+      "company": "北京噶杯信息技术...",
+      "job": "智能体工程师",
+      "salary": "-元/天",
+      "score": 60,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:26:11.576421"
+    },
+    {
+      "company": "北京探微杜渐科技",
+      "job": "agent智能体开发工程师",
+      "salary": "-元/天",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:26:15.347631"
+    },
+    {
+      "company": "沈阳阅准科技有限公司",
+      "job": "智能体前线开发工程师",
+      "salary": "-K",
+      "score": 60,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:26:19.137055"
+    },
+    {
+      "company": "聚悟科技",
+      "job": "AI智能体开发工程师（无项目经验勿投）",
+      "salary": "-K",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:26:21.600593"
+    },
+    {
+      "company": "十方传媒",
+      "job": "企业智能体开发工程师",
+      "salary": "-K",
+      "score": 60,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:26:25.405210"
+    },
+    {
+      "company": "北京噶杯信息技术...",
+      "job": "智能体工程师",
+      "salary": "-元/天",
+      "score": 60,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:26:28.016857"
+    },
+    {
+      "company": "创千树",
+      "job": "AI智能体工程师/包吃/朝九晚六",
+      "salary": "-K",
+      "score": 65,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:26:31.197026"
+    },
+    {
+      "company": "合肥人工智能与大...",
+      "job": "后端智能体开发工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 后端",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:26:34.665198"
+    },
+    {
+      "company": "昊学教育",
+      "job": "AI智能体开发工程师 / 扣子应用开发专员",
+      "salary": "-K",
+      "score": 65,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:26:49.477632"
+    },
+    {
+      "company": "潮楚科技",
+      "job": "全栈开发工程师（独立站+AI智能体部署）",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 全栈",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:26:53.593517"
+    },
+    {
+      "company": "环科",
+      "job": "环保工艺设计智能体开发工程师",
+      "salary": "-K",
+      "score": 60,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:26:56.855601"
+    },
+    {
+      "company": "中科类脑",
+      "job": "算法工程师（智能体方向）",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:26:59.744891"
+    },
+    {
+      "company": "中安质环",
+      "job": "AI智能体开发工程师",
+      "salary": "-K",
+      "score": 65,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:27:02.553130"
+    },
+    {
+      "company": "创千树",
+      "job": "光谷世界城/AI智能体工程师/免费午餐下午茶",
+      "salary": "-K",
+      "score": 65,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:27:06.534797"
+    },
+    {
+      "company": "云凯科技",
+      "job": "AI智能体开发工程师(初级) 工作地：宜宾",
+      "salary": "-K",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-27T19:27:10.061427"
+    },
+    {
+      "company": "深圳溯湃人工智能科技",
+      "job": "AI产品研发助理实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:27:25.844527"
+    },
+    {
+      "company": "腾佑科技",
+      "job": "人工智能ai产品+百度云销售双休不加班五险",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 销售",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:27:39.282098"
+    },
+    {
+      "company": "索贝智融科技",
+      "job": "AI产品经理/AI产品运营经理",
+      "salary": "-K",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:27:43.149397"
+    },
+    {
+      "company": "Garena",
+      "job": "AI社交产品运营实习",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:27:45.730516"
+    },
+    {
+      "company": "上海诺亚投资(集团)",
+      "job": "【26届校招】AI产品运营岗",
+      "salary": "-K·薪",
+      "score": 65,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:27:48.009679"
+    },
+    {
+      "company": "北斗院",
+      "job": "AI产品实习生（可转正）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:27:50.442334"
+    },
+    {
+      "company": "SenseTime",
+      "job": "AI 产品内容运营实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:27:53.643509"
+    },
+    {
+      "company": "小红书",
+      "job": "AI产品评估运营",
+      "salary": "-K·薪",
+      "score": 65,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:27:57.553847"
+    },
+    {
+      "company": "字节跳动",
+      "job": "AI产品实习生-Coze",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:28:00.999868"
+    },
+    {
+      "company": "青岑云",
+      "job": "AI Agent 开发实习生",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:28:04.865664"
+    },
+    {
+      "company": "钉钉",
+      "job": "AI产品经理",
+      "salary": "-K·薪",
+      "score": 65,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:28:07.746602"
+    },
+    {
+      "company": "嘉兴市名篇服饰",
+      "job": "AI产品运营",
+      "salary": "-K",
+      "score": 65,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:28:10.693166"
+    },
+    {
+      "company": "交个朋友",
+      "job": "AI产品运营实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:28:24.132028"
+    },
+    {
+      "company": "腾讯",
+      "job": "ai产品策划",
+      "salary": "-元/天",
+      "score": 65,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:28:26.457878"
+    },
+    {
+      "company": "元石",
+      "job": "运营实习生（AI产品）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:28:30.006146"
+    },
+    {
+      "company": "深圳用图科技有限公司",
+      "job": "AI产品经理实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:28:33.733452"
+    },
+    {
+      "company": "上海比芯智能科技",
+      "job": "AI产品实习生（深圳）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:28:36.525959"
+    },
+    {
+      "company": "上海香象渡河信息科技",
+      "job": "AI企服产品运营",
+      "salary": "-元/天",
+      "score": 35,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:28:39.688771"
+    },
+    {
+      "company": "华为",
+      "job": "AI产品研究分析",
+      "salary": "-K",
+      "score": 65,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:28:43.811832"
+    },
+    {
+      "company": "集智国际",
+      "job": "AI产品销售客户增长专员",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 销售",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:28:46.958953"
+    },
+    {
+      "company": "深圳用图科技有限公司",
+      "job": "AI产品经理实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:28:49.826467"
+    },
+    {
+      "company": "山西抖老板",
+      "job": "工具产品经理（偏C端 / AI工具方向）",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:28:53.596484"
+    },
+    {
+      "company": "网易游戏",
+      "job": "AI产品策划实习生（AIGC方向）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:28:55.825942"
+    },
+    {
+      "company": "沈阳link",
+      "job": "ai产品运营",
+      "salary": "-K",
+      "score": 65,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:28:59.426495"
+    },
+    {
+      "company": "深圳众生元网络技术",
+      "job": "AI产品销售",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 销售",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:29:01.596177"
+    },
+    {
+      "company": "深圳茉莉语境科技",
+      "job": "AI产品运营实习生（Agent方向）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:29:14.596565"
+    },
+    {
+      "company": "云起未来",
+      "job": "【只要AI控】AI 产品经理",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:29:18.632272"
+    },
+    {
+      "company": "牧一草堂",
+      "job": "AI产品经理，只招能拿到结果，985/211优先",
+      "salary": "-K",
+      "score": 65,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:29:22.570165"
+    },
+    {
+      "company": "极核创新",
+      "job": "AI 产品实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:29:25.093984"
+    },
+    {
+      "company": "构美",
+      "job": "AI产品地推销售",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 销售",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:29:27.691832"
+    },
+    {
+      "company": "溪河科技",
+      "job": "ai产品经理",
+      "salary": "-K",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:29:31.421561"
+    },
+    {
+      "company": "百度",
+      "job": "AI产品运营实习生（暑期）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:29:34.254754"
+    },
+    {
+      "company": "麦田科技",
+      "job": "AI产品经理（企业内部应用）",
+      "salary": "-K",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-27T19:29:37.294779"
+    },
+    {
+      "company": "江苏尤可优网络科技",
+      "job": "AI运营经理",
+      "salary": "-K",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:29:51.637500"
+    },
+    {
+      "company": "",
+      "job": "新媒体运营【AI 保底 】",
+      "salary": "",
+      "score": 5,
+      "reason": "技能匹配:AI",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:30:06.175103"
+    },
+    {
+      "company": "云网集团",
+      "job": "AI业务优化运营+大小周+社保",
+      "salary": "-K",
+      "score": 5,
+      "reason": "JD含排除词'大小周'→过滤",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:30:09.070006"
+    },
+    {
+      "company": "保定富坤文化",
+      "job": "AI剪辑，可接受小白简单好学的ai运营",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 剪辑",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:30:12.143076"
+    },
+    {
+      "company": "甜新",
+      "job": "ai运营专员",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:30:28.366001"
+    },
+    {
+      "company": "焦作市解放区史源...",
+      "job": "AI短视频运营",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:30:31.678240"
+    },
+    {
+      "company": "流岸画明",
+      "job": "AI抖音运营",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:30:34.376984"
+    },
+    {
+      "company": "焦作市解放区史源...",
+      "job": "AI短视频运营",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:30:38.429880"
+    },
+    {
+      "company": "",
+      "job": "AI机器人运营管理8-13K ! ! !",
+      "salary": "",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:30:41.592389"
+    },
+    {
+      "company": "海豚AI学",
+      "job": "海豚AI运营-接受小白-可长期实习毕业可转正",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:30:44.356539"
+    },
+    {
+      "company": "焦作市解放区史源...",
+      "job": "AI短视频运营",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:30:47.051928"
+    },
+    {
+      "company": "",
+      "job": "AI运营",
+      "salary": "",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:30:51.181499"
+    },
+    {
+      "company": "北京问今智远科技",
+      "job": "Ai短视频社群运营 15k+",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 社群",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:30:53.469734"
+    },
+    {
+      "company": "微盛",
+      "job": "AI人工智能运营管培生",
+      "salary": "-K·薪",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:30:56.579971"
+    },
+    {
+      "company": "企优托集团",
+      "job": "AI （豆包）数字咨询顾问",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 顾问",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:31:09.743887"
+    },
+    {
+      "company": "宁夏嘉世乐网络科技",
+      "job": "ai运营",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:31:12.889106"
+    },
+    {
+      "company": "翼虎文化传媒镇江",
+      "job": "AI新媒体运营师",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:31:16.821589"
+    },
+    {
+      "company": "金慧科技",
+      "job": "7000抓住AI风口-有前景运营/无电话、有宿舍",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:31:20.949222"
+    },
+    {
+      "company": "苏州曼涟生物科技",
+      "job": "AI运营实习",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:31:23.389417"
+    },
+    {
+      "company": "可维新媒体公司",
+      "job": "AI智能营销·商务运营专员",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:31:26.231198"
+    },
+    {
+      "company": "北京知道创宇",
+      "job": "AI运营实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:31:28.774998"
+    },
+    {
+      "company": "泉州世纪租赁管理",
+      "job": "新媒体AI运营",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:31:31.054450"
+    },
+    {
+      "company": "齐齐哈尔市铁锋区...",
+      "job": "AI大模型运营",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:31:33.220263"
+    },
+    {
+      "company": "灿若繁星科技有限公司",
+      "job": "AI图文短剧社群运营",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 社群",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:31:37.178899"
+    },
+    {
+      "company": "德信",
+      "job": "AI抖音短视频运营",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:31:48.954159"
+    },
+    {
+      "company": "平安科技(深圳)...",
+      "job": "襄阳Ai数据运营/底薪4000起/双休社保",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:31:52.591567"
+    },
+    {
+      "company": "湛江广医综合医院",
+      "job": "互联网AI运营专员岗（医学方向）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:31:54.974344"
+    },
+    {
+      "company": "衡阳联产智影文化科技",
+      "job": "AI短视频转化运营主管",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 转化",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:31:57.688866"
+    },
+    {
+      "company": "陆遥科技",
+      "job": "AI 跨境电商运营管培生 / 实习生(A196041)",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:32:01.700169"
+    },
+    {
+      "company": "景烁科技",
+      "job": "基地运营（人工智能标注方向）",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:32:04.503013"
+    },
+    {
+      "company": "深圳启道科技信息",
+      "job": "软件销售代表（人工智能+大数据模型）",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 销售",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:32:07.928305"
+    },
+    {
+      "company": "连云港市红双喜大酒店",
+      "job": "AI首席运营官",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 首席",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:32:11.288119"
+    },
+    {
+      "company": "核桃编程",
+      "job": "AI用户运营【大模型风口，无责底薪+提成】",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-27T19:32:15.257702"
+    },
+    {
+      "company": "澳鹏科技",
+      "job": "Prompt Engineering",
+      "salary": "-K",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:32:29.614330"
+    },
+    {
+      "company": "无限星",
+      "job": "AI文本实习（Prompt）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:32:32.285508"
+    },
+    {
+      "company": "北京元理无限科技",
+      "job": "Agent工程师（须有产品经理经验）",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:32:35.805297"
+    },
+    {
+      "company": "渤格循环科技",
+      "job": "AI算法工程师（AI应用方向）",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:32:51.549771"
+    },
+    {
+      "company": "深圳万物良品科技",
+      "job": "AI全栈工程师招聘",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 全栈",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:32:55.166503"
+    },
+    {
+      "company": "上海思芮",
+      "job": "AI 语音效能优化工程师-反馈快",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:32:58.826649"
+    },
+    {
+      "company": "深圳市容面互联网...",
+      "job": "硬件工程师",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:33:13.075881"
+    },
+    {
+      "company": "AODSN奥迪信",
+      "job": "全栈工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 全栈",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:33:15.445007"
+    },
+    {
+      "company": "浮生未歇",
+      "job": "前端开发工程师",
+      "salary": "-K·薪",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:33:18.775090"
+    },
+    {
+      "company": "中基",
+      "job": "助理电气工程师",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:33:21.737407"
+    },
+    {
+      "company": "北京矩立信息技术...",
+      "job": "算法测评工程师",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:33:24.181678"
+    },
+    {
+      "company": "恺丽妤企业管理",
+      "job": "AI工作流工程师",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:33:26.444173"
+    },
+    {
+      "company": "高竞文化",
+      "job": "AI 质量管理工程师",
+      "salary": "-元/天",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:33:28.748465"
+    },
+    {
+      "company": "青岛云路",
+      "job": "qe工程师",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:33:32.204635"
+    },
+    {
+      "company": "维达力",
+      "job": "镀膜工程师",
+      "salary": "-K·薪",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:33:34.819001"
+    },
+    {
+      "company": "数动科技",
+      "job": "提示词工程师",
+      "salary": "-元/天",
+      "score": 35,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:33:38.511826"
+    },
+    {
+      "company": "进门",
+      "job": "AI金融算法工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:33:50.956610"
+    },
+    {
+      "company": "百千成",
+      "job": "测试开发助理工程师",
+      "salary": "-K·薪",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:33:53.652647"
+    },
+    {
+      "company": "飞亚达",
+      "job": "质量工程师",
+      "salary": "-K·薪",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:33:57.112567"
+    },
+    {
+      "company": "国信数据",
+      "job": "爬虫工程师",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:33:59.656354"
+    },
+    {
+      "company": "三江电子",
+      "job": "产品推广工程师",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 推广",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:34:02.000564"
+    },
+    {
+      "company": "贝特畅想",
+      "job": "工程师",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:34:05.351015"
+    },
+    {
+      "company": "深圳八方地动科技",
+      "job": "地球物理工程师",
+      "salary": "-K",
+      "score": 35,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:34:08.717302"
+    },
+    {
+      "company": "微源半导体",
+      "job": "ate测试工程师",
+      "salary": "-K·薪",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-27T19:34:11.806483"
+    },
+    {
+      "company": "厦门欣隽远进出口...",
+      "job": "Ai 应用工程师",
+      "salary": "-K",
+      "score": 20,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-29T11:54:59.087302"
+    },
+    {
+      "company": "浙江聚算科技有限公司",
+      "job": "AI基础设施与应用工程师",
+      "salary": "-K",
+      "score": 20,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-29T11:55:11.037328"
+    },
+    {
+      "company": "金树叶网络",
+      "job": "AI 应用工程师",
+      "salary": "-K",
+      "score": 20,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-06-29T11:55:22.975186"
+    },
+    {
+      "company": "汉中皓辉嘉创信息科技",
+      "job": "AI 训练师（LLM 方向）",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-29T11:55:45.770385"
+    },
+    {
+      "company": "引力节拍",
+      "job": "ai训练师（短剧制作）",
+      "salary": "-K",
+      "score": 65,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-29T11:55:49.577904"
+    },
+    {
+      "company": "米米无忧",
+      "job": "AI 训练师 早10晚7",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-29T11:55:51.660945"
+    },
+    {
+      "company": "湖北京标数字科技",
+      "job": "AI训练师+五险",
+      "salary": "-K",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-29T11:55:55.110392"
+    },
+    {
+      "company": "畅云创客",
+      "job": "ai训练师 可带手机",
+      "salary": "-K",
+      "score": 65,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-29T11:56:06.426902"
+    },
+    {
+      "company": "重庆沐晨人工智能科技",
+      "job": "AI训练师（周末双休）",
+      "salary": "-K",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-29T11:56:10.073809"
+    },
+    {
+      "company": "菲利信",
+      "job": "自贡-数据标注/AI训练师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 数据标注",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-29T11:56:12.662294"
+    },
+    {
+      "company": "南阳科思网络有限公司",
+      "job": "双休ai训练师",
+      "salary": "-K",
+      "score": 65,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-29T11:56:23.053187"
+    },
+    {
+      "company": "上海瑞应人才科技",
+      "job": "ai训练师（有短暂经验就可以投）",
+      "salary": "-K",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-29T11:56:25.512967"
+    },
+    {
+      "company": "西安品盈",
+      "job": "教育专项（AI训练师）",
+      "salary": "-K",
+      "score": 65,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-29T11:56:28.257537"
+    },
+    {
+      "company": "杭州闪电豆包数字科技",
+      "job": "字节大模型AI训练师 双休",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-06-29T11:56:31.772815"
+    },
+    {
+      "company": "畅云创客",
+      "job": "AI 大模型评测工程师（STEM / 推理方向）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-29T11:56:53.517586"
+    },
+    {
+      "company": "深圳伯乐",
+      "job": "外贸业务员Ai物联网16-20k双休入职五险一金",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 业务员",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-29T11:57:07.230580"
+    },
+    {
+      "company": "乌鸫科技",
+      "job": "大模型评测工程师-音频",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-29T11:57:10.032217"
+    },
+    {
+      "company": "光速动力",
+      "job": "AI 数据分析师",
+      "salary": "-K·薪",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-29T11:57:14.003276"
+    },
+    {
+      "company": "巨石峰科技",
+      "job": "AI自动化开发程序员",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-29T11:57:17.449799"
+    },
+    {
+      "company": "AIRS",
+      "job": "教育技术实习生（AI 与机器人教育方向）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-29T11:57:20.449754"
+    },
+    {
+      "company": "鸥溪网络",
+      "job": "AI漫剧内容创新技术",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-29T11:57:31.852780"
+    },
+    {
+      "company": "成都小咖邦智能科技",
+      "job": "AI Coding评测工程师",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-29T11:57:33.960685"
+    },
+    {
+      "company": "人工智能与数字经...",
+      "job": "华为昇腾AI大模型及算力平台建设研究员",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-29T11:57:36.707404"
+    },
+    {
+      "company": "妙动科技",
+      "job": "产品实习生（AI剪辑方向）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-29T11:57:39.726029"
+    },
+    {
+      "company": "深圳市元芯动力科技",
+      "job": "AI嵌入式软件实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-29T11:57:41.986218"
+    },
+    {
+      "company": "兆珑科技",
+      "job": "AI创新产品助理",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-06-29T11:57:44.475970"
+    },
+    {
+      "company": "雪狼户外",
+      "job": "AI Agent工程师（电商数据自动化方向）",
+      "salary": "-K",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-29T11:58:07.195554"
+    },
+    {
+      "company": "重庆沐晨人工智能科技",
+      "job": "Agent工程师（金融代码方向）",
+      "salary": "-K",
+      "score": 100,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-29T11:58:11.053892"
+    },
+    {
+      "company": "屿穗",
+      "job": "Agent开发工程师/正编",
+      "salary": "-K",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-29T11:58:24.795584"
+    },
+    {
+      "company": "卷积字节",
+      "job": "AI 应用全栈工程师（Agent 方向）- 校招",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 全栈",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-29T11:58:27.789328"
+    },
+    {
+      "company": "新核云",
+      "job": "AI FDE(前向部署工程师)/ Agent 训练师",
+      "salary": "-K·薪",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-29T11:58:30.353231"
+    },
+    {
+      "company": "鲸动科技",
+      "job": "Agent实施工程师",
+      "salary": "-K",
+      "score": 100,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-29T11:58:40.932541"
+    },
+    {
+      "company": "千诀科技",
+      "job": "机器人agent开发工程师",
+      "salary": "-K·薪",
+      "score": 100,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-29T11:58:44.243769"
+    },
+    {
+      "company": "深圳腾娱互动科技",
+      "job": "游戏AI Agent研发工程师-光环技术中心",
+      "salary": "-K·薪",
+      "score": 100,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-29T11:58:46.807739"
+    },
+    {
+      "company": "青果网络",
+      "job": "AI Agent开发工程师",
+      "salary": "-K·薪",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-06-29T11:58:50.266384"
+    },
+    {
+      "company": "龙远鼎晟",
+      "job": "AI Agent开发工程师（Python）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-29T11:59:14.830324"
+    },
+    {
+      "company": "屿穗",
+      "job": "Ai交付架构工程师/正编",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-29T11:59:18.340488"
+    },
+    {
+      "company": "字节跳动",
+      "job": "AI&公有云解决方案-火山",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-29T11:59:21.726115"
+    },
+    {
+      "company": "字节跳动",
+      "job": "成都字节 - AI 全栈开发工程师（偏前端）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 全栈",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-29T11:59:33.674370"
+    },
+    {
+      "company": "思朗科技",
+      "job": "AI解决方案专家",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-29T11:59:35.976905"
+    },
+    {
+      "company": "重庆云芽科技有限公司",
+      "job": "AI解决方案与应用开发工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-29T11:59:39.977055"
+    },
+    {
+      "company": "豫达雅兴",
+      "job": "全栈开发工程师（全平台 / AI 驱动方向）",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 全栈",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-29T11:59:42.860247"
+    },
+    {
+      "company": "滚动科技",
+      "job": "AI解决方案架构师【校招】",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 架构师",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-29T11:59:46.475991"
+    },
+    {
+      "company": "上海曦望芯科智能科技",
+      "job": "校招- AI 网络通信研发工程师",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-29T11:59:50.303446"
+    },
+    {
+      "company": "阿里巴巴集团",
+      "job": "瓴羊-AI解决方案专家-杭州",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-29T12:00:00.729025"
+    },
+    {
+      "company": "外企德科数字",
+      "job": "AI 大模型服务运营 / 技术运营（解决方案）",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-29T12:00:04.290784"
+    },
+    {
+      "company": "万卡科技",
+      "job": "AI算力硬件及应用解决方案销售经理",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 销售",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-29T12:00:06.934657"
+    },
+    {
+      "company": "未来网络",
+      "job": "AI网络解决方案工程师（应届）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-29T12:00:10.764583"
+    },
+    {
+      "company": "南伊",
+      "job": "医疗/教育信息解决方案销售专员",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 销售",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-29T12:00:13.868456"
+    },
+    {
+      "company": "安徽模式识别科技",
+      "job": "解决方案工程师（AI赋能方向）",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-29T12:00:16.613149"
+    },
+    {
+      "company": "素源矩阵",
+      "job": "ai解决方案实习生｜过程工业方向",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-06-29T12:00:18.753758"
+    },
+    {
+      "company": "甘肃人形机器人创...",
+      "job": "多模态生成动作大模型研究工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-29T12:00:40.872562"
+    },
+    {
+      "company": "朗境环保",
+      "job": "AI大模型开发工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-29T12:00:54.080768"
+    },
+    {
+      "company": "云南联合视觉",
+      "job": "AI大模型全栈工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 全栈",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-29T12:00:57.625161"
+    },
+    {
+      "company": "宽投资产",
+      "job": "大模型应用工程师（量化方向）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-29T12:01:01.180378"
+    },
+    {
+      "company": "上海从鲸信息技术",
+      "job": "大模型应用算法专家/工程师-社招",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-29T12:01:12.990389"
+    },
+    {
+      "company": "京东科技集团",
+      "job": "大模型（财富方向）应用开发工程师27届实习",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-06-29T12:01:15.109595"
+    },
+    {
+      "company": "云南浩辉科技有限公司",
+      "job": "全栈AI工程师（LLM/Agent方向）",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 全栈",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-29T12:01:43.277541"
+    },
+    {
+      "company": "德兰明海",
+      "job": "AIGC调优工程师（LLM/VLM/向量数据库）",
+      "salary": "-K",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-29T12:01:45.435968"
+    },
+    {
+      "company": "字节跳动",
+      "job": "ai应用后端开发实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 后端开发",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-29T12:01:58.946817"
+    },
+    {
+      "company": "字节跳动",
+      "job": "多模态算法工程师NLP/LLM-北京/上海扩招",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-29T12:02:01.629643"
+    },
+    {
+      "company": "漯河兴味食品科技",
+      "job": "研发应用工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-29T12:02:16.516629"
+    },
+    {
+      "company": "字节跳动",
+      "job": "AI应用后端开发实习生（暑期实习转正）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 后端开发",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-29T12:02:19.684369"
+    },
+    {
+      "company": "腾讯",
+      "job": "AI工程师/LLM（腾讯游戏投资公司编制）",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-29T12:02:22.062763"
+    },
+    {
+      "company": "潞晨科技",
+      "job": "昇腾高性能算子开发工程师（LLM / 多模态）",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-29T12:02:26.021965"
+    },
+    {
+      "company": "道通智能航空技术",
+      "job": "LLM Agent 应用开发工程师（任务规划）",
+      "salary": "-K·薪",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-29T12:02:28.064745"
+    },
+    {
+      "company": "麦瑞克科技",
+      "job": "AI应用工程师(A247445)",
+      "salary": "-K·薪",
+      "score": 100,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-29T12:02:30.547677"
+    },
+    {
+      "company": "杰华特微电子股份...",
+      "job": "FAE现场应用工程师",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-06-29T12:02:33.593412"
+    },
+    {
+      "company": "苏试拓为",
+      "job": "RF测试工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-29T12:02:52.438729"
+    },
+    {
+      "company": "灵心巧手",
+      "job": "fae技术支持工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-29T12:02:56.068023"
+    },
+    {
+      "company": "北京博视智动",
+      "job": "项目方案工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-29T12:03:08.867914"
+    },
+    {
+      "company": "和光医疗",
+      "job": "助理产品工程师",
+      "salary": "-元/天",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-29T12:03:12.768667"
+    },
+    {
+      "company": "鹰眼视觉",
+      "job": "软件工程师(10029)",
+      "salary": "-K",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-29T12:03:15.876872"
+    },
+    {
+      "company": "达盟生物",
+      "job": "临床应用工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-29T12:03:18.336046"
+    },
+    {
+      "company": "深圳思立博环境技术",
+      "job": "EHS工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-29T12:03:21.203365"
+    },
+    {
+      "company": "深圳市千华安科科...",
+      "job": "高级电子工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 高级",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-29T12:03:24.691275"
+    },
+    {
+      "company": "麦科信",
+      "job": "调试工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-29T12:03:35.802719"
+    },
+    {
+      "company": "上海睿氧医疗科技",
+      "job": "睡眠工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-29T12:03:38.728823"
+    },
+    {
+      "company": "深圳优地科技",
+      "job": "清洁机器人测试工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-29T12:03:41.503262"
+    },
+    {
+      "company": "科兴检测",
+      "job": "安规测试工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-29T12:03:45.148296"
+    },
+    {
+      "company": "卓立汉光",
+      "job": "光谱销售工程师",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 销售",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-06-29T12:03:47.246164"
+    },
+    {
+      "company": "天磊卫士",
+      "job": "AI 研发工程师（智能体/大模型安全产品）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-29T12:04:14.641616"
+    },
+    {
+      "company": "徽文文化",
+      "job": "教辅图书行业智能体开发工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-29T12:04:17.706546"
+    },
+    {
+      "company": "屿穗",
+      "job": "智能体前线开发工程师/正编",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-29T12:04:21.566923"
+    },
+    {
+      "company": "杭州小和云起智能科技",
+      "job": "智能体应用开发工程师",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-29T12:04:23.813901"
+    },
+    {
+      "company": "票付通",
+      "job": "智能体开发工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-29T12:04:35.217638"
+    },
+    {
+      "company": "安徽思高智能科技",
+      "job": "智能体开发工程师（企业级方向）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-29T12:04:37.424748"
+    },
+    {
+      "company": "朗新科技",
+      "job": "电力交易智能体工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-29T12:04:40.007967"
+    },
+    {
+      "company": "票付通",
+      "job": "智能体开发工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-29T12:04:42.853642"
+    },
+    {
+      "company": "新威时代",
+      "job": "AI智能体部署工程师（OpenClaw方向）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-29T12:04:45.286607"
+    },
+    {
+      "company": "四川多易全电子商...",
+      "job": "AI智能体构架工程师[龙虾全域业务]",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-29T12:04:48.341249"
+    },
+    {
+      "company": "深圳腾娱互动科技",
+      "job": "智能体后端工程师",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 后端",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-29T12:04:52.029896"
+    },
+    {
+      "company": "杭州齐芯智光科技",
+      "job": "python高级开发工程师（智能体方向）",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 高级",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-29T12:05:02.593832"
+    },
+    {
+      "company": "小红书",
+      "job": "【练习生】智能体Agent Sandbox开发工程师",
+      "salary": "-元/天",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-29T12:05:06.353593"
+    },
+    {
+      "company": "企叮咚总部",
+      "job": "AI智能体工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-29T12:05:08.797785"
+    },
+    {
+      "company": "温州云伴信息技术",
+      "job": "人工智能智能体开发工程师",
+      "salary": "-元/天",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-29T12:05:11.588045"
+    },
+    {
+      "company": "启明合心",
+      "job": "AI Agent 智能体工程师（实习）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-29T12:05:14.320223"
+    },
+    {
+      "company": "顺思科技",
+      "job": "智能体算法工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-29T12:05:16.478667"
+    },
+    {
+      "company": "因为肤理",
+      "job": "AIGC智能体开发工程师 (视频方向)",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-29T12:05:20.344030"
+    },
+    {
+      "company": "宁夏深维智能科技",
+      "job": "AI智能体开发工程师（开发岗）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-06-29T12:05:22.661931"
+    },
+    {
+      "company": "乐信圣文",
+      "job": "AI+产品运营实习生【大厂实习】",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-29T12:05:44.272960"
+    },
+    {
+      "company": "成都木风未来科技...",
+      "job": "销售专员 AI产品方向",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 销售",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-29T12:05:47.822845"
+    },
+    {
+      "company": "成都酒铂酒业有限公司",
+      "job": "AI产品运营助理（短视频方向）",
+      "salary": "-元/天",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-29T12:05:50.445610"
+    },
+    {
+      "company": "千帜",
+      "job": "C端AI产品实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-29T12:05:53.128788"
+    },
+    {
+      "company": "郑州乾承",
+      "job": "AI方向新媒体运营",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-29T12:06:03.623947"
+    },
+    {
+      "company": "途鸽科技",
+      "job": "ai产品实习生（海运系统）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-29T12:06:07.479568"
+    },
+    {
+      "company": "北京蓝标传媒",
+      "job": "AI产品社区运营实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-29T12:06:10.817290"
+    },
+    {
+      "company": "寻缘",
+      "job": "AI产品运营实习生（入职有人带，无需经验）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-29T12:06:13.386443"
+    },
+    {
+      "company": "卓驭",
+      "job": "AI产品运营实习生(J11326)",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-29T12:06:15.944537"
+    },
+    {
+      "company": "小红书",
+      "job": "AI Native产品实习生（旅行方向）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-29T12:06:28.596523"
+    },
+    {
+      "company": "江苏新东旭纺织科...",
+      "job": "AI产品数据化 / 智能接单运营",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-29T12:06:31.981366"
+    },
+    {
+      "company": "字节跳动",
+      "job": "产品运营实习生-AI创新业务",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-29T12:06:34.948551"
+    },
+    {
+      "company": "思达爱",
+      "job": "AI产品助理",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-29T12:06:38.465962"
+    },
+    {
+      "company": "图拉斯",
+      "job": "AI产品经理(A220513)",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-29T12:06:41.201770"
+    },
+    {
+      "company": "作业帮",
+      "job": "协同办公AI产品实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-29T12:06:43.754718"
+    },
+    {
+      "company": "明悉科技",
+      "job": "AI 产品经理（To B/G方向）",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-29T12:06:46.051739"
+    },
+    {
+      "company": "元空智能",
+      "job": "AI产品运营（可转正）",
+      "salary": "-元/天",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-29T12:06:48.285883"
+    },
+    {
+      "company": "熠耀科技",
+      "job": "短视频运营（AI）",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-29T12:06:51.534902"
+    },
+    {
+      "company": "郡嘉新媒体文化传媒",
+      "job": "AI产品运营（电商全域智能体落地）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-06-29T12:06:54.751492"
+    },
+    {
+      "company": "成睿保险",
+      "job": "保定/Ai数据运营+双休(7000无责)",
+      "salary": "-K",
+      "score": 5,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-29T12:07:16.267924"
+    },
+    {
+      "company": "广州人寿新伙伴信...",
+      "job": "天河/Ai数据运营+双休(7000无责)",
+      "salary": "-K",
+      "score": 5,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-29T12:07:19.084647"
+    },
+    {
+      "company": "人瑞",
+      "job": "AI视频标注交付运营经理",
+      "salary": "-K·薪",
+      "score": 5,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-29T12:07:30.656473"
+    },
+    {
+      "company": "妙动科技",
+      "job": "电商与广告 AI 运营实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-29T12:07:34.441952"
+    },
+    {
+      "company": "衡阳联产智影文化科技",
+      "job": "AI短视频转化运营专员",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 转化",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-29T12:07:38.172559"
+    },
+    {
+      "company": "千里智驾",
+      "job": "AI运营实习生 (MJ001426)",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-29T12:07:40.536076"
+    },
+    {
+      "company": "湖南潜水艇品牌管理",
+      "job": "8-9K电商管培生+培训+轮岗+AI运营专家方向",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-29T12:07:52.878764"
+    },
+    {
+      "company": "武汉领格卓越教育科技",
+      "job": "销售运营专员（AI方向）",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 销售",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-29T12:07:56.678572"
+    },
+    {
+      "company": "核桃编程",
+      "job": "【春晚同款】少儿 AI 运营岗｜接受无经验",
+      "salary": "-K",
+      "score": 5,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-29T12:08:00.222130"
+    },
+    {
+      "company": "世纪优优",
+      "job": "AI西班牙语小说运营",
+      "salary": "-K",
+      "score": 5,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-29T12:08:02.929274"
+    },
+    {
+      "company": "两点十分影视",
+      "job": "新媒体运营（AI漫剧方向）",
+      "salary": "-K",
+      "score": 5,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-06-29T12:08:05.589967"
+    },
+    {
+      "company": "深圳市新凯来技术",
+      "job": "热设计工程师",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "缺少必须关键词: AI...",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-29T12:08:35.746642"
+    },
+    {
+      "company": "华测检测",
+      "job": "销售工程师",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "缺少必须关键词: AI...",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-29T12:08:38.222273"
+    },
+    {
+      "company": "深圳市华澈咨询",
+      "job": "结构工程师",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "缺少必须关键词: AI...",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-29T12:08:41.476047"
+    },
+    {
+      "company": "银舍智能",
+      "job": "研发质量工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "缺少必须关键词: AI...",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-29T12:08:45.131449"
+    },
+    {
+      "company": "昂纳集团",
+      "job": "品质工程师",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "缺少必须关键词: AI...",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-29T12:08:48.596936"
+    },
+    {
+      "company": "大族激光",
+      "job": "机械工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "缺少必须关键词: AI...",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-29T12:09:01.905568"
+    },
+    {
+      "company": "深圳环谷",
+      "job": "技术工程师",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "缺少必须关键词: AI...",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-29T12:09:04.974746"
+    },
+    {
+      "company": "腾讯",
+      "job": "腾讯开发工程师",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "缺少必须关键词: AI...",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-29T12:09:08.894820"
+    },
+    {
+      "company": "MOVA",
+      "job": "系统测试工程师",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "缺少必须关键词: AI...",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-29T12:09:11.368960"
+    },
+    {
+      "company": "震雄集团",
+      "job": "液压工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "缺少必须关键词: AI...",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-29T12:09:14.557126"
+    },
+    {
+      "company": "Anker",
+      "job": "助理硬件测试工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "缺少必须关键词: AI...",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-29T12:09:26.474074"
+    },
+    {
+      "company": "明程电机",
+      "job": "流体仿真工程师",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "缺少必须关键词: AI...",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-29T12:09:29.977397"
+    },
+    {
+      "company": "汉展视觉",
+      "job": "视觉工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "缺少必须关键词: AI...",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-29T12:09:33.709978"
+    },
+    {
+      "company": "长城国际",
+      "job": "助理采购工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "缺少必须关键词: AI...",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-29T12:09:36.879635"
+    },
+    {
+      "company": "深圳猿声先达科技",
+      "job": "机械臂软件开发工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "缺少必须关键词: AI...",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-29T12:09:40.680576"
+    },
+    {
+      "company": "深圳光峰科技股份...",
+      "job": "光学工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "缺少必须关键词: AI...",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-29T12:09:43.338658"
+    },
+    {
+      "company": "顺络电子",
+      "job": "机械设备工程师",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "缺少必须关键词: AI...",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-29T12:09:45.781806"
+    },
+    {
+      "company": "昂视智能",
+      "job": "光学工程师（视觉方向）",
+      "salary": "-K",
+      "score": 0,
+      "reason": "缺少必须关键词: AI...",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-06-29T12:09:48.628277"
+    },
+    {
+      "company": "酷威科技",
+      "job": "AI+RPA应用工程师",
+      "salary": "-K",
+      "score": 20,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-07-01T11:58:42.937431"
+    },
+    {
+      "company": "杭州袋鼠智元科技",
+      "job": "AI Agent 应用工程师（远程办公）",
+      "salary": "-K",
+      "score": 55,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-07-01T11:58:56.606254"
+    },
+    {
+      "company": "易鲲数据",
+      "job": "AI应用开发工程师",
+      "salary": "-K",
+      "score": 50,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-07-01T11:59:10.355439"
+    },
+    {
+      "company": "厦门理道智科技",
+      "job": "AI应用工程师（vibe coding）",
+      "salary": "-元/天",
+      "score": 50,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-07-01T11:59:12.797959"
+    },
+    {
+      "company": "上海瑞应人才科技",
+      "job": "AI训练师/AIGC/多模态标注",
+      "salary": "-K",
+      "score": 35,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-07-01T11:59:35.763353"
+    },
+    {
+      "company": "趣标智能",
+      "job": "数据标注 ai训练师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 数据标注",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-07-01T11:59:38.682946"
+    },
+    {
+      "company": "山东佳音",
+      "job": "双休AI训练师",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-07-01T11:59:52.293680"
+    },
+    {
+      "company": "四川仟联恒光科技",
+      "job": "AI训练师 早九晚六+双休",
+      "salary": "-K·薪",
+      "score": 35,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-07-01T12:00:04.079450"
+    },
+    {
+      "company": "泰盈科技集团",
+      "job": "大模型ai训练师",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-07-01T12:00:07.747463"
+    },
+    {
+      "company": "潍坊嘉遇信息科技",
+      "job": "TX模型AI训练师+底薪3300",
+      "salary": "-K",
+      "score": 35,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-07-01T12:00:11.803092"
+    },
+    {
+      "company": "重庆沐晨人工智能科技",
+      "job": "AI大模型评测工程师（Agent方向）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-01T12:00:32.189031"
+    },
+    {
+      "company": "深圳艾柏斯运动科技",
+      "job": "ai设计师",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-01T12:00:45.384850"
+    },
+    {
+      "company": "布先生服饰有限公司",
+      "job": "高薪急聘Ai探索助理（接受无经验）",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-01T12:00:48.350027"
+    },
+    {
+      "company": "光合引擎",
+      "job": "AI真人剧导演",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-01T12:00:51.264684"
+    },
+    {
+      "company": "肯方科技",
+      "job": "AI评测端自动化高级工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 高级",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-01T12:00:54.142929"
+    },
+    {
+      "company": "深圳守正不出奇教...",
+      "job": "AI 管培生",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-01T12:00:57.847507"
+    },
+    {
+      "company": "趣象时空",
+      "job": "AI产品海外社群运营/创作者增长（toC产品）",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 社群",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-01T12:01:01.922191"
+    },
+    {
+      "company": "厦门卓智云投资",
+      "job": "AI创新空间负责人（创业/项目孵化经验）",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-01T12:01:05.683273"
+    },
+    {
+      "company": "锦云新航",
+      "job": "TK美区AI视频",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-01T12:01:17.999584"
+    },
+    {
+      "company": "深圳市星鲸锐科技",
+      "job": "TikTok美区频剪辑（偏AI创作）福利待遇好",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 剪辑",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-01T12:01:20.127777"
+    },
+    {
+      "company": "金慧融智",
+      "job": "AI 图像 / 视频标注与评测研究员（设计师）",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-01T12:01:23.768719"
+    },
+    {
+      "company": "众联世纪",
+      "job": "AI产品经理（视频创作方向）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-01T12:01:26.468762"
+    },
+    {
+      "company": "未来范式",
+      "job": "AI小说（短剧）编辑实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-01T12:01:29.916738"
+    },
+    {
+      "company": "纷享销客",
+      "job": "Agent 平台开发工程师(J11601)",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-01T12:01:53.621077"
+    },
+    {
+      "company": "博思数采",
+      "job": "AI Agent 应用工程师 (MJ004178)",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-01T12:01:56.129732"
+    },
+    {
+      "company": "勇冠睿智",
+      "job": "AI Agent研发工程师（昇腾计算）",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-01T12:02:09.022984"
+    },
+    {
+      "company": "温州瓯海美加云向...",
+      "job": "AI Agent 工程师·电商核心",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-01T12:02:12.201455"
+    },
+    {
+      "company": "广州元企智能信息科技",
+      "job": "AI Agent落地工程师（双休、环境优美、社保",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-01T12:02:15.969141"
+    },
+    {
+      "company": "华大智造",
+      "job": "AI Agent 软件开发工程师 （生命科学方向）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-01T12:02:28.550014"
+    },
+    {
+      "company": "字节跳动",
+      "job": "FDE-现场部署工程师（AI Agent开发）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-01T12:02:30.917098"
+    },
+    {
+      "company": "宜飞科技",
+      "job": "AI Agent 全栈开发工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 全栈",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-07-02T17:58:00.099692"
+    },
+    {
+      "company": "多益网络",
+      "job": "AI应用开发工程师【27届校招】",
+      "salary": "-K·薪",
+      "score": 80,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-07-02T17:58:03.757320"
+    },
+    {
+      "company": "MOODY",
+      "job": "AI应用训练工程师",
+      "salary": "-K",
+      "score": 50,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-07-02T17:58:31.131503"
+    },
+    {
+      "company": "诺特扭矩",
+      "job": "AI应用创新工程师",
+      "salary": "-K",
+      "score": 50,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "AI应用工程师",
+      "time": "2026-07-02T17:58:35.099881"
+    },
+    {
+      "company": "南阳锐丰信息科技",
+      "job": "双休急聘计算机专业AI训练师",
+      "salary": "-K",
+      "score": 100,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-07-02T17:59:08.968612"
+    },
+    {
+      "company": "潍坊初昕信息技术服务",
+      "job": "AI训练师双休",
+      "salary": "-K",
+      "score": 100,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-07-02T17:59:22.827897"
+    },
+    {
+      "company": "临汾鲲鹏数据科技",
+      "job": "AI训练师图片标注员",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 标注员",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-07-02T17:59:26.795072"
+    },
+    {
+      "company": "井良",
+      "job": "百度项目AI训练师",
+      "salary": "-K",
+      "score": 100,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-07-02T17:59:41.852231"
+    },
+    {
+      "company": "昌吉市派格数科数...",
+      "job": "AI训练师/管培生",
+      "salary": "-K",
+      "score": 100,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-07-02T17:59:45.013619"
+    },
+    {
+      "company": "绍兴云图智胜信息技术",
+      "job": "AI训练师，接受0基础小白",
+      "salary": "-K",
+      "score": 100,
+      "reason": "JD含排除词'单休'→过滤",
+      "city": "泉州",
+      "keyword": "AI训练师",
+      "time": "2026-07-02T17:59:48.472994"
+    },
+    {
+      "company": "腾讯云雀",
+      "job": "标注评测（AI视频）(J12630)",
+      "salary": "-K·薪",
+      "score": 5,
+      "reason": "技能匹配:AI",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T18:00:13.441934"
+    },
+    {
+      "company": "NIO蔚来",
+      "job": "算法评测工程师",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "无匹配",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T18:00:16.708674"
+    },
+    {
+      "company": "日出",
+      "job": "AI短视频带货实习生招聘",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T18:00:35.581416"
+    },
+    {
+      "company": "高竞文化",
+      "job": "AI技术全栈管培生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 全栈",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T18:00:37.951560"
+    },
+    {
+      "company": "新国都",
+      "job": "AI效能工程师（软硬件研发） (MJ001530)",
+      "salary": "-K·薪",
+      "score": 5,
+      "reason": "技能匹配:AI",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T18:00:41.810802"
+    },
+    {
+      "company": "金慧融智",
+      "job": "设计类院校优先【AI美学研究员】",
+      "salary": "-K",
+      "score": 5,
+      "reason": "技能匹配:AI",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T18:00:53.145992"
+    },
+    {
+      "company": "小狮AI",
+      "job": "ai技术总监",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 总监",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T18:00:56.922309"
+    },
+    {
+      "company": "",
+      "job": "AI视频剪辑实习生",
+      "salary": "",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T18:01:13.323999"
+    },
+    {
+      "company": "朗姿医疗",
+      "job": "AI应用开发工程师｜LLM Agent / RAG方向",
+      "salary": "-K",
+      "score": 65,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T18:01:50.711172"
+    },
+    {
+      "company": "炅炅有神",
+      "job": "AI Agent开发工程师（实习）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T18:01:53.664029"
+    },
+    {
+      "company": "百度",
+      "job": "AI Agent 全栈工程师｜MeDo 全球版(J99617)",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 全栈",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T18:01:57.226436"
+    },
+    {
+      "company": "语核科技",
+      "job": "Agent 研发工程师",
+      "salary": "-K·薪",
+      "score": 55,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T18:02:08.815748"
+    },
+    {
+      "company": "阿里巴巴集团",
+      "job": "【可转正】AI Agent 应用开发工程师",
+      "salary": "-元/天",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T18:02:12.622748"
+    },
+    {
+      "company": "河南多鲸",
+      "job": "AI Agent 开发工程师（通用方向）",
+      "salary": "-K",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T18:02:15.001292"
+    },
+    {
+      "company": "深圳云豹智能",
+      "job": "AI RAG应用工程师",
+      "salary": "-元/天",
+      "score": 25,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T18:02:18.879110"
+    },
+    {
+      "company": "虎跃数据",
+      "job": "AI工具开发工程师（AI Agent）",
+      "salary": "-K",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "泉州",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T18:02:21.233801"
+    },
+    {
+      "company": "闺蜜科技",
+      "job": "AI工程师（可接受IT岗）",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-07-02T18:02:52.755811"
+    },
+    {
+      "company": "沁诚信息",
+      "job": "AI解决方案销售",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 销售",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-07-02T18:02:55.359874"
+    },
+    {
+      "company": "云音超算",
+      "job": "解决方案工程师（售前）",
+      "salary": "-K·薪",
+      "score": 40,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-07-02T18:02:58.895302"
+    },
+    {
+      "company": "语核科技",
+      "job": "AI项目交付工程师/项目经理",
+      "salary": "-K·薪",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-07-02T18:03:02.885266"
+    },
+    {
+      "company": "宁波金田铜业",
+      "job": "AI业务解决方案工程师",
+      "salary": "-K·薪",
+      "score": 40,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-07-02T18:03:06.565469"
+    },
+    {
+      "company": "智慧树",
+      "job": "售前解决方案经理（AI 信息化）",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-07-02T18:03:08.634877"
+    },
+    {
+      "company": "深圳云展",
+      "job": "AI 人工智能开发工程师",
+      "salary": "-元/天",
+      "score": 40,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-07-02T18:03:20.148859"
+    },
+    {
+      "company": "星尘纪元",
+      "job": "AI解决方案型产品经理",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-07-02T18:03:22.375215"
+    },
+    {
+      "company": "超聚变技术有限公司",
+      "job": "AI工程师（实习生）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-07-02T18:03:24.952572"
+    },
+    {
+      "company": "阿喔咿科技",
+      "job": "AI Agent 产品设计师/产品经理",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-07-02T18:03:28.711134"
+    },
+    {
+      "company": "牵手",
+      "job": "ai测试开发工程师",
+      "salary": "-K·薪",
+      "score": 40,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-07-02T18:03:31.873074"
+    },
+    {
+      "company": "海康威视",
+      "job": "PBG-解决方案工程师-人工智能/大模型-杭州",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-07-02T18:03:44.358065"
+    },
+    {
+      "company": "句子互动",
+      "job": "AI管培生（CEO下属团队）",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-07-02T18:03:47.311235"
+    },
+    {
+      "company": "睿晟天和",
+      "job": "AI售前解决方案工程师（技术型）",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'驻场'→过滤",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-07-02T18:03:50.069733"
+    },
+    {
+      "company": "风速科技",
+      "job": "AI agent工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-07-02T18:03:52.580943"
+    },
+    {
+      "company": "金山云",
+      "job": "解决方案架构师（AI方向）",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 架构师",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-07-02T18:03:56.282256"
+    },
+    {
+      "company": "威派格",
+      "job": "解决方案实习生(J11422)",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI解决方案工程师",
+      "time": "2026-07-02T18:03:59.566681"
+    },
+    {
+      "company": "竞业达",
+      "job": "多模态大模型工程师（语音方向）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-07-02T18:04:23.502739"
+    },
+    {
+      "company": "潍坊乔木星耀传媒",
+      "job": "大模型数据工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-07-02T18:04:36.112827"
+    },
+    {
+      "company": "成联数据",
+      "job": "AI大模型算法数据工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-07-02T18:04:39.589839"
+    },
+    {
+      "company": "滨沅国科",
+      "job": "AI大模型算法工程师招聘",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-07-02T18:04:43.376704"
+    },
+    {
+      "company": "快手",
+      "job": "大模型应用开发工程师(金融支付)-杭州",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-07-02T18:04:47.002663"
+    },
+    {
+      "company": "非凸科技",
+      "job": "大模型应用开发工程师（实习）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-07-02T18:05:06.116763"
+    },
+    {
+      "company": "宏芯宇电子",
+      "job": "大模型工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-07-02T18:05:08.628196"
+    },
+    {
+      "company": "杭州维悦时刻科技",
+      "job": "大模型数据算法工程师（视频多模态方向）",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-07-02T18:05:12.000758"
+    },
+    {
+      "company": "泛微网络",
+      "job": "大模型算法工程师-AI应用-主板上市包三餐",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "大模型应用工程师",
+      "time": "2026-07-02T18:05:14.737687"
+    },
+    {
+      "company": "上海游幕网络科技",
+      "job": "LLM 应用研发工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-07-02T18:05:38.097034"
+    },
+    {
+      "company": "湖南特能博世",
+      "job": "LLM算法工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-07-02T18:05:50.198783"
+    },
+    {
+      "company": "复志科技",
+      "job": "应用工程师(J10262)",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-07-02T18:05:52.763856"
+    },
+    {
+      "company": "BOSS直聘",
+      "job": "搜索算法工程师（LLM+搜索，base北京）",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-07-02T18:06:06.766603"
+    },
+    {
+      "company": "广州刻雅馆医疗器...",
+      "job": "AI 系统工程师（Agent / LLM 方向）",
+      "salary": "-K·薪",
+      "score": 100,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-07-02T18:06:09.730194"
+    },
+    {
+      "company": "国机金刚石",
+      "job": "应用工程师（上海）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-07-02T18:06:13.394330"
+    },
+    {
+      "company": "海塞姆科技",
+      "job": "青岛应用工程师(材料方向)应届生也可）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-07-02T18:06:17.385975"
+    },
+    {
+      "company": "美康生物",
+      "job": "应用工程师（医学检验、生物）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "LLM应用工程师",
+      "time": "2026-07-02T18:06:21.264530"
+    },
+    {
+      "company": "上海知满科技有限公司",
+      "job": "大模型创业公司 售前工程师（FDE）",
+      "salary": "-K",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-07-02T18:06:43.344283"
+    },
+    {
+      "company": "深圳市视塔科技",
+      "job": "电路工程师（可实习）",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-07-02T18:06:46.795957"
+    },
+    {
+      "company": "弘安安全",
+      "job": "注册安全工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-07-02T18:06:50.327235"
+    },
+    {
+      "company": "bilibili",
+      "job": "AI-Native 开发工程师（前端方向）",
+      "salary": "-K·薪",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-07-02T18:07:02.266132"
+    },
+    {
+      "company": "深圳万星创新智能科技",
+      "job": "智能硬件测试工程师",
+      "salary": "-元/天",
+      "score": 30,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-07-02T18:07:04.974638"
+    },
+    {
+      "company": "大族数控",
+      "job": "视觉调试工程师 (有海康相机调试经验)",
+      "salary": "-K",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-07-02T18:07:08.988835"
+    },
+    {
+      "company": "鸿瑞科技",
+      "job": "视觉模型训练工程师（应届生优先）",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 模型训练",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-07-02T18:07:12.588779"
+    },
+    {
+      "company": "石犀科技",
+      "job": "网路工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-07-02T18:07:15.594964"
+    },
+    {
+      "company": "Anker",
+      "job": "A143328测试工程师实习生",
+      "salary": "面议",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-07-02T18:07:28.841562"
+    },
+    {
+      "company": "金光泰",
+      "job": "SMT工程师",
+      "salary": "-K",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-07-02T18:07:31.597386"
+    },
+    {
+      "company": "墨库集团",
+      "job": "uv研发工程师",
+      "salary": "-K·薪",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-07-02T18:07:34.078859"
+    },
+    {
+      "company": "辉芒微电子",
+      "job": "电源现场应用工程师",
+      "salary": "-K·薪",
+      "score": 30,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "知识库工程师",
+      "time": "2026-07-02T18:07:37.130894"
+    },
+    {
+      "company": "科洲专利事务所",
+      "job": "软件工程师（急聘-知识库/智能体平台方向）",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-07-02T18:07:59.439858"
+    },
+    {
+      "company": "京东世纪贸易有限公司",
+      "job": "AI智能体应用开发工程师/架构师-数据方向",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 架构师",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-07-02T18:08:12.833999"
+    },
+    {
+      "company": "华为技术有限公司",
+      "job": "AI Agent智能体开发工程师",
+      "salary": "-元/天",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-07-02T18:08:16.700352"
+    },
+    {
+      "company": "蚂蚁集团",
+      "job": "蚂蚁集团-数字科技线-智能体研发工程师",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "泉州",
+      "keyword": "智能体工程师",
+      "time": "2026-07-02T18:08:28.079459"
+    },
+    {
+      "company": "西安星芸文化传媒",
+      "job": "agent开发 有ai落地产品",
+      "salary": "-K",
+      "score": 50,
+      "reason": "JD含排除词'大小周'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-07-02T18:08:51.413715"
+    },
+    {
+      "company": "xmind",
+      "job": "AI 产品经理实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-07-02T18:08:54.461227"
+    },
+    {
+      "company": "念家科技",
+      "job": "AI 平台研发 / 产品岗（实习 / 应届生）",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-07-02T18:08:56.913551"
+    },
+    {
+      "company": "杭州博运未来",
+      "job": "AI图文项目电商运营6000-9000底薪+提成10%",
+      "salary": "-K",
+      "score": 5,
+      "reason": "JD含排除词'大小周'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-07-02T18:09:00.812028"
+    },
+    {
+      "company": "MiniMax",
+      "job": "AI开放平台运营实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-07-02T18:09:13.164988"
+    },
+    {
+      "company": "保垣智慧生活",
+      "job": "AI产品实习生（Agent方向-3个月以上）",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-07-02T18:09:16.942575"
+    },
+    {
+      "company": "Moatable",
+      "job": "AI 产品经理（校招 · 应届生）",
+      "salary": "-K·薪",
+      "score": 35,
+      "reason": "JD含排除词'大小周'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-07-02T18:09:30.915537"
+    },
+    {
+      "company": "老乡鸡餐饮",
+      "job": "AI 产品经理",
+      "salary": "-K",
+      "score": 5,
+      "reason": "JD含排除词'大小周'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-07-02T18:09:34.579270"
+    },
+    {
+      "company": "网龙",
+      "job": "产品经理（AI方向）",
+      "salary": "-K·薪",
+      "score": 5,
+      "reason": "JD含排除词'大小周'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-07-02T18:09:37.658397"
+    },
+    {
+      "company": "陌陌",
+      "job": "社交 AI 产品经理",
+      "salary": "-K·薪",
+      "score": 5,
+      "reason": "JD含排除词'大小周'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-07-02T18:09:41.260952"
+    },
+    {
+      "company": "海大集团",
+      "job": "26届校招产品经理（AI办公）",
+      "salary": "-K·薪",
+      "score": 35,
+      "reason": "JD含排除词'大小周'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-07-02T18:09:44.826793"
+    },
+    {
+      "company": "长春龙杰汽车设计",
+      "job": "ai产品经理实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-07-02T18:09:46.912608"
+    },
+    {
+      "company": "即时设计",
+      "job": "AI产品经理—校园招聘",
+      "salary": "-K·薪",
+      "score": 35,
+      "reason": "JD含排除词'大小周'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-07-02T18:09:50.432549"
+    },
+    {
+      "company": "向量螺旋",
+      "job": "ai产品助理",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'大小周'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-07-02T18:09:54.245033"
+    },
+    {
+      "company": "海南神州希望网络",
+      "job": "AI产品专员",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'大小周'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-07-02T18:09:57.555288"
+    },
+    {
+      "company": "知页简历",
+      "job": "ai产品经理2",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'大小周'→过滤",
+      "city": "泉州",
+      "keyword": "AI产品运营",
+      "time": "2026-07-02T18:10:01.105349"
+    },
+    {
+      "company": "金慧科技",
+      "job": "ai找茬运营质检 喜欢看小说的",
+      "salary": "-K",
+      "score": 5,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-07-02T18:10:23.717125"
+    },
+    {
+      "company": "滕州盛星网络科技",
+      "job": "AI运营专员 | 新媒体运营专员",
+      "salary": "-K",
+      "score": 35,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-07-02T18:10:27.316333"
+    },
+    {
+      "company": "柒辰信息科技",
+      "job": "人工智能训练师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "无匹配",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-07-02T18:10:29.796495"
+    },
+    {
+      "company": "慧博云通",
+      "job": "医院AI项目合作运营",
+      "salary": "-K",
+      "score": 5,
+      "reason": "技能匹配:AI",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-07-02T18:10:32.474959"
+    },
+    {
+      "company": "苏州曼涟生物科技",
+      "job": "AI 运 营 实 习",
+      "salary": "-元/天",
+      "score": 5,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-07-02T18:10:35.199334"
+    },
+    {
+      "company": "中南万象",
+      "job": "AI+跨境电商运营合伙人(AI培养方向）",
+      "salary": "-K",
+      "score": 5,
+      "reason": "技能匹配:AI",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-07-02T18:10:48.564325"
+    },
+    {
+      "company": "",
+      "job": "生态伙伴招商 AI 运营实习生-飞书",
+      "salary": "",
+      "score": 0,
+      "reason": "标题包含排除词: 招商",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-07-02T18:11:03.202820"
+    },
+    {
+      "company": "天下汇康",
+      "job": "AI运营自动化实习生Codex/Claude Code方向",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "AI运营",
+      "time": "2026-07-02T18:11:29.456169"
+    },
+    {
+      "company": "海魄",
+      "job": "Python & Prompt开发工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:11:59.060384"
+    },
+    {
+      "company": "北京字节跳动",
+      "job": "AI数据Prompt工程实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:12:02.257367"
+    },
+    {
+      "company": "望尘科技",
+      "job": "全栈开发工程师（应届生）",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 全栈",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:12:05.162118"
+    },
+    {
+      "company": "新凯来技术有限公司",
+      "job": "半导体工艺工程师",
+      "salary": "-K·薪",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:12:08.480231"
+    },
+    {
+      "company": "深圳市影辰科技",
+      "job": "af算法工程师",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:12:19.797294"
+    },
+    {
+      "company": "舞肌科技",
+      "job": "电机/关节模组测试工程师（应届/校招）",
+      "salary": "-K",
+      "score": 65,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:12:22.944818"
+    },
+    {
+      "company": "深圳百格",
+      "job": "嵌入式软件工程师",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:12:26.802398"
+    },
+    {
+      "company": "微见",
+      "job": "高级C++开发工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 高级",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:12:28.849128"
+    },
+    {
+      "company": "腾讯",
+      "job": "测试工程师（瑞德铭）",
+      "salary": "-K·薪",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:12:32.101763"
+    },
+    {
+      "company": "中图仪器",
+      "job": "测试工程师（几何量精密仪器）",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:12:34.177729"
+    },
+    {
+      "company": "深圳百格",
+      "job": "嵌入式软件工程师",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:12:36.284263"
+    },
+    {
+      "company": "深圳市洲际宇科技",
+      "job": "平面设计工程师助理",
+      "salary": "-K",
+      "score": 35,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:12:38.968556"
+    },
+    {
+      "company": "飞尔迈",
+      "job": "母婴风扇结构工程师",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:12:41.263864"
+    },
+    {
+      "company": "深圳市华澈咨询",
+      "job": "软件开发工程师",
+      "salary": "-K·薪",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:12:44.544921"
+    },
+    {
+      "company": "信而泰科技",
+      "job": "高级软件开发工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 高级",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:12:48.577881"
+    },
+    {
+      "company": "深圳市智元数创科技",
+      "job": "Python后端开发工程师助理",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 后端开发",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:12:51.588490"
+    },
+    {
+      "company": "深圳市民德电子科...",
+      "job": "硬件开发工程师",
+      "salary": "-K·薪",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:12:55.583609"
+    },
+    {
+      "company": "三赢科技",
+      "job": "质量管理工程师",
+      "salary": "-K·薪",
+      "score": 35,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:13:07.165159"
+    },
+    {
+      "company": "途铭科技",
+      "job": "安卓开发工程师",
+      "salary": "-K",
+      "score": 35,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:13:10.275219"
+    },
+    {
+      "company": "深圳光峰科技股份...",
+      "job": "资源开发工程师",
+      "salary": "-K",
+      "score": 35,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:13:13.966069"
+    },
+    {
+      "company": "科瓦拉电子",
+      "job": "硬件工程师/硬件助理工程师",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:13:17.296684"
+    },
+    {
+      "company": "seeed",
+      "job": "应用工程师（AIOT）",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:13:19.679707"
+    },
+    {
+      "company": "新益昌",
+      "job": "机器人通用动作开发工程师",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:13:23.138435"
+    },
+    {
+      "company": "广东叶子科技发展",
+      "job": "高级安全开发工程师",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 高级",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:13:26.093616"
+    },
+    {
+      "company": "驱动人生",
+      "job": "C++逆向开发工程师",
+      "salary": "-K·薪",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:13:28.853164"
+    },
+    {
+      "company": "翼华科技",
+      "job": "智能网卡产品测试工程师",
+      "salary": "-K·薪",
+      "score": 35,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:13:30.906653"
+    },
+    {
+      "company": "深圳腾娱互动科技",
+      "job": "UE游戏客户端工程师",
+      "salary": "-K·薪",
+      "score": 35,
+      "reason": "公司名含「科技」→排除",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:13:34.114998"
+    },
+    {
+      "company": "深圳元戎启行科技",
+      "job": "高级测试开发工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 高级",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:13:37.139577"
+    },
+    {
+      "company": "联赢激光",
+      "job": "半导体售后调试工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 售后",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:13:40.232232"
+    },
+    {
+      "company": "西墨智慧",
+      "job": "嵌入式开发工程师",
+      "salary": "-K",
+      "score": 35,
+      "reason": "JD含排除词'微服务'→过滤",
+      "city": "泉州",
+      "keyword": "Prompt工程师",
+      "time": "2026-07-02T18:13:42.959067"
+    }
+  ],
+  "failed": []
+}

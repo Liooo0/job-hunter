@@ -1,0 +1,605 @@
+{
+  "applied": [
+    {
+      "company": "腾讯",
+      "job": "AI多模态图像模型数据策略专家",
+      "salary": "-K·薪",
+      "score": 35,
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:06:25.489405"
+    },
+    {
+      "company": "探迹",
+      "job": "头部/工资有点高 接受无经验 AI独角兽企业",
+      "salary": "-K",
+      "score": 20,
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:06:42.221296"
+    }
+  ],
+  "skipped": [
+    {
+      "company": "重庆沐晨人工智能科技",
+      "job": "AI大模型评测工程师（Agent方向）",
+      "salary": "-K",
+      "score": 85,
+      "reason": "公司名含「科技」→排除",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:06:13.345732"
+    },
+    {
+      "company": "珍岛集团",
+      "job": "AI人工智能销售综合薪资1.5W+/上市公司",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 销售",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:06:15.595915"
+    },
+    {
+      "company": "深圳桓杰科技有限公司",
+      "job": "AI视频制作（接受应届生）",
+      "salary": "-K",
+      "score": 50,
+      "reason": "公司名含「科技」→排除",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:06:29.802680"
+    },
+    {
+      "company": "",
+      "job": "周末双休+AI Coding Agent评测后端工程师",
+      "salary": "",
+      "score": 0,
+      "reason": "标题包含排除词: 后端",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:06:31.812984"
+    },
+    {
+      "company": "卓越际联科技有限公司",
+      "job": "【AI音乐评测工程师】周末双休+五险一金",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:06:48.470273"
+    },
+    {
+      "company": "轻象科技",
+      "job": "AI评测工程师",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:06:50.725950"
+    },
+    {
+      "company": "深圳万物良品科技",
+      "job": "AI全栈工程师招聘",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 全栈",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:06:54.001698"
+    },
+    {
+      "company": "字节跳动",
+      "job": "AI产品实习生-飞书",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:06:56.420325"
+    },
+    {
+      "company": "深圳禅游科技",
+      "job": "游戏AI（强化学习）算法实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:06:59.714921"
+    },
+    {
+      "company": "厦门卓智云投资",
+      "job": "AI创新空间负责人（创业/项目孵化经验）",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:07:03.078729"
+    },
+    {
+      "company": "深圳融合文化发展",
+      "job": "AI工具测评与商业落地工程师",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:07:06.261495"
+    },
+    {
+      "company": "古特拉",
+      "job": "ai实习生/可接受应届生/可实习",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:07:09.593223"
+    },
+    {
+      "company": "湖南鲲鹏教育科技",
+      "job": "AI大模型评测工程师助理",
+      "salary": "-K",
+      "score": 70,
+      "reason": "公司名含「科技」→排除",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:07:21.478314"
+    },
+    {
+      "company": "深圳市稳卖科技",
+      "job": "ai创造工程师",
+      "salary": "-元/天",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:07:24.362494"
+    },
+    {
+      "company": "千玺",
+      "job": "AI小说剪辑师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 剪辑",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:07:26.458148"
+    },
+    {
+      "company": "光速动力",
+      "job": "AI 数据分析师",
+      "salary": "-K·薪",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:07:29.815555"
+    },
+    {
+      "company": "阿里巴巴集团",
+      "job": "AI Agent优化工程师-训练/数据/评测",
+      "salary": "-元/天",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:07:33.551328"
+    },
+    {
+      "company": "深圳少年亿小步教...",
+      "job": "青少年 AI 创业营产品经理导师",
+      "salary": "-元/天",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:07:36.266537"
+    },
+    {
+      "company": "深圳伯乐",
+      "job": "外贸业务员Ai物联网16-20k双休入职五险一金",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 业务员",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:07:38.710817"
+    },
+    {
+      "company": "健康元",
+      "job": "AI管培生",
+      "salary": "-K·薪",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:07:41.284965"
+    },
+    {
+      "company": "CloudBU",
+      "job": "AI模型评测工程师",
+      "salary": "-元/天",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:07:43.563325"
+    },
+    {
+      "company": "Shopee",
+      "job": "AI质量平台/评测开发工程师",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:07:46.824782"
+    },
+    {
+      "company": "缔零科技",
+      "job": "AI策略运营",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:07:49.981807"
+    },
+    {
+      "company": "深圳市远合诚信息咨询",
+      "job": "下半年好开单的行业 【ai获客提成高】",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 获客",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:07:52.933193"
+    },
+    {
+      "company": "布先生服饰有限公司",
+      "job": "高薪急聘Ai探索助理（接受无经验）",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:07:56.345533"
+    },
+    {
+      "company": "成都小咖邦智能科技",
+      "job": "AI Coding评测工程师",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:07:59.670998"
+    },
+    {
+      "company": "宜美智",
+      "job": "ai训练工程师",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:08:02.270800"
+    },
+    {
+      "company": "深圳市音和乐文化科技",
+      "job": "AI音乐制作",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:08:14.888789"
+    },
+    {
+      "company": "阿里集团",
+      "job": "AI评测研发工程师",
+      "salary": "-元/天",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:08:16.913636"
+    },
+    {
+      "company": "深圳守正不出奇教...",
+      "job": "AI 管培生",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:08:19.440484"
+    },
+    {
+      "company": "道通智能航空技术",
+      "job": "AI产品实习生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 实习",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:08:21.743844"
+    },
+    {
+      "company": "阿里云",
+      "job": "AI产品评测专家/工程师-杭州/北京",
+      "salary": "-K·薪",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:08:23.769053"
+    },
+    {
+      "company": "高竞文化",
+      "job": "AI技术全栈管培生",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 全栈",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:08:27.519814"
+    },
+    {
+      "company": "趣象时空",
+      "job": "AI产品海外社群运营/创作者增长（toC产品）",
+      "salary": "-K·薪",
+      "score": 0,
+      "reason": "标题包含排除词: 社群",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:08:29.673167"
+    },
+    {
+      "company": "网聚云联",
+      "job": "AI及云计算销售经理",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 销售",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:08:33.425264"
+    },
+    {
+      "company": "金慧融智",
+      "job": "设计类院校优先【AI美学研究员】",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:08:36.595309"
+    },
+    {
+      "company": "众联世纪",
+      "job": "AI产品经理（视频创作方向）",
+      "salary": "-K",
+      "score": 70,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:08:39.781695"
+    },
+    {
+      "company": "深圳艾柏斯运动科技",
+      "job": "ai设计师",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:08:43.419466"
+    },
+    {
+      "company": "锦云新航",
+      "job": "TK美区AI视频",
+      "salary": "-K",
+      "score": 40,
+      "reason": "JD含排除词'FastAPI'→过滤",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:08:47.291089"
+    },
+    {
+      "company": "林尧科技",
+      "job": "文本评测（巴葡/印尼语/日语/英语）",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:08:49.385961"
+    },
+    {
+      "company": "巨石峰科技",
+      "job": "AI自动化开发程序员",
+      "salary": "-K",
+      "score": 40,
+      "reason": "公司名含「科技」→排除",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:08:52.909077"
+    },
+    {
+      "company": "肯方科技",
+      "job": "AI评测端自动化高级工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 高级",
+      "city": "沈阳",
+      "keyword": "AI评测工程师",
+      "time": "2026-07-02T11:08:55.951750"
+    },
+    {
+      "company": "新境界",
+      "job": "FDE工程师（AI应用方向 文科可投）",
+      "salary": "-K·薪",
+      "score": 50,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "沈阳",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T11:09:27.830518"
+    },
+    {
+      "company": "致邃投资",
+      "job": "AI Agent / LLM 应用工程师",
+      "salary": "-元/天",
+      "score": 60,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "沈阳",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T11:09:31.162476"
+    },
+    {
+      "company": "东方海外珠海货讯通",
+      "job": "AI Agent技术工程师（2026届） (MJ000099)",
+      "salary": "-K·薪",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "沈阳",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T11:09:34.529483"
+    },
+    {
+      "company": "知微行易",
+      "job": "Agent工程师（AI 智能体/Agent研发工程师）",
+      "salary": "-K",
+      "score": 60,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "沈阳",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T11:09:37.087643"
+    },
+    {
+      "company": "同行者科技",
+      "job": "AI Agent开发工程师（车联网方向）",
+      "salary": "-K·薪",
+      "score": 55,
+      "reason": "公司名含「科技」→排除",
+      "city": "沈阳",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T11:09:39.652654"
+    },
+    {
+      "company": "湘潭平安商务",
+      "job": "ai应用工程师（六险一金+包吃住）",
+      "salary": "-K",
+      "score": 50,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "沈阳",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T11:09:42.482928"
+    },
+    {
+      "company": "AIOTAGRO爱农云联",
+      "job": "AI Agent 应用工程师",
+      "salary": "-K",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "沈阳",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T11:09:46.329403"
+    },
+    {
+      "company": "宜飞科技",
+      "job": "AI Agent 全栈开发工程师",
+      "salary": "-K",
+      "score": 0,
+      "reason": "标题包含排除词: 全栈",
+      "city": "沈阳",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T11:09:49.938822"
+    },
+    {
+      "company": "杭州袋鼠智元科技",
+      "job": "AI Agent 应用工程师（远程办公）",
+      "salary": "-K",
+      "score": 55,
+      "reason": "公司名含「科技」→排除",
+      "city": "沈阳",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T11:09:53.647361"
+    },
+    {
+      "company": "连云港悦之居装饰工程",
+      "job": "agent工程师",
+      "salary": "-元/天",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "沈阳",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T11:09:56.649648"
+    },
+    {
+      "company": "清鹏智能",
+      "job": "AI Agent算法工程师",
+      "salary": "-元/天",
+      "score": 0,
+      "reason": "标题包含排除词: 算法工程师",
+      "city": "沈阳",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T11:09:58.703347"
+    },
+    {
+      "company": "勇冠睿智",
+      "job": "AI Agent研发工程师（昇腾计算）",
+      "salary": "-K·薪",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "沈阳",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T11:10:01.428854"
+    },
+    {
+      "company": "银华信息",
+      "job": "Agent应用工程师",
+      "salary": "-K",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "沈阳",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T11:10:04.513025"
+    },
+    {
+      "company": "北京密链文化传播...",
+      "job": "Agent 工程师",
+      "salary": "-元/天",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "沈阳",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T11:10:07.240621"
+    },
+    {
+      "company": "君看文化科技有限公司",
+      "job": "AI 应用工程师（Agent / RAG）",
+      "salary": "-K",
+      "score": 60,
+      "reason": "公司名含「科技」→排除",
+      "city": "沈阳",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T11:10:21.127820"
+    },
+    {
+      "company": "华为",
+      "job": "agent应用工程师",
+      "salary": "-元/天",
+      "score": 55,
+      "reason": "JD含排除词'Redis'→过滤",
+      "city": "沈阳",
+      "keyword": "Agent应用工程师",
+      "time": "2026-07-02T11:10:23.887093"
+    }
+  ],
+  "failed": []
+}

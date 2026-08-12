@@ -1,0 +1,57 @@
+=== Job Hunter 开始 2026-06-30 15:30:05 ===
+⏳ 随机延迟 440s（模拟人类）...
+🔍 检查 Chrome 调试端口 9222...
+✅ Chrome 已就绪
+🚀 开始投递...
+
+╔══════════════════════════════════════╗
+║  🤖 Job Hunter v2 — Boss直聘        ║
+╠══════════════════════════════════════╣
+║  城市: 深圳, 东莞, 广州, 佛山, 惠州, 珠海, 中山, 江门, 汕头, 湛江, 茂名, 肇庆, 厦门, 福州, 泉州, 长沙, 南昌, 南宁, 桂林, 上海, 杭州, 苏州, 南京, 宁波, 无锡, 合肥, 温州, 武汉, 郑州, 成都, 重庆, 昆明, 贵阳, 北京, 天津, 济南, 青岛, 石家庄, 太原, 西安, 兰州, 银川, 沈阳, 大连, 长春, 哈尔滨, 海口, 三亚         ║
+║  搜索: AI应用工程师, AI训练师, AI评测工程师, Agent应用工程师, AI解决方案工程师, 大模型应用工程师, LLM应用工程师, 知识库工程师, 智能体工程师, AI产品运营, AI运营, Prompt工程师        ║
+║  每任务上限: 999 份              ║
+║  最低评分: 20               ║
+║  时间: 2026-06-30 15:37           ║
+╚══════════════════════════════════════╝
+
+🔗 启动投递专用 Chrome（红色窗口）...
+
+============================================================
+📍 深圳 | 🔍 AI应用工程师 | 🎯 上限 999 份
+============================================================
+  加载更多：14 → 29 个
+  加载更多：29 → 44 个
+  加载更多：44 → 59 个
+  加载更多：59 → 74 个
+  加载更多：74 → 89 个
+  加载更多：89 → 104 个
+
+  ☕ 休息 11s ...
+
+
+============================================================
+📍 深圳 | 🔍 AI训练师 | 🎯 上限 999 份
+============================================================
+  待处理 1 个（第 1 页）
+  [🔴过滤] 传神语联网 | AI图像视频标注与评测研究员（深圳腾讯） | -K → JD含排除词'单休'→过滤
+  本页全不匹配 (连续 1/3 页无匹配)
+  加载更多：14 → 29 个
+  待处理 1 个（第 3 页）
+  [🔴过滤] 乐格集团 | AI-智能体训练师 (MJ000063) | -K → JD含排除词'单休'→过滤
+  本页全不匹配 (连续 2/3 页无匹配)
+Traceback (most recent call last):
+  File "/Users/liuwendi/projects/job-hunter/boss_apply.py", line 405, in <module>
+    main()
+  File "/Users/liuwendi/projects/job-hunter/boss_apply.py", line 372, in main
+    a, s, f = run_single_cycle(
+  File "/Users/liuwendi/projects/job-hunter/boss_apply.py", line 139, in run_single_cycle
+    new_cards = search_tab.eles(".job-card-wrap")
+  File "/Users/liuwendi/Library/Python/3.9/lib/python/site-packages/DrissionPage/_pages/chromium_base.py", line 433, in eles
+    return self._ele(locator, timeout=timeout, index=None)
+  File "/Users/liuwendi/Library/Python/3.9/lib/python/site-packages/DrissionPage/_base/base.py", line 354, in _ele
+    r = self._find_elements(locator, timeout=timeout, index=index, raise_err=raise_err)
+  File "/Users/liuwendi/Library/Python/3.9/lib/python/site-packages/DrissionPage/_pages/chromium_base.py", line 503, in _find_elements
+    raise PageDisconnectedError
+DrissionPage.errors.PageDisconnectedError: 
+The connection to the page has been disconnected.
+Version: 4.1.1.4
