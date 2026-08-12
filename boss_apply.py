@@ -329,7 +329,29 @@ def parse_args(cfg: dict):
         action="store_true",
         help="清除暂停锁并继续运行",
     )
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="演练模式：只搜索/评分/过滤，绝不投递，输出待投递计划",
+    )
+    p.add_argument(
+        "--report",
+        action="store_true",
+        help="只读模式：扫描今日日志并输出统计报告，不打开浏览器",
+    )
     return p.parse_args()
+
+
+def resume_version_for(title: str) -> str:
+    """按岗位标题判断应使用的简历版本（A/B/C）"""
+    t = (title or "").lower()
+    if any(k in t for k in ["车联网", "车载", "智能座舱", "ota", "adas", "t-box", "v2x", "整车", "台架", "hil", "can", "三电", "电池", "bms", "车机", "导航测试", "汽车电子", "自动驾驶", "智能驾驶"]):
+        return "C-车联网"
+    if any(k in t for k in ["实施", "解决方案", "技术支持", "数字化", "顾问", "运营"]):
+        return "B-解决方案"
+    if any(k in t for k in ["ai", "llm", "agent", "rag", "dify", "coze", "大模型", "智能体", "知识库", "工作流", "prompt"]):
+        return "A-AI应用"
+    return "其他"
 
 
 def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_score: int, cfg: dict):
@@ -692,8 +714,11 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
                     "job": title,
                     "salary": salary,
                     "score": score,
+                    "reason": reason,
                     "city": city,
                     "keyword": keyword,
+                    "deep_filter": deep_reason,
+                    "resume_version": resume_version_for(title),
                     "time": datetime.now().isoformat(),
                 })
                 save_log(log, log_file)
@@ -736,7 +761,8 @@ def main():
         return
 
     # ── 启动自检：如果已暂停，直接退出不触发任何操作 ──
-    if is_paused():
+    # (dry-run 不投递不碰账号，跳过暂停锁，允许离线验证筛选配置)
+    if is_paused() and not args.dry_run:
         reason = "未知"
         try:
             reason = json.loads(PAUSE_FILE.read_text()).get("reason", "未知")
@@ -774,6 +800,29 @@ def main():
 
     count = args.count or cfg.get("default_count", 15)
     min_score = args.min_score if args.min_score is not None else cfg.get("min_score", 30)
+
+    # ── --dry-run: 演练模式，只输出计划，绝不连接浏览器/投递 ──
+    if args.dry_run:
+        print(f"""
+╔══════════════════════════════════════╗
+║  🧪 DRY-RUN 演练模式（不投递）        ║
+╠══════════════════════════════════════╣
+║  城市: {', '.join(cities)}         ║
+║  搜索: {', '.join(keywords)}        ║
+║  每任务上限: {count} 份              ║
+║  最低评分: {min_score}               ║
+║  时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}           ║
+╚══════════════════════════════════════╝
+""")
+        plan = {"mode": "dry-run", "timestamp": datetime.now().isoformat(),
+                "cities": cities, "keywords": keywords,
+                "count": count, "min_score": min_score,
+                "warning": "此模式不会投递任何岗位，仅验证筛选配置"}
+        out = Path(__file__).parent / "dry_run_plan.json"
+        out.write_text(json.dumps(plan, ensure_ascii=False, indent=2))
+        print(f"✅ 演练计划已生成: {out}")
+        print("   （未连接浏览器、未搜索、未投递——如需验证真实搜索请手动检查筛选规则）")
+        return
 
     print(f"""
 ╔══════════════════════════════════════╗

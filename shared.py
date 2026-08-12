@@ -83,8 +83,12 @@ def score_jd(title: str, desc: str, config: Optional[dict] = None) -> tuple[int,
             return 0, f"缺少必须关键词: {must[0]}..."
 
     # 排除词只匹配标题，不扫JD正文（避免"网约车"出现在公司描述里就误杀）
+    # 注意: "实习/实习生" 跳过标题排除——高薪实习(日薪≥300)由下方放行逻辑处理，
+    #       低薪实习由 smart_filter 薪资规则拦截（2026-08-12 修复回归）
     for kw in cfg.get("exclude_keywords", []):
         if kw.lower() in title_lower:
+            if kw in ("实习", "实习生"):
+                continue
             return 0, f"标题包含排除词: {kw}"
 
     score = 0
@@ -168,12 +172,21 @@ def smart_filter(company: str, title: str, desc: str, salary: str, score: int, c
     except Exception:
         pass
 
-    # ── 高薪实习放行：标题含"实习"但日薪≥300 → 恢复分数 ──
+    # ── 高薪实习放行：标题含"实习"且日薪≥300 → 恢复分数 ──
+    # 日薪来源：salary 字段（元/天格式）或 JD 正文（如"560-600元/天"）
     if "实习" in title_lower:
         daily_salary = 0
         try:
-            if "元/天" in salary:
+            if "元/天" in salary or "元/日" in salary:
                 daily_salary = float(salary.split("-")[0].split("元")[0])
+            else:
+                # 从正文提取日薪（如 "实习560-600元/天"）
+                import re as _re
+                m = _re.search(r"(\d+(?:\.\d+)?)\s*[-~—]\s*(\d+(?:\.\d+)?)\s*元/(?:天|日)", desc_lower or "")
+                if m:
+                    daily_salary = float(m.group(1))
+                elif _re.search(r"(\d+(?:\.\d+)?)\s*元/(?:天|日)", desc_lower or ""):
+                    daily_salary = float(_re.search(r"(\d+(?:\.\d+)?)\s*元/(?:天|日)", desc_lower or "").group(1))
         except Exception:
             pass
         if daily_salary >= 300:
@@ -240,10 +253,15 @@ def smart_filter(company: str, title: str, desc: str, salary: str, score: int, c
         return score + boost, "、".join(reason_parts) if reason_parts else ""
 
     # Rule 6: 技术含量很低（<=1个技术关键词）且薪资<8K → 降级
+    # 豁免：B级方向岗（实施/运营/顾问/知识库/工作流）——运营类岗位天然技术词少但方向对
     if tech_score <= 1 and salary_low > 0 and salary_low < 8:
-        if score > 0:
+        b_direction = any(kw in title_lower for kw in ["实施", "运营", "顾问", "知识库", "工作流", "解决方案", "技术支持", "培训师", "训练师", "助理"])
+        if b_direction:
+            reason_parts.append(f"B级方向岗豁免Rule6({tech_score}技/{salary_low}K)")
+        elif score > 0:
             return max(0, score - 30), f"低技术低薪资({tech_score}技/{salary_low}K)"
-        return 0, f"低技术低薪资({tech_score}技/{salary_low}K)→过滤"
+        else:
+            return 0, f"低技术低薪资({tech_score}技/{salary_low}K)→过滤"
 
     return score, ""
 
