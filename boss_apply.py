@@ -14,7 +14,7 @@ from pathlib import Path
 from DrissionPage import ChromiumPage, ChromiumOptions
 from typing import Optional
 
-from shared import load_config, load_log, save_log, score_jd, smart_filter, get_chrome_opts
+from shared import load_config, load_log, save_log, score_jd, smart_filter, get_chrome_opts, kill_switch_check, kill_switch_off, kill_switch_on, kill_switch_status
 from deep_filter import deep_filter, run_company_background_check
 from report import print_terminal_summary, generate_html
 
@@ -339,6 +339,9 @@ def parse_args(cfg: dict):
         action="store_true",
         help="只读模式：扫描今日日志并输出统计报告，不打开浏览器",
     )
+    p.add_argument("--kill-on", action="store_true", help="恢复 kill switch（允许投递）")
+    p.add_argument("--kill-off", type=str, metavar="原因", help="关闭 kill switch（禁止投递）")
+    p.add_argument("--kill-status", action="store_true", help="查看 kill switch 状态")
     return p.parse_args()
 
 
@@ -760,6 +763,17 @@ def main():
         resume()
         return
 
+    # ── kill switch 管理命令 ──
+    if args.kill_status:
+        print(f"🔌 KILL SWITCH 状态: {kill_switch_status()}")
+        return
+    if args.kill_off:
+        kill_switch_off(args.kill_off)
+        return
+    if args.kill_on:
+        kill_switch_on()
+        return
+
     # ── 启动自检：如果已暂停，直接退出不触发任何操作 ──
     # (dry-run 不投递不碰账号，跳过暂停锁，允许离线验证筛选配置)
     if is_paused() and not args.dry_run:
@@ -772,6 +786,15 @@ def main():
         print(f"   原因: {reason}")
         print(f"   恢复: python3 boss_apply.py --resume")
         return
+
+    # ── Kill Switch 检查（全局开关，优先于一切写操作）──
+    if not args.dry_run:
+        allowed, kreason = kill_switch_check()
+        if not allowed:
+            print(f"🛑  KILL SWITCH 已关闭，投递被禁止")
+            print(f"   原因: {kreason}")
+            print(f"   恢复: python3 boss_apply.py --kill-on  # 或删除 .kill_switch")
+            return
 
     sleep_status = get_sleep_status()
     if sleep_status:
@@ -858,7 +881,9 @@ def main():
     total_applied = 0
     total_skipped = 0
     total_failed = 0
+    consecutive_failures = 0  # 熔断器：连续失败计数
     DAILY_LIMIT = 150  # 每天 150 份封顶（Boss 上限），弹窗已自动点掉
+    CIRCUIT_BREAK_THRESHOLD = 3  # 连续 3 次失败 → 自动熔断（S2 级防护）
     MAX_RETRIES = 2     # 断连最多重试 2 次（之前 10 次导致封号）
 
     for city in cities:
@@ -884,7 +909,20 @@ def main():
                 total_failed += f
             except Exception as e:
                 total_failed += 1
+                consecutive_failures += 1
                 print(f"  ❌ 错误: {str(e)[:80]}")
+            else:
+                # 本轮成功执行（无论投出几份），重置连续失败计数
+                if f == 0:
+                    consecutive_failures = 0
+
+            # ── 熔断器：连续失败达到阈值 → 自动熔断 ──
+            if consecutive_failures >= CIRCUIT_BREAK_THRESHOLD:
+                reason = f"连续 {consecutive_failures} 次失败自动熔断"
+                print(f"\n  🛑 {reason} — 停止投递，写入 kill switch + 暂停锁")
+                kill_switch_off(reason)
+                pause(reason)
+                break
 
             # ── 每日限额检查（每个关键词后都查，不藏在休息块里）──
             if total_applied >= DAILY_LIMIT:
