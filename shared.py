@@ -10,6 +10,54 @@ from typing import Optional
 JOB_HUNTER_CHROME = os.path.expanduser("~/job-hunter-chrome")
 
 
+# ═══════════════════════════════════════════════════════════════
+#  Kill Switch — 全局开关（2026-08-13 新增，S1 级）
+#  一个状态文件控制所有自动任务是否允许执行。
+#  位置: ~/projects/job-hunter/.kill_switch
+#  内容: {"enabled": false, "reason": "...", "set_at": "..."}
+#  任何脚本执行写操作（投递/回复/归档）前必须调 kill_switch_check()。
+# ═══════════════════════════════════════════════════════════════
+KILL_SWITCH_FILE = Path(__file__).parent / ".kill_switch"
+
+
+def kill_switch_check() -> tuple[bool, str]:
+    """返回 (是否允许执行, 原因)。enabled=false 时所有写操作应停止。"""
+    try:
+        if KILL_SWITCH_FILE.exists():
+            d = json.loads(KILL_SWITCH_FILE.read_text(encoding="utf-8"))
+            if not d.get("enabled", True):
+                return False, d.get("reason", "kill switch 关闭")
+    except Exception:
+        pass
+    return True, ""
+
+
+def kill_switch_off(reason: str):
+    """关闭 kill switch（禁止所有写操作）。"""
+    KILL_SWITCH_FILE.write_text(
+        json.dumps({"enabled": False, "reason": reason,
+                    "set_at": datetime.now().isoformat()}, ensure_ascii=False)
+    )
+    print(f"🛑 KILL SWITCH 已关闭: {reason}")
+
+
+def kill_switch_on():
+    """恢复 kill switch（允许写操作）。"""
+    KILL_SWITCH_FILE.write_text(
+        json.dumps({"enabled": True, "reason": "",
+                    "set_at": datetime.now().isoformat()}, ensure_ascii=False)
+    )
+    print("✅ KILL SWITCH 已恢复")
+
+
+def kill_switch_status() -> str:
+    try:
+        d = json.loads(KILL_SWITCH_FILE.read_text(encoding="utf-8"))
+        return f"enabled={d.get('enabled', True)}, reason={d.get('reason', '')}"
+    except Exception:
+        return "enabled=True (未设置)"
+
+
 def get_chrome_opts(port: int = 9224):
     """返回 ChromiumOptions — 专用独立目录 + 独立端口"""
     from DrissionPage import ChromiumOptions
