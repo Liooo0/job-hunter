@@ -30,9 +30,11 @@ from pathlib import Path
 PROJECT = Path("/Users/liuwendi/projects/job-hunter")
 DB = PROJECT / "ab_experiment.db"
 
+# 实验窗口：因账号 8/12-8/13 封禁，原 8/11~8/16 顺延。
+# 解封日 8/14 起重新起算 7 天正式实验。
 BASELINE_DAY = date(2026, 8, 10)   # 预实验（不参与裁决）
-EXPERIMENT_START = date(2026, 8, 11)
-EXPERIMENT_END = date(2026, 8, 16)
+EXPERIMENT_START = date(2026, 8, 14)
+EXPERIMENT_END = date(2026, 8, 20)
 
 POOL_KEYWORDS = {
     "AI应用/AI工程师": ["AI应用工程师", "AI工程师", "LLM应用", "大模型应用", "Agent应用", "智能体开发"],
@@ -113,13 +115,14 @@ def import_logs():
             job = e.get("job", "") or "?"
             city = e.get("city", "") or "?"
             keyword = e.get("keyword", "") or ""
+            resume_v = e.get("resume_version", "") or ""
             is_base = 1 if d_ == BASELINE_DAY else 0
             conn.execute(
                 """INSERT OR IGNORE INTO applications
-                   (day, company, job_title, city, salary, category, city_priority, jd_score, is_baseline)
-                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                   (day, company, job_title, city, salary, category, city_priority, jd_score, resume_version, is_baseline)
+                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
                 (day, company, job, city, e.get("salary", ""), pool_of(keyword),
-                 CITY_PRIORITY.get(city, "other"), e.get("score", 0), is_base),
+                 CITY_PRIORITY.get(city, "other"), e.get("score", 0), resume_v, is_base),
             )
             inserted += 1
     conn.commit()
@@ -220,6 +223,22 @@ def show_funnel():
                 reasons[r["reject_reason"]] += 1
         if reasons:
             print(f"   拒绝原因: {dict(reasons)}")
+        # 简历版本分布（三线对比核心）
+        by_resume = defaultdict(int)
+        for r in exp:
+            by_resume[r.get("resume_version") or "未标注"] += 1
+        print(f"   简历版本: {dict(by_resume)}")
+        # 各版本漏斗（已读/回复/面试 按简历版本拆分）
+        if any(by_resume.values()):
+            print("   分版本漏斗（版本: 已读/回复/面试）:")
+            rv_stats = defaultdict(lambda: [0, 0, 0])
+            for r in exp:
+                v = r.get("resume_version") or "未标注"
+                rv_stats[v][0] += 1 if r["read"] else 0
+                rv_stats[v][1] += 1 if r["replied"] else 0
+                rv_stats[v][2] += 1 if r["interview"] else 0
+            for v, s in rv_stats.items():
+                print(f"     {v}: {s[0]}/{s[1]}/{s[2]}")
 
 
 def main():
