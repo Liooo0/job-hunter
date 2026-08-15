@@ -882,7 +882,12 @@ def main():
     total_skipped = 0
     total_failed = 0
     consecutive_failures = 0  # 熔断器：连续失败计数
-    DAILY_LIMIT = 150  # 每天 150 份封顶（Boss 上限），弹窗已自动点掉
+    DAILY_LIMIT = 100  # ⚠️ 2026-08-15 修正：每日硬上限 100（含跨进程！）
+    # 注意: --count 是"每城市×每关键词上限"，不是总量！
+    # 真实总量 = count × 城市数 × 关键词数（61词×9城=549 格）
+    # 因此必须用"日志中今日已投总数"做跨进程硬熔断，不依赖 count 参数
+    SAFETY_DAILY_CAP = 100   # 今日已投达到此值 → 无论 count 多少都停（防再次超投封号）
+    HOURLY_CAP = 15          # 单小时已投达到此值 → 休息 30 分钟再继续
     CIRCUIT_BREAK_THRESHOLD = 3  # 连续 3 次失败 → 自动熔断（S2 级防护）
     MAX_RETRIES = 2     # 断连最多重试 2 次（之前 10 次导致封号）
 
@@ -923,6 +928,41 @@ def main():
                 kill_switch_off(reason)
                 pause(reason)
                 break
+
+            # ── 跨进程每日硬熔断（2026-08-15 修复：不依赖 --count 语义）──
+            # 读取日志统计"今日全部进程已投总量"，达到 SAFETY_DAILY_CAP 即停
+            today_total = 0
+            try:
+                for lf in SKILL_DIR.glob("boss-*-log.json"):
+                    ld = json.loads(lf.read_text(encoding="utf-8"))
+                    for e in ld.get("applied", []):
+                        if (e.get("time") or "")[:10] == datetime.now().strftime("%Y-%m-%d"):
+                            today_total += 1
+            except Exception:
+                pass
+            if today_total >= SAFETY_DAILY_CAP:
+                reason = f"今日已投 {today_total} 份 ≥ 硬上限 {SAFETY_DAILY_CAP}（跨进程统计），自动停止"
+                print(f"\n  🛑 {reason}")
+                kill_switch_off(reason)
+                pause(reason)
+                break
+
+            # ── 单小时熔断（2026-08-15 新增：防单小时超速）──
+            hour_now = datetime.now().strftime("%H")
+            hour_count = 0
+            try:
+                for lf in SKILL_DIR.glob("boss-*-log.json"):
+                    ld = json.loads(lf.read_text(encoding="utf-8"))
+                    for e in ld.get("applied", []):
+                        t = e.get("time") or ""
+                        if t[:13] == datetime.now().strftime("%Y-%m-%dT%H"):
+                            hour_count += 1
+            except Exception:
+                pass
+            if hour_count >= HOURLY_CAP:
+                rest = 30 * 60
+                print(f"\n  🕐 本小时已投 {hour_count} 份 ≥ {HOURLY_CAP}，休息 30 分钟防风控")
+                time.sleep(rest)
 
             # ── 每日限额检查（每个关键词后都查，不藏在休息块里）──
             if total_applied >= DAILY_LIMIT:
