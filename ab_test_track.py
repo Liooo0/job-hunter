@@ -27,7 +27,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 from pathlib import Path
 
-PROJECT = Path("/Users/REDACTED/projects/job-hunter")
+PROJECT = Path(__file__).resolve().parent
 DB = PROJECT / "ab_experiment.db"
 
 # 实验窗口：因账号 8/12-8/13 封禁，原 8/11~8/16 顺延。
