@@ -3,7 +3,7 @@
 **交接时间**：2026-08-15
 **交接人**：Hermes Agent（刘文迪的 AI 助手）
 **接手人**：Claude Code
-**项目路径**：`/Users/liuwendi/projects/job-hunter`
+**项目路径**：`~/projects/job-hunter`（软链 `~/.claude/skills/job-hunter` 指向同一份）
 **Git 仓库**：已初始化（main 分支，6 个 commit）
 
 ---
