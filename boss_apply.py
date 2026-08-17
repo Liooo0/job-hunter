@@ -5,10 +5,11 @@ import argparse
 import json
 import os
 import random
+import re
 import signal
 import sys
 import time
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from pathlib import Path
 
 from DrissionPage import ChromiumPage, ChromiumOptions
@@ -30,6 +31,113 @@ SKILL_DIR = Path(__file__).parent
 PAUSE_FILE = SKILL_DIR / ".paused"
 SLEEP_TRACKER = SKILL_DIR / ".sleep_tracker"
 MAX_LOGIN_FAILS = 3  # 连续3次登录失败 → 进入睡眠模式
+RECOVERY_FILE = SKILL_DIR / ".recovery_until"  # 解封恢复期截止时间
+
+
+# ── 安全护栏（2026-08-16 新增：封号复盘后落地）──
+# 根因：8/11 单日191份+单时47+夜间+重复投同公司；8/15 解封当天5小时86份。
+# 全部速率护栏在两次封号时都不存在，本段把这些约束变成代码强制。
+
+def get_safety(cfg: dict) -> dict:
+    """读取安全护栏配置，缺省字段用保守默认值补齐。"""
+    defaults = {
+        "recovery_days": 3,          # 解封后恢复期天数
+        "recovery_daily_cap": 25,    # 恢复期每日上限（跨进程）
+        "normal_daily_cap": 50,      # 正常期每日上限（跨进程）
+        "hourly_cap": 8,             # 单小时上限 → 休息30分钟
+        "night_ban_start": 22,       # 夜间禁投开始
+        "night_ban_end": 8,          # 夜间禁投结束（次日）
+        "dedup_days": 7,             # 同公司×同城 N 天内不重复投
+    }
+    defaults.update(cfg.get("safety") or {})
+    return defaults
+
+
+def load_recovery_until() -> Optional[str]:
+    if RECOVERY_FILE.exists():
+        try:
+            return RECOVERY_FILE.read_text().strip()
+        except Exception:
+            return None
+    return None
+
+
+def is_recovery_active() -> bool:
+    """恢复期内 → 用降量上限；过期/未设置 → 正常上限。"""
+    until = load_recovery_until()
+    if not until:
+        return False
+    try:
+        return datetime.now() < datetime.fromisoformat(until)
+    except Exception:
+        return False
+
+
+def in_night_window(s: dict) -> bool:
+    """当前是否在夜间禁投时段（支持跨午夜，如 22:00-08:00）。"""
+    start, end = s.get("night_ban_start", 22), s.get("night_ban_end", 8)
+    hour = datetime.now().hour
+    if start < end:
+        return start <= hour < end
+    return hour >= start or hour < end
+
+
+# ── 保守公司名规范化（A9，2026-08-16）──
+# 目标：降低"深圳市XX科技有限公司" vs "XX科技（深圳）有限公司" 这类名称变体造成的重复投递。
+# 明确不做 100% 实体识别：只去 地点前缀/括号内地点/公司后缀，保留品牌主体与"科技/电子"等修饰词。
+# 例：深圳市XX科技有限公司 → XX科技；XX科技（深圳）有限公司 → XX科技
+#     深圳XX科技有限公司 与 深圳XX电子科技有限公司 保持不同（不过度归一，防误杀）。
+_NORM_CITY_PREFIXES = (
+    "深圳市", "深圳", "广州市", "广州", "东莞市", "东莞", "佛山市", "佛山", "惠州市", "惠州",
+    "珠海市", "珠海", "中山市", "中山", "上海市", "上海", "北京市", "北京", "杭州市", "杭州",
+    "南京市", "南京", "苏州市", "苏州", "无锡市", "无锡", "武汉市", "武汉", "成都市", "成都",
+    "重庆市", "重庆", "天津市", "天津", "厦门市", "厦门", "宁波市", "宁波", "长沙市", "长沙",
+    "合肥市", "合肥", "济南市", "济南", "昆明市", "昆明", "福州市", "福州", "南宁市", "南宁",
+    "大连市", "大连", "青岛市", "青岛", "西安市", "西安",
+)
+_NORM_CITY_IN_BRACKETS = (
+    "深圳|广州|东莞|佛山|惠州|珠海|中山|上海|北京|杭州|南京|苏州|无锡|"
+    "武汉|成都|重庆|天津|厦门|宁波|长沙|合肥|济南|昆明|福州|南宁|大连|青岛|西安"
+)
+_NORM_SUFFIXES = ("股份有限公司", "有限责任公司", "有限公司", "股份公司", "公司")
+
+
+def normalize_company(company: str) -> str:
+    """保守规范化公司名用于去重匹配，返回小写规范名。"""
+    if not company:
+        return ""
+    s = company.strip()
+    # 去括号内地点：XX科技（深圳）有限公司 → XX科技有限公司
+    s = re.sub(r"[（(](?:%s)[^）)]*[）)]" % _NORM_CITY_IN_BRACKETS, "", s)
+    # 去公司后缀（只去掉尾部第一个命中）
+    for suf in _NORM_SUFFIXES:
+        if s.endswith(suf):
+            s = s[: -len(suf)]
+            break
+    # 去开头城市前缀：深圳市XX科技有限公司 → XX科技有限公司
+    for city in _NORM_CITY_PREFIXES:
+        if s.startswith(city):
+            s = s[len(city):]
+            break
+    return s.strip(" ·-—()（）").lower()
+
+
+def dedup_applied(log: dict, company: str, city: str, days: int) -> bool:
+    """该公司×该城市在 N 天内是否已投递过（规范化后匹配，防跨关键词重复投触发风控）。"""
+    if not company or days <= 0:
+        return False
+    comp = normalize_company(company)
+    if not comp:
+        return False
+    cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+    for e in log.get("applied", []):
+        if e.get("city") != city:
+            continue
+        if normalize_company(e.get("company") or "") != comp:
+            continue
+        if (e.get("time") or "") >= cutoff:
+            return True
+    return False
 
 
 def _signal_handler(signum, frame):
@@ -342,6 +450,15 @@ def parse_args(cfg: dict):
     p.add_argument("--kill-on", action="store_true", help="恢复 kill switch（允许投递）")
     p.add_argument("--kill-off", type=str, metavar="原因", help="关闭 kill switch（禁止投递）")
     p.add_argument("--kill-status", action="store_true", help="查看 kill switch 状态")
+    p.add_argument(
+        "--recovery",
+        nargs="?",
+        const="auto",
+        default=None,
+        metavar="天数",
+        help="设置解封恢复期（默认取 config safety.recovery_days），期间使用降量上限",
+    )
+    p.add_argument("--safety-status", action="store_true", help="查看安全护栏状态与当前生效上限")
     return p.parse_args()
 
 
@@ -505,6 +622,20 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
             """)
                 or ""
             )
+
+            # ── 同公司去重（2026-08-16：防跨关键词重复投同公司触发风控）──
+            _ddays = (cfg.get("safety") or {}).get("dedup_days", 7)
+            if _ddays > 0 and dedup_applied(log, company, city, _ddays):
+                print(f"  [🔁去重] {company[:15]} | {title[:25]} — {_ddays}天内已投过该公司，跳过")
+                skipped_count += 1
+                log["skipped"].append({
+                    "company": company, "job": title, "salary": salary,
+                    "score": 0, "reason": f"同公司{_ddays}天内已投(去重)",
+                    "city": city, "keyword": keyword,
+                    "time": datetime.now().isoformat(),
+                })
+                save_log(log, log_file)
+                continue
 
             try:
                 # 点击卡片加载详情
@@ -774,6 +905,34 @@ def main():
         kill_switch_on()
         return
 
+    # ── 安全护栏：查看状态 ──
+    if args.safety_status:
+        s = get_safety(cfg)
+        mode = "恢复期(降量)" if is_recovery_active() else "正常期"
+        print("🔒 安全护栏状态")
+        print(f"  模式: {mode}  恢复期截止: {load_recovery_until() or '未设置'}")
+        print(f"  每日上限: {s['recovery_daily_cap'] if is_recovery_active() else s['normal_daily_cap']}/天")
+        print(f"  单小时上限: {s['hourly_cap']}/小时（超过休息30分钟）")
+        print(f"  夜间禁投: {s['night_ban_start']}:00 - {s['night_ban_end']}:00")
+        print(f"  同公司去重: {s['dedup_days']} 天内不重复投")
+        return
+
+    # ── 安全护栏：设置解封恢复期 ──
+    if args.recovery is not None:
+        s = get_safety(cfg)
+        days = s["recovery_days"]
+        if args.recovery != "auto":
+            try:
+                days = int(args.recovery)
+            except ValueError:
+                pass
+        until = datetime.now() + timedelta(days=days)
+        RECOVERY_FILE.write_text(until.isoformat())
+        print(f"✅ 恢复期已设置: {days} 天 → 至 {until.strftime('%Y-%m-%d')}")
+        print(f"   期间投递上限: {s['recovery_daily_cap']}/天, {s['hourly_cap']}/小时")
+        print(f"   到期后自动回到正常上限: {s['normal_daily_cap']}/天")
+        return
+
     # ── 启动自检：如果已暂停，直接退出不触发任何操作 ──
     # (dry-run 不投递不碰账号，跳过暂停锁，允许离线验证筛选配置)
     if is_paused() and not args.dry_run:
@@ -794,6 +953,14 @@ def main():
             print(f"🛑  KILL SWITCH 已关闭，投递被禁止")
             print(f"   原因: {kreason}")
             print(f"   恢复: python3 boss_apply.py --kill-on  # 或删除 .kill_switch")
+            return
+
+    # ── 夜间禁投检查（8/15 封号复盘后新增：21点后不投，代码强制）──
+    if not args.dry_run:
+        _safety_start = get_safety(cfg)
+        if in_night_window(_safety_start):
+            print(f"🌙 当前处于夜间禁投时段 ({_safety_start['night_ban_start']}:00-{_safety_start['night_ban_end']}:00)")
+            print(f"   为避免封号风险，投递脚本已拒绝启动。请在白天时段运行。")
             return
 
     sleep_status = get_sleep_status()
@@ -847,6 +1014,9 @@ def main():
         print("   （未连接浏览器、未搜索、未投递——如需验证真实搜索请手动检查筛选规则）")
         return
 
+    _safety_hdr = get_safety(cfg)
+    _mode_hdr = "恢复期(降量)" if is_recovery_active() else "正常期"
+    _daily_hdr = _safety_hdr["recovery_daily_cap"] if is_recovery_active() else _safety_hdr["normal_daily_cap"]
     print(f"""
 ╔══════════════════════════════════════╗
 ║  🤖 Job Hunter v2 — Boss直聘        ║
@@ -855,6 +1025,7 @@ def main():
 ║  搜索: {', '.join(keywords)}        ║
 ║  每任务上限: {count} 份              ║
 ║  最低评分: {min_score}               ║
+║  安全模式: {_mode_hdr} | 日≤{_daily_hdr} 时≤{_safety_hdr['hourly_cap']} ║
 ║  时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}           ║
 ╚══════════════════════════════════════╝
 """)
@@ -882,12 +1053,13 @@ def main():
     total_skipped = 0
     total_failed = 0
     consecutive_failures = 0  # 熔断器：连续失败计数
-    DAILY_LIMIT = 100  # ⚠️ 2026-08-15 修正：每日硬上限 100（含跨进程！）
-    # 注意: --count 是"每城市×每关键词上限"，不是总量！
+    _safety = get_safety(cfg)
+    # ⚠️ 注意: --count 是"每城市×每关键词上限"，不是总量！
     # 真实总量 = count × 城市数 × 关键词数（61词×9城=549 格）
     # 因此必须用"日志中今日已投总数"做跨进程硬熔断，不依赖 count 参数
-    SAFETY_DAILY_CAP = 100   # 今日已投达到此值 → 无论 count 多少都停（防再次超投封号）
-    HOURLY_CAP = 15          # 单小时已投达到此值 → 休息 30 分钟再继续
+    DAILY_LIMIT = _safety["recovery_daily_cap"] if is_recovery_active() else _safety["normal_daily_cap"]  # 每日硬上限（2026-08-16: 由 safety 配置决定）
+    SAFETY_DAILY_CAP = DAILY_LIMIT   # 跨进程：今日已投达到此值 → 无论 count 多少都停（防再次超投封号）
+    HOURLY_CAP = _safety["hourly_cap"]  # 单小时已投达到此值 → 休息 30 分钟再继续
     CIRCUIT_BREAK_THRESHOLD = 3  # 连续 3 次失败 → 自动熔断（S2 级防护）
     MAX_RETRIES = 2     # 断连最多重试 2 次（之前 10 次导致封号）
 
@@ -903,6 +1075,10 @@ def main():
                 continue
             # ── 终端/Chrome存活检查 ──
             if check_should_stop(page):
+                break
+            # ── 夜间禁投实时检查（跨过 22:00 就停，不恋战）──
+            if in_night_window(_safety):
+                print(f"\n  🌙 已进入夜间禁投时段 ({_safety['night_ban_start']}:00-{_safety['night_ban_end']}:00)，停止今天的投递")
                 break
             try:
                 a, s, f = run_single_cycle(
@@ -921,16 +1097,17 @@ def main():
                 if f == 0:
                     consecutive_failures = 0
 
-            # ── 熔断器：连续失败达到阈值 → 自动熔断 ──
+            # ── 熔断器：连续失败达到阈值 → risk_triggered 层级（异常，关全局开关）──
             if consecutive_failures >= CIRCUIT_BREAK_THRESHOLD:
                 reason = f"连续 {consecutive_failures} 次失败自动熔断"
-                print(f"\n  🛑 {reason} — 停止投递，写入 kill switch + 暂停锁")
+                print(f"\n  🛑 [risk_triggered] {reason} — 停止投递，写入 kill switch + 暂停锁")
                 kill_switch_off(reason)
                 pause(reason)
                 break
 
-            # ── 跨进程每日硬熔断（2026-08-15 修复：不依赖 --count 语义）──
-            # 读取日志统计"今日全部进程已投总量"，达到 SAFETY_DAILY_CAP 即停
+            # ── 跨进程每日硬熔断 → daily_limit_reached 层级（正常结束，不改 kill switch）──
+            # 2026-08-16 A5.1：跑满上限是"正常状态机结束"，不是异常。只结束当天任务，
+            # 不写 kill switch / 暂停锁，明天自动恢复。只有连续失败/风控信号才关全局开关。
             today_total = 0
             try:
                 for lf in SKILL_DIR.glob("boss-*-log.json"):
@@ -941,13 +1118,10 @@ def main():
             except Exception:
                 pass
             if today_total >= SAFETY_DAILY_CAP:
-                reason = f"今日已投 {today_total} 份 ≥ 硬上限 {SAFETY_DAILY_CAP}（跨进程统计），自动停止"
-                print(f"\n  🛑 {reason}")
-                kill_switch_off(reason)
-                pause(reason)
+                print(f"\n  🔚 [daily_limit_reached] 今日已投 {today_total} 份 ≥ 上限 {SAFETY_DAILY_CAP}（跨进程统计）")
+                print(f"    正常结束今日任务 — kill switch 未动，明日自动恢复")
                 break
 
-            # ── 单小时熔断（2026-08-15 新增：防单小时超速）──
             hour_now = datetime.now().strftime("%H")
             hour_count = 0
             try:
@@ -959,10 +1133,16 @@ def main():
                             hour_count += 1
             except Exception:
                 pass
+            # ── 单小时熔断 → hour_limit_reached 层级（暂停当前任务，不改 kill switch）──
+            # 2026-08-16 A5.1：分段 sleep，可被 Ctrl+C/SIGTERM 提前打断，不阻塞退出
             if hour_count >= HOURLY_CAP:
                 rest = 30 * 60
-                print(f"\n  🕐 本小时已投 {hour_count} 份 ≥ {HOURLY_CAP}，休息 30 分钟防风控")
-                time.sleep(rest)
+                print(f"\n  🕐 [hour_limit_reached] 本小时已投 {hour_count} 份 ≥ {HOURLY_CAP}，暂停 {rest//60} 分钟防风控（kill switch 未动）")
+                for _ in range(rest // 5):
+                    if SHOULD_STOP:
+                        print(f"  ⏸️  收到停止信号，提前结束休息")
+                        break
+                    time.sleep(5)
 
             # ── 每日限额检查（每个关键词后都查，不藏在休息块里）──
             if total_applied >= DAILY_LIMIT:
