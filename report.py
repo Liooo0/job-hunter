@@ -52,7 +52,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 </head>
 <body>
 <h1>🤖 Job Hunter 报告</h1>
-<div class="subtitle">生成时间: {{ report_time }} | 平台: {{ platform }}</div>
+<div class="subtitle">生成时间: {{ report_time }} | 平台: {{ platform }} | ⚠️ 未验证投递: {{ total_uncertain }}</div>
 
 <div class="cards">
   <div class="card blue">
@@ -173,6 +173,7 @@ def generate_html(
         "{{ total_applied }}": str(len(merged["applied"])),
         "{{ total_skipped }}": str(len(merged["skipped"])),
         "{{ total_failed }}": str(len(merged["failed"])),
+        "{{ total_uncertain }}": str(sum(1 for e in merged["applied"] if e.get("status") == "UNCERTAIN")),
     }
     for k, v in replacements.items():
         html = html.replace(k, v)
@@ -283,6 +284,10 @@ def print_terminal_summary(skill_dir: Optional[Path] = None):
         print(f"\n  ❌ 失败 {len(failed)} 个:")
         for e in failed[-5:]:
             print(f"  - {e.get('job', '')[:30]} → {e.get('error', '')[:60]}")
+
+    uncertain = sum(1 for e in applied if e.get("status") == "UNCERTAIN")
+    if uncertain:
+        print(f"\n  ⚠️  未验证投递 {uncertain} 个（会话已打开但发送未确认，需人工复核）")
 
 
 if __name__ == "__main__":

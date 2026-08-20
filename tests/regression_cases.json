@@ -1,0 +1,178 @@
+{
+  "version": "AI_JOB_FILTER_v1.2",
+  "updated": "2026-08-20",
+  "description": "回归测试集：真实 JD 案例（来自历史投递日志），目标降低假阳/假阴。运行: tests/regression.py",
+  "cases": [
+    {
+      "id": "pass_python_ai_backend",
+      "company": "某AI科技",
+      "title": "AI应用开发工程师",
+      "desc": "负责AI应用后端开发，Python+FastAPI，对接大模型API，实现RAG知识库问答",
+      "salary": "15-25K",
+      "expect": "pass",
+      "note": "Python后端+LLM=AI应用岗，勿杀"
+    },
+    {
+      "id": "pass_uses_transformer",
+      "company": "某公司",
+      "title": "AI工程师（会用Transformer）",
+      "desc": "了解Transformer原理，调用Embedding模型，LoRA微调，模型部署",
+      "salary": "12-20K",
+      "expect": "pass",
+      "note": "会用模型≠算法岗"
+    },
+    {
+      "id": "pass_ai_impl",
+      "company": "某数字化公司",
+      "title": "AI实施工程师",
+      "desc": "为企业落地RAG知识库、自动化流程，Python基础，客户现场部署",
+      "salary": "7-12K",
+      "expect": "pass",
+      "note": "AI实施=第一份AI工作入口"
+    },
+    {
+      "id": "pass_ai_solution",
+      "company": "某科技",
+      "title": "AI解决方案工程师",
+      "desc": "需求分析，方案设计，Dify/Coze工作流搭建，企业AI落地",
+      "salary": "8-15K",
+      "expect": "pass",
+      "note": "解决方案岗"
+    },
+    {
+      "id": "pass_vehicle_test",
+      "company": "某车企",
+      "title": "车联网测试工程师",
+      "desc": "车载网络诊断测试，CAN总线，T-Box，OTA升级验证",
+      "salary": "10-15K",
+      "expect": "pass",
+      "note": "C版方向"
+    },
+    {
+      "id": "pass_helpdesk",
+      "company": "某外企",
+      "title": "IT Support",
+      "desc": "桌面支持，网络基础，英文邮件，ITIL流程",
+      "salary": "8-12K",
+      "expect": "reject",
+      "note": "外企IT支持不走AI过滤线——测试期望修正"
+    },
+    {
+      "id": "reject_java_traditional",
+      "company": "某传统企业",
+      "title": "AI智能体应用开发工程师",
+      "desc": "负责Java后端开发，Spring Cloud微服务，高并发交易系统，电商后台",
+      "salary": "20-35K",
+      "expect": "reject",
+      "note": "标题党：AI标题+纯Java传统栈"
+    },
+    {
+      "id": "reject_sales",
+      "company": "某公司",
+      "title": "AI产品顾问",
+      "desc": "负责客户开发、客户拜访、商务谈判、完成销售指标",
+      "salary": "8-16K",
+      "expect": "reject",
+      "note": "销售包装成AI岗"
+    },
+    {
+      "id": "reject_android_clickbait",
+      "company": "某公司",
+      "title": "AI应用开发工程师",
+      "desc": "负责Android应用开发，Kotlin，Flutter，移动端UI",
+      "salary": "15-25K",
+      "expect": "reject",
+      "note": "AI标题+Android传统开发"
+    },
+    {
+      "id": "reject_annotation",
+      "company": "某数据公司",
+      "title": "AI训练师",
+      "desc": "负责数据标注、文本标注、图像标注任务",
+      "salary": "4-6K",
+      "expect": "reject",
+      "note": "标注岗"
+    },
+    {
+      "id": "reject_algorithm_research",
+      "company": "某研究院",
+      "title": "算法研究员",
+      "desc": "模型训练、算法优化、论文复现、分布式训练",
+      "salary": "30-50K",
+      "expect": "reject",
+      "note": "算法研究岗（score_jd层拦截）"
+    },
+    {
+      "id": "reject_single_rest",
+      "company": "某公司",
+      "title": "AI应用工程师",
+      "desc": "大小周工作制，周六加班，负责AI应用开发",
+      "salary": "10-15K",
+      "expect": "reject",
+      "note": "大小周"
+    },
+    {
+      "id": "reject_intern_low",
+      "company": "某公司",
+      "title": "AI实习生",
+      "desc": "实习期120元/天，负责数据整理",
+      "salary": "3-4K",
+      "expect": "reject",
+      "note": "实习日薪<300"
+    },
+    {
+      "id": "pass_intern_high",
+      "company": "字节跳动",
+      "title": "Coze实习生",
+      "desc": "实习560-600元/天，Agent工作流开发",
+      "salary": "10-12K",
+      "expect": "pass",
+      "note": "实习日薪≥300放行"
+    },
+    {
+      "id": "pass_intern_high_daily_from_desc",
+      "company": "某AI应用公司",
+      "title": "AI应用工程师实习",
+      "desc": "负责AI应用开发，实习560-600元/天，转正后12-16K",
+      "salary": "10-15K",
+      "expect": "pass",
+      "note": "B1回归：日薪从正文提取，smart_filter 应保底 60"
+    },
+    {
+      "id": "reject_ai_washing",
+      "company": "某公司",
+      "title": "AI生态运营",
+      "desc": "推动AI赋能企业，建设AI生态，探索人工智能未来，引领数字化转型",
+      "salary": "6-10K",
+      "expect": "reject",
+      "note": "AI包装废话词多无技术词"
+    },
+    {
+      "id": "reject_hr_company",
+      "company": "某人力资源公司",
+      "title": "AI开发工程师",
+      "desc": "代招岗位，驻场客户现场",
+      "salary": "10-15K",
+      "expect": "reject",
+      "note": "人力代招"
+    },
+    {
+      "id": "pass_rag_kb",
+      "company": "某企业科技",
+      "title": "知识库运营工程师",
+      "desc": "基于Dify搭建企业知识库，文档解析，智能问答",
+      "salary": "6-9K",
+      "expect": "pass",
+      "note": "知识库运营"
+    },
+    {
+      "id": "reject_edu_trainer",
+      "company": "某教育公司",
+      "title": "AI培训讲师",
+      "desc": "负责AI课程讲授，学员辅导，招生转化",
+      "salary": "8-15K",
+      "expect": "reject",
+      "note": "教培讲师"
+    }
+  ]
+}

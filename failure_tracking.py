@@ -112,8 +112,18 @@ def _validate_reason(reason: str):
 
 
 def _resolve_job(job_id: str) -> Optional[dict]:
-    """从 applications 表解析 job_id 对应的公司/岗位/简历版本。"""
+    """解析 job_id 对应的公司/岗位/简历版本。
+
+    P0 起优先读 applications_v2（单一事实源），找不到再查旧 applications 表。
+    """
     conn = _get_conn()
+    row = conn.execute(
+        "SELECT company, title, resume_version FROM applications_v2 WHERE application_id=? OR title=? OR company=? LIMIT 1",
+        (job_id, job_id, job_id),
+    ).fetchone()
+    if row:
+        conn.close()
+        return {"company": row[0], "position": row[1], "resume_version": row[2]}
     row = conn.execute(
         "SELECT company, job_title, resume_version FROM applications WHERE id=? OR job_title=? OR company=?",
         (job_id, job_id, job_id),
@@ -245,36 +255,48 @@ def get_failure_funnel(
 def get_resume_experiment_summary(start_date: str, end_date: str) -> list[dict]:
     """三线简历实验汇总：A/B/C 各版本的漏斗 + 转化率 + 失败原因 TOP。
 
-    数据源：applications 表（漏斗各阶段数量）+ failure_reasons 表（失败原因）。
+    数据源：applications_v2 表（漏斗各阶段数量，单一事实源）+ failure_reasons 表（失败原因）。
     """
     conn = _get_conn()
     results = []
     for rv in ["A-AI应用", "B-解决方案", "C-车联网"]:
         # 应用数（该简历版本投递数）
         applied = conn.execute(
-            "SELECT COUNT(*) FROM applications WHERE resume_version=? AND day>=? AND day<=?",
-            (rv, start_date, end_date),
+            """SELECT COUNT(*) FROM applications_v2
+               WHERE resume_version=? AND decision IN ('applied','uncertain')
+                 AND applied_at>=? AND applied_at<=?""",
+            (rv, start_date + "T00:00:00", end_date + "T23:59:59"),
         ).fetchone()[0]
         if applied == 0:
             results.append({"resume_version": rv, "applications": 0,
                             "note": "无投递数据"})
             continue
-        # 漏斗各阶段（applications 表已有 read/replied/interview/technical_interview/offer 字段）
+        # 漏斗各阶段（v2 表已有 read/replied/interview/technical_interview/offer 字段）
         viewed = conn.execute(
-            "SELECT COUNT(*) FROM applications WHERE resume_version=? AND day>=? AND day<=? AND read=1",
-            (rv, start_date, end_date)).fetchone()[0]
+            """SELECT COUNT(*) FROM applications_v2
+               WHERE resume_version=? AND decision IN ('applied','uncertain')
+                 AND applied_at>=? AND applied_at<=? AND read=1""",
+            (rv, start_date + "T00:00:00", end_date + "T23:59:59")).fetchone()[0]
         replied = conn.execute(
-            "SELECT COUNT(*) FROM applications WHERE resume_version=? AND day>=? AND day<=? AND replied=1",
-            (rv, start_date, end_date)).fetchone()[0]
+            """SELECT COUNT(*) FROM applications_v2
+               WHERE resume_version=? AND decision IN ('applied','uncertain')
+                 AND applied_at>=? AND applied_at<=? AND replied=1""",
+            (rv, start_date + "T00:00:00", end_date + "T23:59:59")).fetchone()[0]
         interview1 = conn.execute(
-            "SELECT COUNT(*) FROM applications WHERE resume_version=? AND day>=? AND day<=? AND interview=1",
-            (rv, start_date, end_date)).fetchone()[0]
+            """SELECT COUNT(*) FROM applications_v2
+               WHERE resume_version=? AND decision IN ('applied','uncertain')
+                 AND applied_at>=? AND applied_at<=? AND interview=1""",
+            (rv, start_date + "T00:00:00", end_date + "T23:59:59")).fetchone()[0]
         interview2 = conn.execute(
-            "SELECT COUNT(*) FROM applications WHERE resume_version=? AND day>=? AND day<=? AND technical_interview=1",
-            (rv, start_date, end_date)).fetchone()[0]
+            """SELECT COUNT(*) FROM applications_v2
+               WHERE resume_version=? AND decision IN ('applied','uncertain')
+                 AND applied_at>=? AND applied_at<=? AND technical_interview=1""",
+            (rv, start_date + "T00:00:00", end_date + "T23:59:59")).fetchone()[0]
         offer = conn.execute(
-            "SELECT COUNT(*) FROM applications WHERE resume_version=? AND day>=? AND day<=? AND offer=1",
-            (rv, start_date, end_date)).fetchone()[0]
+            """SELECT COUNT(*) FROM applications_v2
+               WHERE resume_version=? AND decision IN ('applied','uncertain')
+                 AND applied_at>=? AND applied_at<=? AND offer=1""",
+            (rv, start_date + "T00:00:00", end_date + "T23:59:59")).fetchone()[0]
 
         # 失败原因 TOP 3
         top_failures = conn.execute(

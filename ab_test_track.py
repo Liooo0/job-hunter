@@ -20,12 +20,12 @@
   python3 ab_test_track.py --reject 公司名 岗位 REJECT_LOW_EXPERIENCE          # 记录拒绝原因
 """
 import argparse
-import json
 import sqlite3
-import sys
 from collections import defaultdict
 from datetime import date, timedelta
 from pathlib import Path
+
+import store
 
 PROJECT = Path(__file__).resolve().parent
 DB = PROJECT / "ab_experiment.db"
@@ -96,38 +96,37 @@ def pool_of(keyword: str) -> str:
 
 
 def import_logs():
-    conn = get_db()
-    inserted = 0
-    for f in sorted(PROJECT.glob("boss-*-log.json")):
-        try:
-            d = json.load(open(f))
-        except Exception:
-            continue
-        for e in d.get("applied", []):
-            day = (e.get("time") or "")[:10]
-            if not day:
-                continue
-            try:
-                d_ = date.fromisoformat(day)
-            except ValueError:
-                continue
-            company = e.get("company", "") or "?"
-            job = e.get("job", "") or "?"
-            city = e.get("city", "") or "?"
-            keyword = e.get("keyword", "") or ""
-            resume_v = e.get("resume_version", "") or ""
-            is_base = 1 if d_ == BASELINE_DAY else 0
-            conn.execute(
-                """INSERT OR IGNORE INTO applications
-                   (day, company, job_title, city, salary, category, city_priority, jd_score, resume_version, is_baseline)
-                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
-                (day, company, job, city, e.get("salary", ""), pool_of(keyword),
-                 CITY_PRIORITY.get(city, "other"), e.get("score", 0), resume_v, is_base),
-            )
-            inserted += 1
-    conn.commit()
-    conn.close()
-    print(f"✅ 导入完成（含已存在跳过），新增/更新 {inserted} 条候选")
+    """旧 JSON → SQLite 单一事实源（幂等）。"""
+    counts = store.migrate_legacy_logs(verbose=False)
+    print(f"✅ 旧日志导入完成: 新增 {counts['inserted']} 条"
+          f"（applied={counts['applied']} skipped={counts['skipped']} failed={counts['failed']}）")
+
+
+def _v2_row_to_legacy(r: dict):
+    """把 applications_v2 行映射成旧漏斗行（show_funnel 展示用）。"""
+    day = (r.get("applied_at") or "")[:10]
+    try:
+        date.fromisoformat(day)
+    except ValueError:
+        return None
+    return {
+        "day": day,
+        "company": r.get("company", ""),
+        "job_title": r.get("title", ""),
+        "city": r.get("city", ""),
+        "salary": r.get("salary", ""),
+        "category": pool_of(r.get("keyword", "")),
+        "city_priority": CITY_PRIORITY.get(r.get("city", ""), "other"),
+        "jd_score": r.get("score", 0),
+        "resume_version": r.get("resume_version", ""),
+        "is_baseline": 1 if day == BASELINE_DAY.isoformat() else 0,
+        "read": r.get("read", 0),
+        "replied": r.get("replied", 0),
+        "interview": r.get("interview", 0),
+        "technical_interview": r.get("technical_interview", 0),
+        "offer": r.get("offer", 0),
+        "reject_reason": r.get("reject_reason", ""),
+    }
 
 
 def update_status(company: str, job: str, field: str, value: int = 1):
@@ -136,12 +135,20 @@ def update_status(company: str, job: str, field: str, value: int = 1):
         print(f"❌ 字段必须是 {valid}")
         return
     conn = get_db()
+    # 单一事实源（v2）
+    cur = conn.execute(
+        f"UPDATE applications_v2 SET {field}=? WHERE company LIKE ? AND title LIKE ?",
+        (value, f"%{company}%", f"%{job}%"),
+    )
+    print(f"✅ 更新 applications_v2 {cur.rowcount} 条: {company} {job} → {field}={value}")
+    # 旧表同步（历史视图）
     cur = conn.execute(
         f"UPDATE applications SET {field}=? WHERE company LIKE ? AND job_title LIKE ?",
         (value, f"%{company}%", f"%{job}%"),
     )
     conn.commit()
-    print(f"✅ 更新 {cur.rowcount} 条: {company} {job} → {field}={value}")
+    if cur.rowcount:
+        print(f"   旧表同步 {cur.rowcount} 条")
     conn.close()
 
 
@@ -151,34 +158,40 @@ def set_reject(company: str, job: str, reason: str):
         return
     conn = get_db()
     cur = conn.execute(
+        "UPDATE applications_v2 SET reject_reason=? WHERE company LIKE ? AND title LIKE ?",
+        (reason, f"%{company}%", f"%{job}%"),
+    )
+    print(f"✅ 更新 applications_v2 {cur.rowcount} 条: {company} {job} → {reason}")
+    cur = conn.execute(
         "UPDATE applications SET reject_reason=? WHERE company LIKE ? AND job_title LIKE ?",
         (reason, f"%{company}%", f"%{job}%"),
     )
     conn.commit()
-    print(f"✅ 记录拒绝原因 {cur.rowcount} 条: {company} {job} → {reason}")
+    if cur.rowcount:
+        print(f"   旧表同步 {cur.rowcount} 条")
     conn.close()
 
 
 def show_funnel():
-    conn = get_db()
-    rows = conn.execute("SELECT * FROM applications ORDER BY day").fetchall()
-    cols = [d[0] for d in conn.execute("SELECT * FROM applications LIMIT 1").description]
-    conn.close()
+    print("=" * 70)
+    print("7天 A/B 实验漏斗（正式实验 08-14 ~ 08-20，Baseline=08-10 不参与裁决）")
+    print("=" * 70)
 
-    print("=" * 70)
-    print("7天 A/B 实验漏斗（正式实验 08-11 ~ 08-16，Baseline=08-10 不参与裁决）")
-    print("=" * 70)
+    # P0：读 applications_v2（单一事实源）；旧 JSON 首次自动迁移
+    store.ensure_migrated()
+    rows = [_v2_row_to_legacy(r) for r in store.applications(decision_in=("applied", "uncertain"))]
+    rows = [r for r in rows if r is not None]
 
     # 按天（只显示 08-10 起，历史数据不展示）
     by_day = defaultdict(list)
     for r in rows:
         try:
-            d_ = date.fromisoformat(r[cols.index("day")])
+            d_ = date.fromisoformat(r["day"])
         except ValueError:
             continue
         if d_ < BASELINE_DAY:
             continue
-        by_day[r[cols.index("day")]].append(dict(zip(cols, r)))
+        by_day[r["day"]].append(r)
 
     for day in sorted(by_day):
         rs = by_day[day]
@@ -204,7 +217,7 @@ def show_funnel():
         print(f"   城市优先级: {dict(by_prio)}")
 
     # 正式实验累计
-    exp = [dict(zip(cols, r)) for r in rows if r[cols.index("day")] and EXPERIMENT_START <= date.fromisoformat(r[cols.index("day")]) <= EXPERIMENT_END]
+    exp = [r for r in rows if r["day"] and EXPERIMENT_START <= date.fromisoformat(r["day"]) <= EXPERIMENT_END]
     if exp:
         applied = len(exp)
         read = sum(1 for r in exp if r["read"])

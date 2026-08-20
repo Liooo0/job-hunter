@@ -29,25 +29,21 @@ def save_followups(data: dict):
 
 
 def collect_applied() -> list[dict]:
-    """收集所有城市的投递记录"""
-    items = []
-    for f in sorted(SKILL_DIR.glob("boss-*-log.json")):
-        city = f.stem.replace("boss-", "").replace("-log", "")
-        try:
-            log = json.loads(f.read_text(encoding="utf-8"))
-        except Exception:
-            continue
-        for e in log.get("applied", []):
-            items.append({
-                "company": e.get("company", ""),
-                "job": e.get("job", ""),
-                "salary": e.get("salary", ""),
-                "score": e.get("score", 0),
-                "city": city,
-                "keyword": e.get("keyword", ""),
-                "time": e.get("time", ""),  # 旧数据可能没有
-            })
-    return items
+    """收集所有投递记录（P0 起读 SQLite 单一事实源，库空时自动迁移旧 JSON）。"""
+    from shared import merge_logs
+    return [
+        {
+            "company": e.get("company", ""),
+            "job": e.get("job", ""),
+            "salary": e.get("salary", ""),
+            "score": e.get("score", 0),
+            "city": e.get("city", ""),
+            "keyword": e.get("keyword", ""),
+            "time": e.get("time", ""),
+            "status": e.get("status", ""),
+        }
+        for e in merge_logs()["applied"]
+    ]
 
 
 def parse_time(t: str):
