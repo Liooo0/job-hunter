@@ -498,7 +498,7 @@ def _dismiss_modals(tab) -> str:
                 }
                 return firstText || 'no_modal';
             })();
-        """)
+        """, as_expr=True)
         return str(r or "no_modal")
     except Exception:
         return "no_modal"
@@ -519,7 +519,7 @@ def _chat_opened(tab) -> bool:
                 if (panel && panel.offsetParent !== null) return 'panel';
                 return '';
             })();
-        """)
+        """, as_expr=True)
         return bool(r)
     except Exception:
         return False
@@ -563,7 +563,7 @@ def _fill_and_send(tab, greeting: str) -> bool:
                 }}));
                 return 'ENTER_KEY';
             }})();
-        """)
+        """, as_expr=True)
         time.sleep(2 + random.uniform(0, 1))
     except Exception as e:
         print(f"    ⚠️ 填发招呼语异常: {e}")
