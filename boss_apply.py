@@ -504,8 +504,15 @@ def _dismiss_modals(tab) -> str:
         return "no_modal"
 
 
-def _chat_opened(tab) -> bool:
-    """验证点击"立即沟通"后会话是否真的打开（A7：不报错 ≠ 已打开）。"""
+def _chat_signal(tab) -> str:
+    """验证点击"立即沟通"后的会话状态信号。
+
+    返回：
+      'input'  同页出现聊天输入框（可原地填发）
+      'panel'  同页出现聊天面板
+      'already' 按钮已变"已沟通/disabled"（Boss 已确认沟通，聊天在独立聊天页）
+      ''       以上都没有（视为未打开）
+    """
     try:
         r = tab.run_js("""
             (function() {
@@ -520,9 +527,69 @@ def _chat_opened(tab) -> bool:
                 return '';
             })();
         """, as_expr=True)
-        return bool(r)
+        return str(r or "")
     except Exception:
-        return False
+        return ""
+
+
+def _chat_opened(tab) -> bool:
+    """旧接口兼容：只要出现任一打开信号就算已打开（A7）。"""
+    return _chat_signal(tab) in ("input", "panel", "already")
+
+
+def _send_greeting_via_chat(page, search_tab, company: str, greeting: str) -> tuple[bool, str]:
+    """Boss 新版"立即沟通"不弹输入框：去聊天页找目标会话补发招呼语。
+
+    返回 (是否已验证发出, 说明)。找不到会话/发送未验证 → False（保守判 UNCERTAIN）。
+    """
+    chat_tab = None
+    created = False
+    try:
+        for tid in list(page.tab_ids):
+            t = page.get_tab(tid)
+            if "web/geek/chat" in (t.url or ""):
+                chat_tab = t
+                break
+        created = chat_tab is None
+        if created:
+            chat_tab = page.new_tab("https://www.zhipin.com/web/geek/chat")
+        else:
+            chat_tab.get("https://www.zhipin.com/web/geek/chat")
+        time.sleep(4 + random.uniform(0, 2))
+        # 滚动让会话列表加载完
+        for _ in range(3):
+            try:
+                chat_tab.run_js("window.scrollTo(0, document.body.scrollHeight)")
+            except Exception:
+                pass
+            time.sleep(0.6)
+
+        search = (company or "")[:8]
+        r = chat_tab.run_js(f"""
+            var lis = document.querySelectorAll('li');
+            for (var i=0; i<lis.length; i++) {{
+                var nb = lis[i].querySelector('.name-box');
+                if (nb && (nb.textContent || '').indexOf({json.dumps(search)}) > -1) {{
+                    nb.click();
+                    return 'clicked';
+                }}
+            }}
+            return 'not_found';
+        """)
+        time.sleep(2 + random.uniform(0, 1))
+        ok = _fill_and_send(chat_tab, greeting)
+        if created:
+            try:
+                chat_tab.close()
+            except Exception:
+                pass
+        if r == "clicked" and ok:
+            return True, "聊天页补发成功"
+        if r == "clicked":
+            return False, "已找到会话但发送未验证"
+        return False, "聊天页未找到会话(可能已用默认招呼语)"
+    except Exception as e:
+        return False, f"聊天页补发异常:{str(e)[:60]}"
 
 
 def _fill_and_send(tab, greeting: str) -> bool:
@@ -850,21 +917,29 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
                     print(f"    🚫 弹窗拦截: {modal_text[:60]} → FAILED")
                     continue
 
-                if not _chat_opened(search_tab):
+                signal = _chat_signal(search_tab)
+                if signal == "":
                     failed_count += 1
                     _record_outcome(city, company, title, salary, keyword, score,
-                                    "点击立即沟通后未检测到聊天输入框", decision="failed",
+                                    "点击立即沟通后未检测到会话/已沟通信号", decision="failed",
                                     status="FAILED", event="chat_not_opened")
-                    print(f"    ❌ 会话未打开（未检测到聊天输入框）→ FAILED")
+                    print(f"    ❌ 会话未打开（未检测到输入框/已沟通信号）→ FAILED")
                     continue
 
-                greeting_ok = _fill_and_send(search_tab, greeting)
-                if greeting_ok:
-                    app_status, app_decision, verified = "APPLIED", "applied", 1
-                    print(f"    💬 招呼语已发送并验证")
+                if signal in ("input", "panel"):
+                    greeting_ok = _fill_and_send(search_tab, greeting)
+                    if greeting_ok:
+                        app_status, app_decision, verified, verify_note = "APPLIED", "applied", 1, "招呼语已发送并验证"
+                    else:
+                        app_status, app_decision, verified, verify_note = "UNCERTAIN", "uncertain", 0, "会话已打开但发送未验证"
                 else:
-                    app_status, app_decision, verified = "UNCERTAIN", "uncertain", 0
-                    print(f"    ⚠️ 会话已打开但发送未验证 → UNCERTAIN（需人工复核）")
+                    # 'already'：Boss 已确认沟通（按钮变已沟通），去聊天页补发招呼语
+                    sent, note = _send_greeting_via_chat(page, search_tab, company, greeting)
+                    if sent:
+                        app_status, app_decision, verified, verify_note = "APPLIED", "applied", 1, note
+                    else:
+                        app_status, app_decision, verified, verify_note = "UNCERTAIN", "uncertain", 0, note
+                print(f"    {'✅' if verified else '⚠️'} {verify_note}")
 
                 # 导回搜索页
                 try:
@@ -877,11 +952,11 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
                 record_application(
                     platform="boss", city=city, company=company, title=title, salary=salary,
                     keyword=keyword, score=score, resume_version=resume_version_for(title),
-                    decision=app_decision, status=app_status, reason=reason, verified=verified,
+                    decision=app_decision, status=app_status, reason=f"{reason}；{verify_note}", verified=verified,
                     event_type=app_status.lower(),
                 )
                 print(f"    ✅ 已投递 ({applied_count + skipped_count}/{count + skipped_count})"
-                      + (" [UNCERTAIN]" if not greeting_ok else ""))
+                      + (" [UNCERTAIN]" if not verified else ""))
 
                 # 投递间延迟
                 time.sleep(1 + random.uniform(0, 2))
