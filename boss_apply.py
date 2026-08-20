@@ -565,17 +565,29 @@ def _send_greeting_via_chat(page, search_tab, company: str, greeting: str) -> tu
             time.sleep(0.6)
 
         search = (company or "")[:8]
-        r = chat_tab.run_js(f"""
-            var lis = document.querySelectorAll('li');
-            for (var i=0; i<lis.length; i++) {{
-                var nb = lis[i].querySelector('.name-box');
-                if (nb && (nb.textContent || '').indexOf({json.dumps(search)}) > -1) {{
-                    nb.click();
-                    return 'clicked';
+        r = "not_found"
+        # 会话可能延迟出现：最多重试 3 次，每次多滚一点
+        for attempt in range(3):
+            if attempt:
+                time.sleep(3)
+                try:
+                    chat_tab.run_js("window.scrollTo(0, document.body.scrollHeight)")
+                except Exception:
+                    pass
+                time.sleep(1)
+            r = chat_tab.run_js(f"""
+                var lis = document.querySelectorAll('li');
+                for (var i=0; i<lis.length; i++) {{
+                    var nb = lis[i].querySelector('.name-box');
+                    if (nb && (nb.textContent || '').indexOf({json.dumps(search)}) > -1) {{
+                        nb.click();
+                        return 'clicked';
+                    }}
                 }}
-            }}
-            return 'not_found';
-        """)
+                return 'not_found';
+            """)
+            if r == "clicked":
+                break
         time.sleep(2 + random.uniform(0, 1))
         ok = _fill_and_send(chat_tab, greeting)
         if created:
