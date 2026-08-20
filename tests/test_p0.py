@@ -255,6 +255,14 @@ def test_fill_and_send_verification():
 def test_dismiss_modals_detects_block():
     assert _dismiss_modals(FakeTab(["no_modal"])) == "no_modal"
     assert "上限" in _dismiss_modals(FakeTab(["今日沟通已达上限，请明天再试"]))
+    # 烟测实测：run_js 可能返回 None，绝不能炸
+    assert _dismiss_modals(FakeTab([None])) == "no_modal"
+
+
+def test_fill_and_send_none_safe():
+    with mock.patch("boss_apply.time.sleep"):
+        assert _fill_and_send(FakeTab([None]), "你好") is False
+        assert _fill_and_send(FakeTab(["SENT_CLICKED", None]), "你好") is False
 
 
 def main():
@@ -270,6 +278,7 @@ def main():
     t("A7: 会话打开信号识别", test_chat_opened_signals)
     t("A7: 招呼语发送验证", test_fill_and_send_verification)
     t("A7: 弹窗拦截识别", test_dismiss_modals_detects_block)
+    t("A7: run_js 返回 None 不误判", test_fill_and_send_none_safe)
     print(f"\n{'='*50}")
     print(f"P0 测试: {passed} 通过 / {len(failed)} 失败")
     for name in failed:
