@@ -17,6 +17,8 @@ sys.path.insert(0, str(PROJECT))
 
 import shared  # noqa: E402
 import store  # noqa: E402
+from unittest import mock  # noqa: E402
+from boss_apply import _chat_opened, _fill_and_send, _dismiss_modals  # noqa: E402
 
 passed, failed = 0, []
 
@@ -219,6 +221,42 @@ def test_store_migrate_legacy_logs():
             store.DB, store.PROJECT = old_db, old_project
 
 
+# ── A7：投递验证逻辑（DOM 模拟，真实 Boss 页面需烟测）──
+class FakeTab:
+    def __init__(self, results):
+        self._results = list(results)
+
+    def run_js(self, js, *a, **k):
+        return self._results.pop(0) if self._results else None
+
+
+def test_chat_opened_signals():
+    assert _chat_opened(FakeTab(["input"])) is True
+    assert _chat_opened(FakeTab(["already"])) is True
+    assert _chat_opened(FakeTab(["panel"])) is True
+    assert _chat_opened(FakeTab([""])) is False
+    assert _chat_opened(FakeTab([None])) is False
+
+
+def test_fill_and_send_verification():
+    with mock.patch("boss_apply.time.sleep"):
+        # 点了发送按钮 + 输入框清空 → 已验证
+        assert _fill_and_send(FakeTab(["SENT_CLICKED", "cleared"]), "你好") is True
+        # 输入框仍有内容 → 未发出
+        assert _fill_and_send(FakeTab(["SENT_CLICKED", "has_text"]), "你好") is False
+        # 找不到输入框 → 失败
+        assert _fill_and_send(FakeTab(["NO_INPUT"]), "你好") is False
+        # 填完为空 → 失败
+        assert _fill_and_send(FakeTab(["EMPTY_AFTER_FILL"]), "你好") is False
+        # Enter 发送后会话关闭（输入框消失）→ 视为已发出
+        assert _fill_and_send(FakeTab(["ENTER_KEY", "no_input"]), "你好") is True
+
+
+def test_dismiss_modals_detects_block():
+    assert _dismiss_modals(FakeTab(["no_modal"])) == "no_modal"
+    assert "上限" in _dismiss_modals(FakeTab(["今日沟通已达上限，请明天再试"]))
+
+
 def main():
     print("P0 测试开始\n")
     t("B1: 高薪实习(正文日薪) 保底60+原因", test_high_salary_intern_boosted)
@@ -229,6 +267,9 @@ def main():
     t("A9: 公司名规范化", test_normalize_company)
     t("store: 记录/合并/熔断计数/去重/事件", test_store_record_merge_and_counts)
     t("store: 旧 JSON 幂等迁移", test_store_migrate_legacy_logs)
+    t("A7: 会话打开信号识别", test_chat_opened_signals)
+    t("A7: 招呼语发送验证", test_fill_and_send_verification)
+    t("A7: 弹窗拦截识别", test_dismiss_modals_detects_block)
     print(f"\n{'='*50}")
     print(f"P0 测试: {passed} 通过 / {len(failed)} 失败")
     for name in failed:
