@@ -6,6 +6,25 @@
 
 ---
 
+## 2026-08-20 P0 实施记录（本仓库）
+
+以下 P0 项已落地并有测试覆盖（`tests/test_p0.py` 8 项 + `tests/regression.py` 19 例）：
+
+1. **B1 已修**：`shared.smart_filter` 补 `desc_lower`、`reason_parts` 上移、最终返回拼接原因。高薪实习（正文日薪≥300）实测保底 60 分并带"高薪实习"原因。
+2. **B3 已修**：`shared.recent_activity` 改为按 `entry.time[:10]` 聚合，不再按文件 mtime 归日；SQLite 版 `store.recent_activity_days` 同规则。
+3. **A1 单一事实源已建**：新增 `store.py`，投递/跳过/失败/事件全部写入 `ab_experiment.db` 新表 `jobs` / `applications_v2` / `events`。旧 `*-log.json` 保留为只读历史，启动自动迁移（或 `python3 store.py --migrate` 手动执行，幂等）。当前已迁移 40,070 条，与 JSON 口径一致（applied 6,139 / skipped 33,918 / failed 13）。
+4. **A7 投递验证已加**：点击"立即沟通"后先验证会话打开（聊天输入框/聊天面板/已沟通态），再填发招呼语并验证输入框清空。结果状态机：`APPLIED`（已验证）/ `UNCERTAIN`（会话已开但发送未验证，需人工复核）/ `FAILED`（弹窗拦截/会话未打开）。招呼语失败不再静默。
+5. **熔断改查库**：日/时熔断不再全量扫 JSON，改用 `store.count_applied_since()`（applied+uncertain 计入），顺带修掉 P2 的重复全量解析。
+6. **报告/跟进/A-B/失败追踪全部改读 store**：`report.py` 增加"未验证投递"行；`follow_up.py`、`ab_test_track.py`、`failure_tracking.py` 均以 `applications_v2` 为准，旧 `applications` 表保留为历史视图。
+7. **回归测试迁回仓库**：`tests/regression.py` + `tests/regression_cases.json`（19 例）+ `tests/test_p0.py`（8 项）。Hermes 副本里的旧测试不再需要。
+8. **`followups.json` 已加 .gitignore**；`boss_apply.py` 清掉死代码（`re`/`date`/`timedelta` 未用导入）。
+
+**已知迁移语义**：旧 JSON 中 245 条缺 `time` 的记录按"文件 mtime 当天中午 + 文件内序号"生成稳定 ID 导入，不伪造到今天；同文件内完全重复的条目会按 ID 幂等去重。
+
+**仍待做（P1/P2）**：`--daily` 接线和 tab 断连自愈仍在工作区未提交；report 模板仍是字符串替换（B4）；投递后整页 reload（P4）与 company/salary 两次 JS（P3）未合并；SIGINT 仍写暂停锁（A6）；`hr_auto_reply.py` 默认模式 import 已归档的 `boss_full`（会 ModuleNotFoundError）；`ab_test_track.POOL_KEYWORDS` 仍与 config 词表不一致（A4）；`config.example.json` 缺 job_pools/city_pools/safety。
+
+---
+
 ## 一、已确认的 Bug（影响正确性，建议优先修复）
 
 ### B1. `smart_filter` 高薪实习放行逻辑完全失效 — shared.py L225-242
