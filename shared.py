@@ -176,9 +176,13 @@ def smart_filter(company: str, title: str, desc: str, salary: str, score: int, c
     - score 不变 = 正常通过
     """
     cfg = config or DEFAULT_CONFIG
+    salary = salary or ""
     company_lower = (company or "").lower()
     title_lower = title.lower()
-    combined = title_lower + " " + (desc or "").lower()
+    desc_lower = (desc or "").lower()
+    combined = title_lower + " " + desc_lower
+    # 原因收集器必须在任何 append 之前初始化（B1：高薪实习分支会先用到）
+    reason_parts = []
 
     # ── 公司名关键词排除（如"科技"类公司） ──
     for kw in cfg.get("exclude_company_keywords", []):
@@ -258,8 +262,6 @@ def smart_filter(company: str, title: str, desc: str, salary: str, score: int, c
     ]
     is_driver_focused = any(kw in title_lower for kw in DRIVER_ONLY)
 
-    reason_parts = []
-
     # Rule 0: 公司名含排除词 → 直接过滤
     if any(kw in company_lower for kw in cfg.get("exclude_company_keywords", [])):
         return 0, "公司名排除→过滤"
@@ -311,7 +313,7 @@ def smart_filter(company: str, title: str, desc: str, salary: str, score: int, c
         else:
             return 0, f"低技术低薪资({tech_score}技/{salary_low}K)→过滤"
 
-    return score, ""
+    return score, "、".join(reason_parts) if reason_parts else ""
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -325,7 +327,16 @@ def list_log_files(skill_dir: Optional[Path] = None) -> list[Path]:
 
 
 def merge_logs(skill_dir: Optional[Path] = None) -> dict:
-    """合并所有城市/平台的 log，汇总 applied/skipped/failed。"""
+    """合并所有城市/平台的投递记录，汇总 applied/skipped/failed。
+
+    P0 起单一事实源为 SQLite（store.py）；库为空时回退读旧 JSON（首次自动迁移）。
+    """
+    from store import ensure_migrated, is_empty, merge_records
+    skill_dir = skill_dir or Path(__file__).parent
+    ensure_migrated()
+    if not is_empty():
+        return merge_records()
+
     merged = {"applied": [], "skipped": [], "failed": []}
     for f in list_log_files(skill_dir):
         log = load_log(f)
@@ -355,22 +366,26 @@ def get_today_new(skill_dir: Optional[Path] = None) -> dict:
 
 
 def recent_activity(skill_dir: Optional[Path] = None, days: int = 7) -> list[dict]:
-    """按日期统计最近 N 天的投递量（基于日志文件的 mtime）。"""
+    """按日期统计最近 N 天的投递量（按 entry.time 聚合，不再依赖文件 mtime）。"""
+    from store import ensure_migrated, is_empty, recent_activity_days
     skill_dir = skill_dir or Path(__file__).parent
-    cutoff = datetime.now() - timedelta(days=days)
+    ensure_migrated()
+    if not is_empty():
+        return recent_activity_days(days)
+
+    cutoff = (date.today() - timedelta(days=days)).isoformat()
     daily: dict[str, dict] = {}
 
     for f in list_log_files(skill_dir):
-        mtime = datetime.fromtimestamp(f.stat().st_mtime)
-        if mtime < cutoff:
-            continue
-        day = mtime.strftime("%Y-%m-%d")
-        if day not in daily:
-            daily[day] = {"date": day, "applied": 0, "skipped": 0, "failed": 0}
         log = load_log(f)
-        daily[day]["applied"] += len(log.get("applied", []))
-        daily[day]["skipped"] += len(log.get("skipped", []))
-        daily[day]["failed"] += len(log.get("failed", []))
+        for key in ("applied", "skipped", "failed"):
+            for e in log.get(key, []):
+                day = (e.get("time") or "")[:10]
+                if not day or day < cutoff:
+                    continue
+                if day not in daily:
+                    daily[day] = {"date": day, "applied": 0, "skipped": 0, "failed": 0}
+                daily[day][key] += 1
 
     return sorted(daily.values(), key=lambda d: d["date"])
 

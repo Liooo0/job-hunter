@@ -5,17 +5,21 @@ import argparse
 import json
 import os
 import random
-import re
 import signal
 import sys
 import time
-from datetime import datetime, date, timedelta
+import traceback
+from datetime import datetime
 from pathlib import Path
 
 from DrissionPage import ChromiumPage, ChromiumOptions
 from typing import Optional
 
-from shared import load_config, load_log, save_log, score_jd, smart_filter, get_chrome_opts, kill_switch_check, kill_switch_off, kill_switch_on, kill_switch_status
+from shared import load_config, score_jd, smart_filter, get_chrome_opts, kill_switch_check, kill_switch_off, kill_switch_on, kill_switch_status
+from store import (
+    ensure_migrated, migrate_legacy_logs, list_city_titles, company_applied_recently,
+    record_application, count_applied_since,
+)
 from deep_filter import deep_filter, run_company_background_check
 from report import print_terminal_summary, generate_html
 
@@ -80,64 +84,6 @@ def in_night_window(s: dict) -> bool:
     if start < end:
         return start <= hour < end
     return hour >= start or hour < end
-
-
-# ── 保守公司名规范化（A9，2026-08-16）──
-# 目标：降低"深圳市XX科技有限公司" vs "XX科技（深圳）有限公司" 这类名称变体造成的重复投递。
-# 明确不做 100% 实体识别：只去 地点前缀/括号内地点/公司后缀，保留品牌主体与"科技/电子"等修饰词。
-# 例：深圳市XX科技有限公司 → XX科技；XX科技（深圳）有限公司 → XX科技
-#     深圳XX科技有限公司 与 深圳XX电子科技有限公司 保持不同（不过度归一，防误杀）。
-_NORM_CITY_PREFIXES = (
-    "深圳市", "深圳", "广州市", "广州", "东莞市", "东莞", "佛山市", "佛山", "惠州市", "惠州",
-    "珠海市", "珠海", "中山市", "中山", "上海市", "上海", "北京市", "北京", "杭州市", "杭州",
-    "南京市", "南京", "苏州市", "苏州", "无锡市", "无锡", "武汉市", "武汉", "成都市", "成都",
-    "重庆市", "重庆", "天津市", "天津", "厦门市", "厦门", "宁波市", "宁波", "长沙市", "长沙",
-    "合肥市", "合肥", "济南市", "济南", "昆明市", "昆明", "福州市", "福州", "南宁市", "南宁",
-    "大连市", "大连", "青岛市", "青岛", "西安市", "西安",
-)
-_NORM_CITY_IN_BRACKETS = (
-    "深圳|广州|东莞|佛山|惠州|珠海|中山|上海|北京|杭州|南京|苏州|无锡|"
-    "武汉|成都|重庆|天津|厦门|宁波|长沙|合肥|济南|昆明|福州|南宁|大连|青岛|西安"
-)
-_NORM_SUFFIXES = ("股份有限公司", "有限责任公司", "有限公司", "股份公司", "公司")
-
-
-def normalize_company(company: str) -> str:
-    """保守规范化公司名用于去重匹配，返回小写规范名。"""
-    if not company:
-        return ""
-    s = company.strip()
-    # 去括号内地点：XX科技（深圳）有限公司 → XX科技有限公司
-    s = re.sub(r"[（(](?:%s)[^）)]*[）)]" % _NORM_CITY_IN_BRACKETS, "", s)
-    # 去公司后缀（只去掉尾部第一个命中）
-    for suf in _NORM_SUFFIXES:
-        if s.endswith(suf):
-            s = s[: -len(suf)]
-            break
-    # 去开头城市前缀：深圳市XX科技有限公司 → XX科技有限公司
-    for city in _NORM_CITY_PREFIXES:
-        if s.startswith(city):
-            s = s[len(city):]
-            break
-    return s.strip(" ·-—()（）").lower()
-
-
-def dedup_applied(log: dict, company: str, city: str, days: int) -> bool:
-    """该公司×该城市在 N 天内是否已投递过（规范化后匹配，防跨关键词重复投触发风控）。"""
-    if not company or days <= 0:
-        return False
-    comp = normalize_company(company)
-    if not comp:
-        return False
-    cutoff = (datetime.now() - timedelta(days=days)).isoformat()
-    for e in log.get("applied", []):
-        if e.get("city") != city:
-            continue
-        if normalize_company(e.get("company") or "") != comp:
-            continue
-        if (e.get("time") or "") >= cutoff:
-            return True
-    return False
 
 
 def _signal_handler(signum, frame):
@@ -433,6 +379,11 @@ def parse_args(cfg: dict):
         help="日常模式：使用 config 中的 target_cities + search_keywords",
     )
     p.add_argument(
+        "--migrate-logs",
+        action="store_true",
+        help="把旧 *-log.json 导入 SQLite 单一事实源（幂等，可重复执行）",
+    )
+    p.add_argument(
         "--resume",
         action="store_true",
         help="清除暂停锁并继续运行",
@@ -474,18 +425,171 @@ def resume_version_for(title: str) -> str:
     return "其他"
 
 
+def _looks_disconnected(e) -> bool:
+    """判断异常是否为 tab↔页面 websocket 断连（Boss 页重载 / session 掉线导致引用失效）。"""
+    s = str(e).lower()
+    return any(k in s for k in ("连接", "断开", "disconnect", "websocket", "connection"))
+
+
+def _recover_search_tab(page, search_tab, url):
+    """返回一个已导航到 url、可正常通信的 Boss 搜索页 tab。
+
+    现有引用还活就直接复用；断了则从 page 里找现存的 zhipin tab（保登录态）；
+    实在没有才新建。Boss 用 tab 级 session 隔离，故优先复用、尽量不 new_tab，
+    避免新 tab 掉登录。救不活则向上抛（交外层熔断）。"""
+    # 1) 现有引用仍连通 → 直接导航复用（最快路径）
+    try:
+        search_tab.get(url)
+        time.sleep(4 + random.uniform(0, 3))
+        return search_tab
+    except Exception:
+        pass
+    # 2) page 里找现存的 zhipin tab（不新建，保登录态）
+    for tid in list(page.tab_ids):
+        try:
+            t = page.get_tab(tid)
+            if "zhipin.com" in (t.url or ""):
+                t.get(url)
+                time.sleep(4 + random.uniform(0, 3))
+                return t
+        except Exception:
+            continue
+    # 3) 兜底：新建（可能丢登录态，但优于一直用死引用）
+    new_tab = page.new_tab(url)
+    time.sleep(4 + random.uniform(0, 3))
+    return new_tab
+
+
+def _record_outcome(city, company, title, salary, keyword, score, reason, *,
+                    decision="skipped", status="SKIPPED", resume_version="",
+                    event=None, event_error=None):
+    """把一次投递结果写入 SQLite 单一事实源（store.py）。"""
+    record_application(
+        platform="boss", city=city, company=company, title=title, salary=salary,
+        keyword=keyword, score=score, resume_version=resume_version,
+        decision=decision, status=status, reason=reason, verified=0,
+        event_type=event or decision, event_error=event_error,
+    )
+
+
+def _dismiss_modals(tab) -> str:
+    """点掉常见弹窗，返回首个可见弹窗文案（用于识别"沟通上限"等拦截提示）。"""
+    try:
+        return tab.run_js("""
+            (function() {
+                var modals = document.querySelectorAll(
+                    '.modal, .dialog, .boss-modal, [class*="modal"], [class*="dialog"], ' +
+                    '[class*="popup"], [class*="toast"], [class*="notice"]'
+                );
+                var firstText = '';
+                for (var m of modals) {
+                    if (!m.offsetParent) continue;
+                    var t = (m.textContent || '').trim();
+                    if (!firstText && t) firstText = t.slice(0, 120);
+                    var btns = m.querySelectorAll('button, a, span[role="button"], div[class*="btn"]');
+                    for (var b of btns) {
+                        var bt = (b.textContent || '').trim();
+                        if (bt && /知道了|我知道了|确定|好的|确认|继续|关闭|取消|×|✕/.test(bt) &&
+                            b.offsetParent !== null && !b.disabled) {
+                            b.click();
+                            return firstText || 'clicked';
+                        }
+                    }
+                }
+                return firstText || 'no_modal';
+            })();
+        """)
+    except Exception:
+        return "no_modal"
+
+
+def _chat_opened(tab) -> bool:
+    """验证点击"立即沟通"后会话是否真的打开（A7：不报错 ≠ 已打开）。"""
+    try:
+        r = tab.run_js("""
+            (function() {
+                var ed = document.querySelector('[contenteditable="true"]');
+                if (ed && ed.offsetParent !== null) return 'input';
+                var tas = document.querySelectorAll('textarea');
+                for (var t of tas) { if (t.offsetParent !== null) return 'input'; }
+                var b = document.querySelector('.op-btn-chat');
+                if (b && (b.classList.contains('is-disabled') || /已沟通/.test(b.textContent || ''))) return 'already';
+                var panel = document.querySelector('.chat-panel, .chat-detail, .chat-container, [class*="chat-detail"]');
+                if (panel && panel.offsetParent !== null) return 'panel';
+                return '';
+            })();
+        """)
+        return bool(r)
+    except Exception:
+        return False
+
+
+def _fill_and_send(tab, greeting: str) -> bool:
+    """填充招呼语并发送，验证输入框清空/会话关闭。返回 True=已验证发出。"""
+    try:
+        r = tab.run_js(f"""
+            (function() {{
+                var ed = document.querySelector('[contenteditable="true"]:not([style*="display: none"])');
+                if (!ed || ed.offsetParent === null) {{
+                    var tas = document.querySelectorAll('textarea');
+                    for (var t of tas) {{ if (t.offsetParent !== null) {{ ed = t; break; }} }}
+                }}
+                if (!ed) return 'NO_INPUT';
+                ed.focus();
+                if (ed.tagName === 'TEXTAREA') {{
+                    ed.value = {json.dumps(greeting)};
+                    ed.dispatchEvent(new Event('input', {{bubbles: true}}));
+                    ed.dispatchEvent(new Event('change', {{bubbles: true}}));
+                }} else {{
+                    document.execCommand('selectAll', false, null);
+                    document.execCommand('insertText', false, {json.dumps(greeting)});
+                }}
+                var cur = ed.tagName === 'TEXTAREA' ? ed.value : ed.textContent;
+                if (!cur || !cur.trim()) return 'EMPTY_AFTER_FILL';
+                var btns = document.querySelectorAll('button, a, span[role="button"]');
+                for (var b of btns) {{
+                    var t = (b.textContent || '').trim();
+                    var cls = (b.className || '') + ' ' + (b.getAttribute('class') || '');
+                    if ((t === '发送' || t.indexOf('发送') > -1 || cls.indexOf('send') > -1)
+                        && b.offsetParent !== null && !b.disabled) {{
+                        b.click();
+                        return 'SENT_CLICKED';
+                    }}
+                }}
+                ed.dispatchEvent(new KeyboardEvent('keydown', {{
+                    key: 'Enter', code: 'Enter', keyCode: 13, which: 13,
+                    bubbles: true, cancelable: true
+                }}));
+                return 'ENTER_KEY';
+            }})();
+        """)
+        time.sleep(2 + random.uniform(0, 1))
+    except Exception as e:
+        print(f"    ⚠️ 填发招呼语异常: {e}")
+        return False
+
+    if r in ("NO_INPUT", "EMPTY_AFTER_FILL"):
+        return False
+    # 验证：输入框已清空 = 发出；输入框已消失 = 会话关闭（同样视为发出）
+    try:
+        state = tab.run_js("""
+            var ed = document.querySelector('[contenteditable="true"]');
+            if (ed) return ed.textContent.trim() === '' ? 'cleared' : 'has_text';
+            var tas = document.querySelectorAll('textarea');
+            for (var t of tas) { if (t.offsetParent !== null) return t.value.trim() === '' ? 'cleared' : 'has_text'; }
+            return 'no_input';
+        """)
+    except Exception:
+        state = ""
+    return state != "has_text"
+
+
 def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_score: int, cfg: dict):
     """在单个城市搜索一个关键词，完成投递循环。返回 (applied, skipped, failed) 计数。"""
     skill_dir = Path(__file__).parent
     city_code = CITY_CODES.get(city, "100010000")
-    log_file = skill_dir / f"boss-{city}-log.json"
 
-    log = load_log(log_file)
-    seen_titles = set()
-    for e in log.get("applied", []) + log.get("skipped", []):
-        t = e.get("job", "")
-        if t:
-            seen_titles.add(t)
+    seen_titles = set(list_city_titles(city))
 
     applied_count = 0
     skipped_count = 0
@@ -499,11 +603,8 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
     print(f"📍 {city} | 🔍 {keyword} | 🎯 上限 {count} 份")
     print(f"{'='*60}")
 
-    try:
-        search_tab.get(search_url)
-    except Exception:
-        search_tab = page.new_tab(search_url)
-    time.sleep(4 + random.uniform(0, 3))
+    # 进来先把搜索页 tab 救活（断连时复用现存 zhipin tab，避免一直用死引用）
+    search_tab = _recover_search_tab(page, search_tab, search_url)
 
     # 检查登录
     if "login" in search_tab.url or "user/?ka" in search_tab.url:
@@ -592,6 +693,8 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
                 print(f"  ⏸️  {STOP_REASON}")
                 return applied_count, skipped_count, failed_count
             seen_titles.add(title)
+            score = 0
+            reason = ""
 
             # 获取公司名和薪资
             company = (
@@ -625,16 +728,11 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
 
             # ── 同公司去重（2026-08-16：防跨关键词重复投同公司触发风控）──
             _ddays = (cfg.get("safety") or {}).get("dedup_days", 7)
-            if _ddays > 0 and dedup_applied(log, company, city, _ddays):
+            if _ddays > 0 and company_applied_recently(city, company, _ddays):
                 print(f"  [🔁去重] {company[:15]} | {title[:25]} — {_ddays}天内已投过该公司，跳过")
                 skipped_count += 1
-                log["skipped"].append({
-                    "company": company, "job": title, "salary": salary,
-                    "score": 0, "reason": f"同公司{_ddays}天内已投(去重)",
-                    "city": city, "keyword": keyword,
-                    "time": datetime.now().isoformat(),
-                })
-                save_log(log, log_file)
+                _record_outcome(city, company, title, salary, keyword, 0,
+                                f"同公司{_ddays}天内已投(去重)", event="dedup_skip")
                 continue
 
             try:
@@ -661,13 +759,8 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
                     if smart_score == 0:
                         print(f"  [🔴过滤] {company[:15]} | {title[:25]} | {salary} → {smart_reason}")
                         skipped_count += 1
-                        log["skipped"].append({
-                            "company": company, "job": title, "salary": salary,
-                            "score": score, "reason": smart_reason,
-                            "city": city, "keyword": keyword,
-                            "time": datetime.now().isoformat(),
-                        })
-                        save_log(log, log_file)
+                        _record_outcome(city, company, title, salary, keyword, score,
+                                        smart_reason, event="smart_filter")
                         continue
                     else:
                         print(f"  [🟡调整] {score}→{smart_score}分 {company[:15]} | {title[:25]} | {salary} → {smart_reason}")
@@ -679,13 +772,8 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
                 if deep_score == 0:
                     print(f"  [🔴深度过滤] {company[:15]} | {title[:25]} | {salary} → {deep_reason}")
                     skipped_count += 1
-                    log["skipped"].append({
-                        "company": company, "job": title, "salary": salary,
-                        "score": score, "reason": deep_reason,
-                        "city": city, "keyword": keyword,
-                        "time": datetime.now().isoformat(),
-                    })
-                    save_log(log, log_file)
+                    _record_outcome(city, company, title, salary, keyword, score,
+                                    deep_reason, event="deep_filter")
                     continue
 
                 # ── 公司背调 v2 (2026-08-07)：只对即将投递的做，带缓存，失败降级 ──
@@ -709,13 +797,8 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
                     if prof_score == 0:
                         print(f"  [🔴公司背调] {company[:15]} | {title[:25]} → {prof_reason}")
                         skipped_count += 1
-                        log["skipped"].append({
-                            "company": company, "job": title, "salary": salary,
-                            "score": score, "reason": prof_reason,
-                            "city": city, "keyword": keyword,
-                            "time": datetime.now().isoformat(),
-                        })
-                        save_log(log, log_file)
+                        _record_outcome(city, company, title, salary, keyword, score,
+                                        prof_reason, event="company_profile")
                         continue
                 except Exception as e:
                     # 背调失败降级：不误杀，正常继续
@@ -725,17 +808,8 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
 
                 if score < min_score:
                     skipped_count += 1
-                    log["skipped"].append({
-                        "company": company,
-                        "job": title,
-                        "salary": salary,
-                        "score": score,
-                        "reason": reason,
-                        "city": city,
-                        "keyword": keyword,
-                        "time": datetime.now().isoformat(),
-                    })
-                    save_log(log, log_file)
+                    _record_outcome(city, company, title, salary, keyword, score,
+                                    reason, event="below_min_score")
                     continue
 
                 page_all_zero = False
@@ -746,16 +820,8 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
                 )
                 if btn_disabled:
                     skipped_count += 1
-                    log["skipped"].append({
-                        "company": company,
-                        "job": title,
-                        "score": score,
-                        "reason": "已沟通过",
-                        "city": city,
-                        "keyword": keyword,
-                        "time": datetime.now().isoformat(),
-                    })
-                    save_log(log, log_file)
+                    _record_outcome(city, company, title, salary, keyword, score,
+                                    "已沟通过", event="already_chatted")
                     print(f"    ⏭️  已沟通过，跳过")
                     continue
 
@@ -763,77 +829,37 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
                 greeting = generate_greeting(title, desc, company)
                 print(f"    💬 招呼语: {greeting[:50]}...")
 
-                # 点击"立即沟通"
+                # ── 点击"立即沟通" + 验证（A7：代码没报错 ≠ 业务动作成功）──
                 search_tab.run_js(
                     'var b=document.querySelector(".op-btn-chat"); if(b) b.click();'
                 )
                 time.sleep(2 + random.uniform(1, 2))
 
-                # ── 自动点掉 Boss 弹窗（如"今日沟通已达上限"等提示）──
-                # 通用逻辑：找可见弹窗，点掉"我知道了/确定/知道了/好的/关闭"类按钮
-                search_tab.run_js("""
-                    (function() {
-                        // 常见弹窗容器
-                        var modals = document.querySelectorAll(
-                            '.modal, .dialog, .boss-modal, [class*="modal"], [class*="dialog"], ' +
-                            '[class*="popup"], [class*="toast"], [class*="notice"]'
-                        );
-                        for (var m of modals) {
-                            if (!m.offsetParent) continue;  // 不可见跳过
-                            var btns = m.querySelectorAll('button, a, span[role="button"], div[class*="btn"]');
-                            for (var b of btns) {
-                                var t = (b.textContent || '').trim();
-                                if (t && /知道了|我知道了|确定|好的|确认|继续|关闭|取消|×|✕/.test(t) &&
-                                    b.offsetParent !== null && !b.disabled) {
-                                    b.click();
-                                    return 'clicked';
-                                }
-                            }
-                        }
-                        return 'no_modal';
-                    })();
-                """)
-                time.sleep(1)
+                # 弹窗处理 + 拦截识别（沟通上限/频繁等 → 记 FAILED，不记 applied）
+                modal_text = _dismiss_modals(search_tab)
+                if any(k in modal_text for k in ["上限", "频繁", "限制", "无法", "验证", "封禁", "异常"]):
+                    failed_count += 1
+                    _record_outcome(city, company, title, salary, keyword, score,
+                                    f"弹窗拦截:{modal_text[:60]}", decision="failed",
+                                    status="FAILED", event="apply_blocked")
+                    print(f"    🚫 弹窗拦截: {modal_text[:60]} → FAILED")
+                    continue
 
-                # 填入自定义招呼语并发送
-                try:
-                    search_tab.run_js(f"""
-                        (function() {{
-                            // 找聊天输入框
-                            var input = document.querySelector('[contenteditable="true"]:not([style*="display: none"])');
-                            if (!input) {{
-                                var textareas = document.querySelectorAll('textarea');
-                                for (var t of textareas) {{
-                                    if (t.offsetParent !== null) {{ input = t; break; }}
-                                }}
-                            }}
-                            if (!input) return;
-                            // 填入招呼语
-                            var text = {json.dumps(greeting)};
-                            if (input.tagName === 'TEXTAREA') {{
-                                input.value = text;
-                            }} else {{
-                                input.textContent = text;
-                            }}
-                            input.dispatchEvent(new Event('input', {{bubbles: true}}));
-                            input.dispatchEvent(new Event('change', {{bubbles: true}}));
-                            // 延迟找发送按钮并点击
-                            setTimeout(function() {{
-                                var btns = document.querySelectorAll('button, a, span[role="button"]');
-                                for (var b of btns) {{
-                                    var t = (b.textContent || '').trim();
-                                    var cls = (b.className || '') + ' ' + (b.getAttribute('class') || '');
-                                    if ((t === '发送' || t.indexOf('发送') > -1 || cls.indexOf('send') > -1)
-                                        && b.offsetParent !== null && !b.disabled) {{
-                                        b.click(); return;
-                                    }}
-                                }}
-                            }}, 400);
-                        }})();
-                    """)
-                    time.sleep(2 + random.uniform(0, 1))
-                except Exception:
-                    pass  # 填充失败不影响主流程，已经点了沟通
+                if not _chat_opened(search_tab):
+                    failed_count += 1
+                    _record_outcome(city, company, title, salary, keyword, score,
+                                    "点击立即沟通后未检测到聊天输入框", decision="failed",
+                                    status="FAILED", event="chat_not_opened")
+                    print(f"    ❌ 会话未打开（未检测到聊天输入框）→ FAILED")
+                    continue
+
+                greeting_ok = _fill_and_send(search_tab, greeting)
+                if greeting_ok:
+                    app_status, app_decision, verified = "APPLIED", "applied", 1
+                    print(f"    💬 招呼语已发送并验证")
+                else:
+                    app_status, app_decision, verified = "UNCERTAIN", "uncertain", 0
+                    print(f"    ⚠️ 会话已打开但发送未验证 → UNCERTAIN（需人工复核）")
 
                 # 导回搜索页
                 try:
@@ -843,20 +869,14 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
                 time.sleep(3 + random.uniform(0, 2))
 
                 applied_count += 1
-                log["applied"].append({
-                    "company": company,
-                    "job": title,
-                    "salary": salary,
-                    "score": score,
-                    "reason": reason,
-                    "city": city,
-                    "keyword": keyword,
-                    "deep_filter": deep_reason,
-                    "resume_version": resume_version_for(title),
-                    "time": datetime.now().isoformat(),
-                })
-                save_log(log, log_file)
-                print(f"    ✅ 已投递 ({applied_count + skipped_count}/{count + skipped_count})")
+                record_application(
+                    platform="boss", city=city, company=company, title=title, salary=salary,
+                    keyword=keyword, score=score, resume_version=resume_version_for(title),
+                    decision=app_decision, status=app_status, reason=reason, verified=verified,
+                    event_type=app_status.lower(),
+                )
+                print(f"    ✅ 已投递 ({applied_count + skipped_count}/{count + skipped_count})"
+                      + (" [UNCERTAIN]" if not greeting_ok else ""))
 
                 # 投递间延迟
                 time.sleep(1 + random.uniform(0, 2))
@@ -864,15 +884,19 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
             except Exception as e:
                 failed_count += 1
                 err = str(e)[:120]
+                trace = traceback.format_exc()
                 print(f"    ❌ 失败: {err}")
-                log["failed"].append({
-                    "job": title,
-                    "error": err,
-                    "city": city,
-                    "keyword": keyword,
-                    "time": datetime.now().isoformat(),
-                })
-                save_log(log, log_file)
+                # ── tab↔页面断连自愈：重绑活 tab，后续卡片不再全废（Boss 页重载/session 掉线）──
+                if _looks_disconnected(e):
+                    try:
+                        search_tab = _recover_search_tab(page, search_tab, search_url)
+                        print("    🔌 检测到页面断连，已重新连接搜索页 tab")
+                    except Exception as re_e:
+                        print(f"    🔌 重连仍失败（{str(re_e)[:60]}），本关键词提前结束")
+                        break
+                _record_outcome(city, company, title, salary, keyword, score,
+                                f"异常:{err}", decision="failed", status="FAILED",
+                                event="apply_exception", event_error=trace)
                 time.sleep(1)
 
         page_num += 1
@@ -885,9 +909,43 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
     return applied_count, skipped_count, failed_count
 
 
+def _resolve_cities(cfg):
+    """城市列表。优先顶层 target_cities;为空则从 city_pools.city_priority 派生(仅 primary+secondary,按优先级)。"""
+    c = cfg.get("target_cities") or []
+    if c:
+        return [x.strip() for x in c if str(x).strip()]
+    prio = (cfg.get("city_pools") or {}).get("city_priority") or {}
+    order = {"primary": 0, "secondary": 1, "opportunistic": 2}
+    keys = list(prio.keys())
+    ranked = sorted(keys, key=lambda k: (order.get(prio[k], 3), keys.index(k)))
+    return [k for k in ranked if prio.get(k) in ("primary", "secondary")] or ["深圳"]
+
+
+def _resolve_keywords(cfg):
+    """搜索词。优先顶层 search_keywords;为空则拍平 job_pools.keywords(按原 S/A/B 分级顺序,去重)。"""
+    k = cfg.get("search_keywords") or []
+    if k:
+        return [x.strip() for x in k if str(x).strip()]
+    pools = (cfg.get("job_pools") or {}).get("keywords") or {}
+    seen, out = set(), []
+    for tier_kws in (pools.values() if isinstance(pools, dict) else []):
+        for kw in tier_kws:
+            kw = str(kw).strip()
+            if kw and kw not in seen:
+                seen.add(kw)
+                out.append(kw)
+    return out or ["智驾测试"]
+
+
 def main():
     cfg = load_config()
     args = parse_args(cfg)
+
+    # ── 旧 JSON → SQLite 迁移（P0：单一事实源）──
+    if args.migrate_logs:
+        migrate_legacy_logs()
+        return
+    ensure_migrated(verbose=False)
 
     # ── --resume: 清除暂停锁后退出 ──
     if args.resume:
@@ -970,23 +1028,23 @@ def main():
 
     # 确定城市列表
     if args.daily or (not args.city and not args.cities):
-        cities = args.cities.split(",") if args.cities else cfg.get("target_cities", ["深圳"])
+        cities = args.cities.split(",") if args.cities else _resolve_cities(cfg)
     elif args.cities:
         cities = [c.strip() for c in args.cities.split(",") if c.strip()]
     elif args.city:
         cities = [args.city]
     else:
-        cities = cfg.get("target_cities", ["深圳"])
+        cities = _resolve_cities(cfg)
 
     # 确定搜索词列表
     if args.daily or (not args.job and not args.jobs):
-        keywords = args.jobs.split(",") if args.jobs else cfg.get("search_keywords", ["智驾测试"])
+        keywords = args.jobs.split(",") if args.jobs else _resolve_keywords(cfg)
     elif args.jobs:
         keywords = [k.strip() for k in args.jobs.split(",") if k.strip()]
     elif args.job:
         keywords = [args.job]
     else:
-        keywords = cfg.get("search_keywords", ["智驾测试"])
+        keywords = _resolve_keywords(cfg)
 
     count = args.count or cfg.get("default_count", 15)
     min_score = args.min_score if args.min_score is not None else cfg.get("min_score", 30)
@@ -1108,31 +1166,13 @@ def main():
             # ── 跨进程每日硬熔断 → daily_limit_reached 层级（正常结束，不改 kill switch）──
             # 2026-08-16 A5.1：跑满上限是"正常状态机结束"，不是异常。只结束当天任务，
             # 不写 kill switch / 暂停锁，明天自动恢复。只有连续失败/风控信号才关全局开关。
-            today_total = 0
-            try:
-                for lf in SKILL_DIR.glob("boss-*-log.json"):
-                    ld = json.loads(lf.read_text(encoding="utf-8"))
-                    for e in ld.get("applied", []):
-                        if (e.get("time") or "")[:10] == datetime.now().strftime("%Y-%m-%d"):
-                            today_total += 1
-            except Exception:
-                pass
+            today_total = count_applied_since(datetime.now().strftime("%Y-%m-%dT00:00:00"))
             if today_total >= SAFETY_DAILY_CAP:
                 print(f"\n  🔚 [daily_limit_reached] 今日已投 {today_total} 份 ≥ 上限 {SAFETY_DAILY_CAP}（跨进程统计）")
                 print(f"    正常结束今日任务 — kill switch 未动，明日自动恢复")
                 break
 
-            hour_now = datetime.now().strftime("%H")
-            hour_count = 0
-            try:
-                for lf in SKILL_DIR.glob("boss-*-log.json"):
-                    ld = json.loads(lf.read_text(encoding="utf-8"))
-                    for e in ld.get("applied", []):
-                        t = e.get("time") or ""
-                        if t[:13] == datetime.now().strftime("%Y-%m-%dT%H"):
-                            hour_count += 1
-            except Exception:
-                pass
+            hour_count = count_applied_since(datetime.now().strftime("%Y-%m-%dT%H:00:00"))
             # ── 单小时熔断 → hour_limit_reached 层级（暂停当前任务，不改 kill switch）──
             # 2026-08-16 A5.1：分段 sleep，可被 Ctrl+C/SIGTERM 提前打断，不阻塞退出
             if hour_count >= HOURLY_CAP:
