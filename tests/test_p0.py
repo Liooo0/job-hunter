@@ -18,7 +18,10 @@ sys.path.insert(0, str(PROJECT))
 import shared  # noqa: E402
 import store  # noqa: E402
 from unittest import mock  # noqa: E402
-from boss_apply import _chat_opened, _fill_and_send, _dismiss_modals  # noqa: E402
+from boss_apply import (  # noqa: E402
+    _chat_opened, _chat_signal, _fill_and_send, _dismiss_modals,
+    _send_greeting_via_chat,
+)
 
 passed, failed = 0, []
 
@@ -223,19 +226,43 @@ def test_store_migrate_legacy_logs():
 
 # ── A7：投递验证逻辑（DOM 模拟，真实 Boss 页面需烟测）──
 class FakeTab:
+    url = ""
+
     def __init__(self, results):
         self._results = list(results)
 
     def run_js(self, js, *a, **k):
         return self._results.pop(0) if self._results else None
 
+    def get(self, url):
+        self.url = url
+
+    def close(self):
+        pass
+
+
+class FakePage:
+    def __init__(self, tabs, new_tab=None):
+        self.tab_ids = list(tabs.keys())
+        self._tabs = tabs
+        self._new = new_tab
+
+    def get_tab(self, tid):
+        return self._tabs[tid]
+
+    def new_tab(self, url):
+        return self._new
+
 
 def test_chat_opened_signals():
+    assert _chat_signal(FakeTab(["input"])) == "input"
+    assert _chat_signal(FakeTab(["already"])) == "already"
+    assert _chat_signal(FakeTab(["panel"])) == "panel"
+    assert _chat_signal(FakeTab([""])) == ""
+    assert _chat_signal(FakeTab([None])) == ""
     assert _chat_opened(FakeTab(["input"])) is True
     assert _chat_opened(FakeTab(["already"])) is True
-    assert _chat_opened(FakeTab(["panel"])) is True
     assert _chat_opened(FakeTab([""])) is False
-    assert _chat_opened(FakeTab([None])) is False
 
 
 def test_fill_and_send_verification():
@@ -265,6 +292,28 @@ def test_fill_and_send_none_safe():
         assert _fill_and_send(FakeTab(["SENT_CLICKED", None]), "你好") is False
 
 
+def test_send_greeting_via_chat():
+    with mock.patch("boss_apply.time.sleep"):
+        # 找到会话 + 发送成功 → True
+        chat_tab = FakeTab([None, None, None, "clicked", "SENT_CLICKED", "cleared"])
+        page = FakePage({"a": FakeTab([])}, new_tab=chat_tab)
+        ok, note = _send_greeting_via_chat(page, FakeTab([]), "某AI科技", "你好")
+        assert ok is True, note
+        assert "补发成功" in note
+        # 找不到会话 → False
+        chat_tab2 = FakeTab([None, None, None, "not_found", "SENT_CLICKED", "cleared"])
+        page2 = FakePage({"a": FakeTab([])}, new_tab=chat_tab2)
+        ok2, note2 = _send_greeting_via_chat(page2, FakeTab([]), "某AI科技", "你好")
+        assert ok2 is False
+        assert "未找到会话" in note2
+        # 找到会话但发送未验证 → False
+        chat_tab3 = FakeTab([None, None, None, "clicked", "SENT_CLICKED", "has_text"])
+        page3 = FakePage({"a": FakeTab([])}, new_tab=chat_tab3)
+        ok3, note3 = _send_greeting_via_chat(page3, FakeTab([]), "某AI科技", "你好")
+        assert ok3 is False
+        assert "未验证" in note3
+
+
 def main():
     print("P0 测试开始\n")
     t("B1: 高薪实习(正文日薪) 保底60+原因", test_high_salary_intern_boosted)
@@ -279,6 +328,7 @@ def main():
     t("A7: 招呼语发送验证", test_fill_and_send_verification)
     t("A7: 弹窗拦截识别", test_dismiss_modals_detects_block)
     t("A7: run_js 返回 None 不误判", test_fill_and_send_none_safe)
+    t("A7: 聊天页补发招呼语", test_send_greeting_via_chat)
     print(f"\n{'='*50}")
     print(f"P0 测试: {passed} 通过 / {len(failed)} 失败")
     for name in failed:
