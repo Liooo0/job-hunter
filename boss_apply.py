@@ -475,7 +475,7 @@ def _record_outcome(city, company, title, salary, keyword, score, reason, *,
 def _dismiss_modals(tab) -> str:
     """点掉常见弹窗，返回首个可见弹窗文案（用于识别"沟通上限"等拦截提示）。"""
     try:
-        return tab.run_js("""
+        r = tab.run_js("""
             (function() {
                 var modals = document.querySelectorAll(
                     '.modal, .dialog, .boss-modal, [class*="modal"], [class*="dialog"], ' +
@@ -499,6 +499,7 @@ def _dismiss_modals(tab) -> str:
                 return firstText || 'no_modal';
             })();
         """)
+        return str(r or "no_modal")
     except Exception:
         return "no_modal"
 
@@ -568,6 +569,8 @@ def _fill_and_send(tab, greeting: str) -> bool:
         print(f"    ⚠️ 填发招呼语异常: {e}")
         return False
 
+    if r is None:
+        return False
     if r in ("NO_INPUT", "EMPTY_AFTER_FILL"):
         return False
     # 验证：输入框已清空 = 发出；输入框已消失 = 会话关闭（同样视为发出）
@@ -581,6 +584,8 @@ def _fill_and_send(tab, greeting: str) -> bool:
         """)
     except Exception:
         state = ""
+    if state is None:
+        return False
     return state != "has_text"
 
 
