@@ -764,35 +764,24 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
             score = 0
             reason = ""
 
-            # 获取公司名和薪资
-            company = (
-                search_tab.run_js(f"""
+            # 获取公司名和薪资（R1：合并为一次卡片遍历）
+            _info = search_tab.run_js(f"""
                 var cards = document.querySelectorAll(".job-card-wrap");
                 for (var c of cards) {{
                     var n = c.querySelector(".job-name");
                     if (n && n.textContent.trim() === {json.dumps(title)}) {{
                         var co = c.querySelector(".boss-name");
-                        return co ? co.textContent.trim() : "";
+                        var sa = c.querySelector(".job-salary");
+                        return {{company: co ? co.textContent.trim() : "",
+                                salary: sa ? sa.textContent.trim() : ""}};
                     }}
                 }}
-                return "";
-            """)
-                or ""
-            )
-            salary = (
-                search_tab.run_js(f"""
-                var cards = document.querySelectorAll(".job-card-wrap");
-                for (var c of cards) {{
-                    var n = c.querySelector(".job-name");
-                    if (n && n.textContent.trim() === {json.dumps(title)}) {{
-                        var s = c.querySelector(".job-salary");
-                        return s ? s.textContent.trim() : "";
-                    }}
-                }}
-                return "";
-            """)
-                or ""
-            )
+                return {{company: "", salary: ""}};
+            """) or {}
+            if not isinstance(_info, dict):
+                _info = {}
+            company = _info.get("company") or ""
+            salary = _info.get("salary") or ""
 
             # ── 同公司去重（2026-08-16：防跨关键词重复投同公司触发风控）──
             _ddays = (cfg.get("safety") or {}).get("dedup_days", 7)
