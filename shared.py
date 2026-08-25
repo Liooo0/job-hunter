@@ -76,9 +76,9 @@ DEFAULT_CONFIG = {
     "greeting": "您好，我对贵司岗位非常感兴趣，期待进一步沟通！",
     "skills": [],
     "target_roles": [],
-    "exclude_keywords": ["总监", "架构师", "首席", "VP", "P8", "P7"],
-    "boost_keywords": ["llm", "大模型", "agent", "rag", "gpt", "ai产品", "人工智能"],
-    "min_score": 60,
+    "exclude_keywords": [],
+    "boost_keywords": [],
+    "min_score": 10,
     "default_count": 20,
     "target_cities": [],
     "search_keywords": [],
@@ -90,14 +90,17 @@ DEFAULT_CONFIG = {
 def _fill_fallbacks(cfg: dict) -> dict:
     """用内置默认补齐缺失配置块 —— 别人 clone 后没有 config.json 也能跑。
 
-    只补缺：用户显式给出的键一律不覆盖；dict 块做逐键补齐。
+    只补缺：显式给出的非空配置一律不覆盖；
+    空 list / 空 dict 视为「未配置」（DEFAULT_CONFIG 预置的空容器会被兜底替换）；
+    非空 dict 做逐键补齐。
     """
     for key, val in FALLBACK_CONFIG.items():
-        if key not in cfg or cfg[key] is None:
+        cur = cfg.get(key)
+        if cur is None or cur == [] or cur == {}:
             cfg[key] = json.loads(json.dumps(val))  # deep copy，防运行时污染默认值
-        elif isinstance(val, dict) and isinstance(cfg[key], dict):
+        elif isinstance(val, dict) and isinstance(cur, dict):
             for k2, v2 in val.items():
-                cfg[key].setdefault(k2, v2)
+                cur.setdefault(k2, v2)
     return cfg
 
 
@@ -132,6 +135,8 @@ FALLBACK_CONFIG = {
     "body_exclude_keywords": [
         "大小周", "单休", "996", "上六休一", "夜班", "倒班", "长期出差",
         "电销", "面销", "课程顾问", "招生",
+        "客户拜访", "商务谈判", "完成销售", "销售指标", "客户开发", "电话邀约",
+        "讲师", "授课", "学员", "辅导",
     ],
     "salary_filter": {
         "home_cities": ["深圳", "广州", "佛山", "惠州", "珠海", "中山", "东莞"],
