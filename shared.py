@@ -141,6 +141,33 @@ BOOST_PROJECTS = [
     "fsd", "noa", "l4", "自动驾驶", "车联网",
 ]
 
+# ── Boss 城市代码（P2-T6 统一：原 boss_apply.py 与 deep_filter.py 各有一份且漂移）──
+# 取两份并集：boss_apply 21 城 ⊇ deep_filter 12 城，重叠城市代码逐个核对一致。
+# 消费方：boss_apply（搜索 URL）、deep_filter（公司背调搜索）。
+CITY_CODES = {
+    "全国": "100010000",
+    "北京": "101010100",
+    "上海": "101020100",
+    "广州": "101280100",
+    "深圳": "101280600",
+    "杭州": "101210100",
+    "成都": "101270100",
+    "武汉": "101200100",
+    "南京": "101190100",
+    "重庆": "101040100",
+    "苏州": "101190400",
+    "合肥": "101220100",
+    "西安": "101110100",
+    "长沙": "101250100",
+    "东莞": "101281600",
+    "天津": "101030100",
+    "厦门": "101230200",
+    "佛山": "101280500",
+    "无锡": "101190200",
+    "珠海": "101280700",
+    "宁波": "101210400",
+}
+
 
 def save_log(log: dict, log_file: Path):
     log_file.write_text(json.dumps(log, ensure_ascii=False, indent=2))
@@ -371,26 +398,6 @@ def merge_logs(skill_dir: Optional[Path] = None) -> dict:
         for key in merged:
             merged[key].extend(log.get(key, []))
     return merged
-
-
-def get_today_new(skill_dir: Optional[Path] = None) -> dict:
-    """从所有 log 中提取今天新增的投递（按 job title 去重）。"""
-    skill_dir = skill_dir or Path(__file__).parent
-    today_str = date.today().isoformat()
-    seen = set()
-    result = {"applied": [], "total_seen": 0, "total_applied": 0, "total_skipped": 0}
-    for f in list_log_files(skill_dir):
-        log = load_log(f)
-        result["total_applied"] += len(log.get("applied", []))
-        result["total_skipped"] += len(log.get("skipped", []))
-        for entry in log.get("applied", []):
-            key = entry.get("job", "") + entry.get("company", "")
-            if key not in seen:
-                seen.add(key)
-                entry["_log_file"] = f.stem
-                result["applied"].append(entry)
-    result["total_seen"] = result["total_applied"] + result["total_skipped"]
-    return result
 
 
 def recent_activity(skill_dir: Optional[Path] = None, days: int = 7) -> list[dict]:
