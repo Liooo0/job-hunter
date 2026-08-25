@@ -87,14 +87,88 @@ DEFAULT_CONFIG = {
 }
 
 
+def _fill_fallbacks(cfg: dict) -> dict:
+    """用内置默认补齐缺失配置块 —— 别人 clone 后没有 config.json 也能跑。
+
+    只补缺：用户显式给出的键一律不覆盖；dict 块做逐键补齐。
+    """
+    for key, val in FALLBACK_CONFIG.items():
+        if key not in cfg or cfg[key] is None:
+            cfg[key] = json.loads(json.dumps(val))  # deep copy，防运行时污染默认值
+        elif isinstance(val, dict) and isinstance(cfg[key], dict):
+            for k2, v2 in val.items():
+                cfg[key].setdefault(k2, v2)
+    return cfg
+
+
 def load_config(skill_dir: Optional[Path] = None) -> dict:
-    """读取用户配置。优先 config.json，缺省字段用 DEFAULT_CONFIG 补齐。"""
+    """读取用户配置。优先 config.json，缺省字段用 DEFAULT_CONFIG 补齐；
+    再用 FALLBACK_CONFIG 补齐完整功能块（词表/薪资线/岗位池），
+    保证 fresh clone（无 config.json）开箱即用。
+    """
     skill_dir = skill_dir or Path(__file__).parent
     cfg_file = skill_dir / "config.json"
     cfg = dict(DEFAULT_CONFIG)
     if cfg_file.exists():
         cfg.update(json.loads(cfg_file.read_text(encoding="utf-8")))
-    return cfg
+    return _fill_fallbacks(cfg)
+
+
+# 内置兜底配置：与作者实战 config 同构的精简代表版（不含任何个人信息）。
+# 新用户以此为起点即可跑通全流程，之后按自己情况改 config.json 覆盖。
+FALLBACK_CONFIG = {
+    "skills": [
+        "Python", "RAG", "Dify", "Agent", "智能体", "知识库", "工作流",
+        "LLM", "大模型", "Prompt", "MCP", "Coze", "LangChain", "FastAPI",
+    ],
+    "boost_keywords": [
+        "Agent", "RAG", "Dify", "LLM", "大模型", "MCP", "工作流",
+        "知识库", "AI实施", "解决方案", "企业AI落地",
+    ],
+    "exclude_keywords": [
+        "总监", "架构师", "首席", "资深", "P7", "P8", "销售", "电销", "地推",
+        "数据标注", "短视频", "短剧", "实习", "实习生", "校招", "应届", "管培生",
+    ],
+    "body_exclude_keywords": [
+        "大小周", "单休", "996", "上六休一", "夜班", "倒班", "长期出差",
+        "电销", "面销", "课程顾问", "招生",
+    ],
+    "salary_filter": {
+        "home_cities": ["深圳", "广州", "佛山", "惠州", "珠海", "中山", "东莞"],
+        "home_min_accept": 6,
+        "home_min_prefer": 10,
+        "away_min_accept": 10,
+        "away_min_prefer": 12,
+    },
+    "job_pools": {
+        "keywords": {
+            "S级-AI实施/解决方案": [
+                "AI实施工程师", "AI解决方案工程师", "AI技术支持", "企业AI应用",
+                "智能化解决方案", "数字化实施",
+            ],
+            "S级-AI应用工程师": [
+                "AI应用工程师", "LLM应用", "大模型应用", "Agent应用",
+                "智能体开发", "RAG", "知识库运营", "Dify", "Coze",
+            ],
+            "A级-车联网/智能汽车": [
+                "车联网测试", "车载测试", "智能座舱", "OTA测试", "ADAS测试",
+            ],
+            "A级-IT技术支持/数字化": [
+                "技术支持", "IT support", "helpdesk", "系统运维",
+            ],
+            "B级-AI内容运营": ["AI内容运营", "AIGC运营"],
+        }
+    },
+    "city_pools": {
+        "city_priority": {
+            "深圳": "primary",
+            "广州": "secondary", "佛山": "secondary", "惠州": "secondary",
+            "上海": "opportunistic", "苏州": "opportunistic", "杭州": "opportunistic",
+        }
+    },
+    "min_score": 10,
+}
+FALLBACK_JOB_POOLS = FALLBACK_CONFIG["job_pools"]["keywords"]
 
 
 def load_log(log_file: Path) -> dict:
@@ -331,11 +405,13 @@ def smart_filter(company: str, title: str, desc: str, salary: str, score: int, c
     home_cities = salary_filter.get("home_cities", ["深圳"])
     if salary_low > 0:
         if city in home_cities:
-            if salary_low < salary_filter.get("home_min_accept", 8):
-                return 0, f"薪资过低({salary_low}K<{salary_filter['home_min_accept']}K)→过滤"
+            home_min = float(salary_filter.get("home_min_accept", 8))
+            if salary_low < home_min:
+                return 0, f"薪资过低({salary_low}K<{home_min:g}K)→过滤"
         else:
-            if salary_low < salary_filter.get("away_min_accept", 10):
-                return 0, f"外地低薪({salary_low}K<{salary_filter['away_min_accept']}K)→过滤"
+            away_min = float(salary_filter.get("away_min_accept", 10))
+            if salary_low < away_min:
+                return 0, f"外地低薪({salary_low}K<{away_min:g}K)→过滤"
 
     # Rule 2: 小微劳务中介 — 外包+薪资极低+无技术含量 → 直接过滤
     if is_outsourcing and salary_low < 6 and tech_score < 2:

@@ -93,6 +93,8 @@ RELEVANT_TERMS = [
     "LangChain", "LangGraph", "Embedding", "向量数据库", "FastAPI", "MCP",
     "Prompt", "Function Calling", "微调", "SFT", "多模态", "Transformer",
     "RAG", "Agent", "LLM", "大模型", "知识库", "工作流", "智能体",
+    # 以下为通用 AI 岗常见要求，兜底词表缺失时保证缺口识别仍可用：
+    "Python", "Dify", "Coze", "机器学习", "深度学习", "NLP", "数据分析",
 ]
 
 # 与 shared.contains_kw 相同的词边界策略（独立缓存，避免跨模块状态）
@@ -300,9 +302,12 @@ def _score_location(city: str, desc: str, profile: dict,
 def _find_gaps(title: str, desc: str, cfg: dict) -> List[str]:
     combined = (title or "") + " " + (desc or "")
     skills_lower = {str(s).lower() for s in (cfg.get("skills") or [])}
+    boosts_lower = {str(b).lower() for b in (cfg.get("boost_keywords") or [])}
     gaps = []
     for term in RELEVANT_TERMS:
-        if term.lower() in skills_lower:
+        tl = term.lower()
+        # 已是用户技能/加分词的，命中属于"匹配"而非"缺口"
+        if tl in skills_lower or tl in boosts_lower:
             continue
         if contains_kw(combined, term):
             gaps.append(term)
