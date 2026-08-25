@@ -492,13 +492,19 @@ def _reset_after_apply(page, search_tab, search_url):
 
 def _record_outcome(city, company, title, salary, keyword, score, reason, *,
                     decision="skipped", status="SKIPPED", resume_version="",
-                    event=None, event_error=None):
-    """把一次投递结果写入 SQLite 单一事实源（store.py）。"""
+                    event=None, event_error=None, traceback=None):
+    """把一次投递结果写入 SQLite 单一事实源（store.py）。
+
+    A8：traceback 为可选增强字段——异常失败时随事件 payload 落库完整堆栈，
+    原有 reason(err) 字段格式不变。
+    """
+    extra_payload = {"traceback": traceback} if traceback else None
     record_application(
         platform="boss", city=city, company=company, title=title, salary=salary,
         keyword=keyword, score=score, resume_version=resume_version,
         decision=decision, status=status, reason=reason, verified=0,
         event_type=event or decision, event_error=event_error,
+        extra_payload=extra_payload,
     )
 
 
@@ -698,6 +704,222 @@ def _fill_and_send(tab, greeting: str) -> bool:
     return state != "has_text"
 
 
+# ── A8：投递单岗位流程拆分（纯结构性重构，异常语义逐点保持）──
+# 原巨型 try 循环体按职责拆为四步，调用方 run_single_cycle 的 try/except 边界、
+# 捕获范围、continue/break 与计数逻辑均与拆分前一致：
+#   _prepare_job_context   取详情/评分/过滤链（smart/deep/背调/五维）→ "skip" 或 "proceed"
+#   _execute_apply         点击沟通→弹窗/信号验证→填发招呼语 → "failed" 或 "sent"
+#   _handle_apply_failure  异常分类记录 + 断连自愈 → (search_tab, 是否 break)
+#   _cleanup_after_attempt 投后收尾（R2 同页续投重置）
+# ctx 为共享可变上下文，承载跨函数的 score/reason/greeting/passed_min_score，
+# 使 except 处理器读到的变量状态与拆分前局部变量完全一致。
+
+def _prepare_job_context(search_tab, city, keyword, title, company, salary,
+                         cfg, min_score, ctx) -> str:
+    """准备阶段：点击卡片加载详情 → JD评分 → 过滤链 → 最低分门槛 → 沟通按钮检查 → 招呼语。
+
+    过滤链任一环命中即打印+落库并返回 "skip"（调用方计 skipped 后 continue）；
+    全部通过返回 "proceed"。ctx 实时回写 score/reason；
+    passed_min_score 在跨过门槛后置 True（对应原 page_all_zero=False 的时机）。
+    """
+    # 点击卡片加载详情
+    search_tab.run_js(f"""
+        var cards = document.querySelectorAll(".job-card-wrap");
+        for (var c of cards) {{
+            var n = c.querySelector(".job-name");
+            if (n && n.textContent.trim() === {json.dumps(title)}) {{
+                c.click(); break;
+            }}
+        }}
+    """)
+    time.sleep(2 + random.uniform(0, 2))
+
+    desc_el = search_tab.ele(".job-detail-body") or search_tab.ele(".job-sec-text")
+    desc = desc_el.text if desc_el else ""
+
+    score, reason = score_jd(title, desc, cfg)
+    ctx["score"], ctx["reason"] = score, reason
+
+    # 智能过滤：公司规模/性质/薪资/技术含量
+    smart_score, smart_reason = smart_filter(company, title, desc, salary, score, cfg, city=city)
+    if smart_score != score:
+        if smart_score == 0:
+            print(f"  [🔴过滤] {company[:15]} | {title[:25]} | {salary} → {smart_reason}")
+            _record_outcome(city, company, title, salary, keyword, score,
+                            smart_reason, event="smart_filter")
+            return "skip"
+        else:
+            print(f"  [🟡调整] {score}→{smart_score}分 {company[:15]} | {title[:25]} | {salary} → {smart_reason}")
+            score = smart_score
+            reason = reason + "、" + smart_reason
+            ctx["score"], ctx["reason"] = score, reason
+
+    # ── 深度筛选 v2 (2026-08-07)：标题党检测 + 实习薪资陷阱（本地，零成本）──
+    deep_score, deep_reason = deep_filter(company, title, desc, salary, score)
+    if deep_score == 0:
+        print(f"  [🔴深度过滤] {company[:15]} | {title[:25]} | {salary} → {deep_reason}")
+        _record_outcome(city, company, title, salary, keyword, score,
+                        deep_reason, event="deep_filter")
+        return "skip"
+
+    # ── 公司背调 v2 (2026-08-07)：只对即将投递的做，带缓存，失败降级 ──
+    try:
+        def _company_eval(comp, cty):
+            q = comp[:8]
+            return search_tab.run_js(f"""
+                (async () => {{
+                  try {{
+                    const r = await fetch('/wapi/zpgeek/search/joblist.json?scene=1&query={q}&city={city}&page=1&pageSize=15', {{
+                      headers: {{'accept': 'application/json'}}
+                    }});
+                    const d = await r.json();
+                    const list = (d.zpData && d.zpData.jobList) || [];
+                    return JSON.stringify(list.map(j => ({{name: j.jobName, brand: j.brandName}})));
+                  }} catch(e) {{ return 'ERR:' + e.message; }}
+                }})()
+            """, timeout=20)
+        profile = run_company_background_check(company, city, _company_eval)
+        prof_score, prof_reason = deep_filter(company, title, desc, salary, score, profile=profile)
+        if prof_score == 0:
+            print(f"  [🔴公司背调] {company[:15]} | {title[:25]} → {prof_reason}")
+            _record_outcome(city, company, title, salary, keyword, score,
+                            prof_reason, event="company_profile")
+            return "skip"
+    except Exception as e:
+        # 背调失败降级：不误杀，正常继续
+        pass
+
+    # ── 五维评估引擎（2026-08-26）：资格层之上的评估层，只记录不拦截 ──
+    # verdict/total 追加进 reason → 随 _record_outcome/record_application 落库
+    try:
+        match_result = explain_match(title, desc, company=company,
+                                     salary=salary, city=city, cfg=cfg)
+        md = match_result["dimensions"]
+        reason += " |五维{}分:{}{}".format(
+            match_result["total"], match_result["verdict"],
+            ("；风险:" + "、".join(match_result["risks"][:2])) if match_result["risks"] else "")
+        ctx["reason"] = reason
+        print(f"  [🎯] {match_result['total']}分 {match_result['verdict']} | "
+              f"技术{md['technical']['weighted']:.0f}/30 方向{md['direction']['weighted']:.0f}/30 "
+              f"经验{md['experience']['weighted']:.0f}/15 文化{md['culture']['weighted']:.0f}/15 "
+              f"地点{md['location']['weighted']:.0f}/10")
+    except Exception as me:
+        match_result = None
+        print(f"  [⚠️五维评估异常(不拦截)] {str(me)[:60]}")
+
+    print(f"  [{score:3d}分] {company[:15]} | {title[:25]} | {salary} → {reason}")
+
+    if score < min_score:
+        _record_outcome(city, company, title, salary, keyword, score,
+                        reason, event="below_min_score")
+        return "skip"
+
+    ctx["passed_min_score"] = True
+
+    # 检查是否已达沟通上限
+    btn_disabled = search_tab.run_js(
+        'var b=document.querySelector(".op-btn-chat"); return b ? b.classList.contains("is-disabled") : false;'
+    )
+    if btn_disabled:
+        _record_outcome(city, company, title, salary, keyword, score,
+                        "已沟通过", event="already_chatted")
+        print(f"    ⏭️  已沟通过，跳过")
+        return "skip"
+
+    # 生成智能招呼语
+    greeting = generate_greeting(title, desc, company)
+    ctx["greeting"] = greeting
+    print(f"    💬 招呼语: {greeting[:50]}...")
+    return "proceed"
+
+
+def _execute_apply(page, search_tab, city, keyword, title, company, salary, ctx) -> dict:
+    """执行阶段：点击「立即沟通」→ 弹窗处理/拦截识别 → 会话信号验证 → 填发招呼语。
+
+    返回 {"action": "failed"}（弹窗拦截/会话未打开，FAILED 落库在本函数内完成，
+    调用方计 failed 后 continue）；或
+    {"action": "sent", "status", "decision", "verified", "verify_note"}。
+    """
+    # ── 点击"立即沟通" + 验证（A7：代码没报错 ≠ 业务动作成功）──
+    search_tab.run_js(
+        'var b=document.querySelector(".op-btn-chat"); if(b) b.click();'
+    )
+    time.sleep(2 + random.uniform(1, 2))
+
+    # 弹窗处理 + 拦截识别（沟通上限/频繁等 → 记 FAILED，不记 applied）
+    modal_text = _dismiss_modals(search_tab)
+    if any(k in modal_text for k in ["上限", "频繁", "限制", "无法", "验证", "封禁", "异常"]):
+        _record_outcome(city, company, title, salary, keyword, ctx["score"],
+                        f"弹窗拦截:{modal_text[:60]}", decision="failed",
+                        status="FAILED", event="apply_blocked")
+        print(f"    🚫 弹窗拦截: {modal_text[:60]} → FAILED")
+        return {"action": "failed"}
+
+    signal = _chat_signal(search_tab)
+    if signal == "":
+        _record_outcome(city, company, title, salary, keyword, ctx["score"],
+                        "点击立即沟通后未检测到会话/已沟通信号", decision="failed",
+                        status="FAILED", event="chat_not_opened")
+        print(f"    ❌ 会话未打开（未检测到输入框/已沟通信号）→ FAILED")
+        return {"action": "failed"}
+
+    greeting = ctx.get("greeting", "")
+    if signal in ("input", "panel"):
+        greeting_ok = _fill_and_send(search_tab, greeting)
+        if greeting_ok:
+            app_status, app_decision, verified, verify_note = "APPLIED", "applied", 1, "招呼语已发送并验证"
+        else:
+            app_status, app_decision, verified, verify_note = "UNCERTAIN", "uncertain", 0, "会话已打开但发送未验证"
+    else:
+        # 'already'：Boss 已确认沟通（按钮变已沟通），去聊天页补发招呼语
+        sent, note = _send_greeting_via_chat(page, search_tab, company, greeting)
+        if sent:
+            app_status, app_decision, verified, verify_note = "APPLIED", "applied", 1, note
+        else:
+            app_status, app_decision, verified, verify_note = "UNCERTAIN", "uncertain", 0, note
+    print(f"    {'✅' if verified else '⚠️'} {verify_note}")
+
+    return {"action": "sent", "status": app_status, "decision": app_decision,
+            "verified": verified, "verify_note": verify_note}
+
+
+def _handle_apply_failure(page, search_tab, search_url, city, keyword, title,
+                          company, salary, ctx, e):
+    """失败处理阶段：原巨型 except 的逐语句提取——分类记录 + 断连自愈。
+
+    返回 (search_tab, should_break)：should_break=True 表示断连且重连仍失败，
+    调用方须 break 提前结束当前关键词（与拆分前 except 内 break 语义一致）。
+    """
+    err = str(e)[:120]
+    trace = traceback.format_exc()
+    print(f"    ❌ 失败: {err}")
+    should_break = False
+    # ── tab↔页面断连自愈：重绑活 tab，后续卡片不再全废（Boss 页重载/session 掉线）──
+    if _looks_disconnected(e):
+        try:
+            search_tab = _recover_search_tab(page, search_tab, search_url)
+            print("    🔌 检测到页面断连，已重新连接搜索页 tab")
+        except Exception as re_e:
+            print(f"    🔌 重连仍失败（{str(re_e)[:60]}），本关键词提前结束")
+            should_break = True
+    _record_outcome(city, company, title, salary, keyword, ctx["score"],
+                    f"异常:{err}", decision="failed", status="FAILED",
+                    event="apply_exception", event_error=trace,
+                    traceback=trace)
+    time.sleep(1)
+    return search_tab, should_break
+
+
+def _cleanup_after_attempt(page, search_tab, search_url):
+    """收尾阶段：R2 同页续投 —— 最小 DOM 重置上一份投递的残留状态，不再整页刷新。
+
+    返回（可能被替换的）search_tab。本步保持在记账（applied_count+=1 / 落库 / 打印）
+    之前执行，与拆分前顺序一致：reset 抛异常则该岗位只记 FAILED，不产生 APPLIED 记录。
+    （投递间延迟 sleep 留在循环体末尾，保持原始语句顺序。）
+    """
+    return _reset_after_apply(page, search_tab, search_url)
+
+
 def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_score: int, cfg: dict):
     """在单个城市搜索一个关键词，完成投递循环。返回 (applied, skipped, failed) 计数。"""
     skill_dir = Path(__file__).parent
@@ -807,8 +1029,8 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
                 print(f"  ⏸️  {STOP_REASON}")
                 return applied_count, skipped_count, failed_count
             seen_titles.add(title)
-            score = 0
-            reason = ""
+            # A8：原 score/reason 局部变量改为共享上下文（异常处理器按拆分前语义读取最新值）
+            ctx = {"score": 0, "reason": ""}
 
             # 获取公司名和薪资（R1：合并为一次卡片遍历）
             _info = search_tab.run_js(f"""
@@ -839,189 +1061,53 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
                 continue
 
             try:
-                # 点击卡片加载详情
-                search_tab.run_js(f"""
-                    var cards = document.querySelectorAll(".job-card-wrap");
-                    for (var c of cards) {{
-                        var n = c.querySelector(".job-name");
-                        if (n && n.textContent.trim() === {json.dumps(title)}) {{
-                            c.click(); break;
-                        }}
-                    }}
-                """)
-                time.sleep(2 + random.uniform(0, 2))
-
-                desc_el = search_tab.ele(".job-detail-body") or search_tab.ele(".job-sec-text")
-                desc = desc_el.text if desc_el else ""
-
-                score, reason = score_jd(title, desc, cfg)
-
-                # 智能过滤：公司规模/性质/薪资/技术含量
-                smart_score, smart_reason = smart_filter(company, title, desc, salary, score, cfg, city=city)
-                if smart_score != score:
-                    if smart_score == 0:
-                        print(f"  [🔴过滤] {company[:15]} | {title[:25]} | {salary} → {smart_reason}")
-                        skipped_count += 1
-                        _record_outcome(city, company, title, salary, keyword, score,
-                                        smart_reason, event="smart_filter")
-                        continue
-                    else:
-                        print(f"  [🟡调整] {score}→{smart_score}分 {company[:15]} | {title[:25]} | {salary} → {smart_reason}")
-                        score = smart_score
-                        reason = reason + "、" + smart_reason
-
-                # ── 深度筛选 v2 (2026-08-07)：标题党检测 + 实习薪资陷阱（本地，零成本）──
-                deep_score, deep_reason = deep_filter(company, title, desc, salary, score)
-                if deep_score == 0:
-                    print(f"  [🔴深度过滤] {company[:15]} | {title[:25]} | {salary} → {deep_reason}")
-                    skipped_count += 1
-                    _record_outcome(city, company, title, salary, keyword, score,
-                                    deep_reason, event="deep_filter")
-                    continue
-
-                # ── 公司背调 v2 (2026-08-07)：只对即将投递的做，带缓存，失败降级 ──
-                try:
-                    def _company_eval(comp, cty):
-                        q = comp[:8]
-                        return search_tab.run_js(f"""
-                            (async () => {{
-                              try {{
-                                const r = await fetch('/wapi/zpgeek/search/joblist.json?scene=1&query={q}&city={city}&page=1&pageSize=15', {{
-                                  headers: {{'accept': 'application/json'}}
-                                }});
-                                const d = await r.json();
-                                const list = (d.zpData && d.zpData.jobList) || [];
-                                return JSON.stringify(list.map(j => ({{name: j.jobName, brand: j.brandName}})));
-                              }} catch(e) {{ return 'ERR:' + e.message; }}
-                            }})()
-                        """, timeout=20)
-                    profile = run_company_background_check(company, city, _company_eval)
-                    prof_score, prof_reason = deep_filter(company, title, desc, salary, score, profile=profile)
-                    if prof_score == 0:
-                        print(f"  [🔴公司背调] {company[:15]} | {title[:25]} → {prof_reason}")
-                        skipped_count += 1
-                        _record_outcome(city, company, title, salary, keyword, score,
-                                        prof_reason, event="company_profile")
-                        continue
-                except Exception as e:
-                    # 背调失败降级：不误杀，正常继续
-                    pass
-
-                # ── 五维评估引擎（2026-08-26）：资格层之上的评估层，只记录不拦截 ──
-                # verdict/total 追加进 reason → 随 _record_outcome/record_application 落库
-                try:
-                    match_result = explain_match(title, desc, company=company,
-                                                 salary=salary, city=city, cfg=cfg)
-                    md = match_result["dimensions"]
-                    reason += " |五维{}分:{}{}".format(
-                        match_result["total"], match_result["verdict"],
-                        ("；风险:" + "、".join(match_result["risks"][:2])) if match_result["risks"] else "")
-                    print(f"  [🎯] {match_result['total']}分 {match_result['verdict']} | "
-                          f"技术{md['technical']['weighted']:.0f}/30 方向{md['direction']['weighted']:.0f}/30 "
-                          f"经验{md['experience']['weighted']:.0f}/15 文化{md['culture']['weighted']:.0f}/15 "
-                          f"地点{md['location']['weighted']:.0f}/10")
-                except Exception as me:
-                    match_result = None
-                    print(f"  [⚠️五维评估异常(不拦截)] {str(me)[:60]}")
-
-                print(f"  [{score:3d}分] {company[:15]} | {title[:25]} | {salary} → {reason}")
-
-                if score < min_score:
-                    skipped_count += 1
-                    _record_outcome(city, company, title, salary, keyword, score,
-                                    reason, event="below_min_score")
-                    continue
-
-                page_all_zero = False
-
-                # 检查是否已达沟通上限
-                btn_disabled = search_tab.run_js(
-                    'var b=document.querySelector(".op-btn-chat"); return b ? b.classList.contains("is-disabled") : false;'
+                # A8 拆分：准备（详情/评分/过滤链）→ 执行（点击沟通/验证）→ 收尾（R2重置）→ 记账
+                action = _prepare_job_context(
+                    search_tab, city, keyword, title, company, salary,
+                    cfg, min_score, ctx
                 )
-                if btn_disabled:
+                if ctx.get("passed_min_score"):
+                    page_all_zero = False
+                if action == "skip":
                     skipped_count += 1
-                    _record_outcome(city, company, title, salary, keyword, score,
-                                    "已沟通过", event="already_chatted")
-                    print(f"    ⏭️  已沟通过，跳过")
                     continue
 
-                # 生成智能招呼语
-                greeting = generate_greeting(title, desc, company)
-                print(f"    💬 招呼语: {greeting[:50]}...")
-
-                # ── 点击"立即沟通" + 验证（A7：代码没报错 ≠ 业务动作成功）──
-                search_tab.run_js(
-                    'var b=document.querySelector(".op-btn-chat"); if(b) b.click();'
-                )
-                time.sleep(2 + random.uniform(1, 2))
-
-                # 弹窗处理 + 拦截识别（沟通上限/频繁等 → 记 FAILED，不记 applied）
-                modal_text = _dismiss_modals(search_tab)
-                if any(k in modal_text for k in ["上限", "频繁", "限制", "无法", "验证", "封禁", "异常"]):
+                result = _execute_apply(page, search_tab, city, keyword, title,
+                                        company, salary, ctx)
+                if result["action"] == "failed":
                     failed_count += 1
-                    _record_outcome(city, company, title, salary, keyword, score,
-                                    f"弹窗拦截:{modal_text[:60]}", decision="failed",
-                                    status="FAILED", event="apply_blocked")
-                    print(f"    🚫 弹窗拦截: {modal_text[:60]} → FAILED")
                     continue
 
-                signal = _chat_signal(search_tab)
-                if signal == "":
-                    failed_count += 1
-                    _record_outcome(city, company, title, salary, keyword, score,
-                                    "点击立即沟通后未检测到会话/已沟通信号", decision="failed",
-                                    status="FAILED", event="chat_not_opened")
-                    print(f"    ❌ 会话未打开（未检测到输入框/已沟通信号）→ FAILED")
-                    continue
-
-                if signal in ("input", "panel"):
-                    greeting_ok = _fill_and_send(search_tab, greeting)
-                    if greeting_ok:
-                        app_status, app_decision, verified, verify_note = "APPLIED", "applied", 1, "招呼语已发送并验证"
-                    else:
-                        app_status, app_decision, verified, verify_note = "UNCERTAIN", "uncertain", 0, "会话已打开但发送未验证"
-                else:
-                    # 'already'：Boss 已确认沟通（按钮变已沟通），去聊天页补发招呼语
-                    sent, note = _send_greeting_via_chat(page, search_tab, company, greeting)
-                    if sent:
-                        app_status, app_decision, verified, verify_note = "APPLIED", "applied", 1, note
-                    else:
-                        app_status, app_decision, verified, verify_note = "UNCERTAIN", "uncertain", 0, note
-                print(f"    {'✅' if verified else '⚠️'} {verify_note}")
-
-                # R2：同页续投 —— 最小 DOM 重置上一份的残留状态，不再整页刷新（翻页/换关键词才 reload）
-                search_tab = _reset_after_apply(page, search_tab, search_url)
+                # R2：同页续投 —— 在 _cleanup_after_attempt 内做最小 DOM 重置；
+                # 保持拆分前顺序：reset 成功后才记账（reset 异常 → 只记 FAILED）
+                search_tab = _cleanup_after_attempt(page, search_tab, search_url)
 
                 applied_count += 1
                 record_application(
                     platform="boss", city=city, company=company, title=title, salary=salary,
-                    keyword=keyword, score=score, resume_version=resume_version_for(title),
-                    decision=app_decision, status=app_status, reason=f"{reason}；{verify_note}", verified=verified,
-                    event_type=app_status.lower(),
+                    keyword=keyword, score=ctx["score"], resume_version=resume_version_for(title),
+                    decision=result["decision"], status=result["status"],
+                    reason=f"{ctx['reason']}；{result['verify_note']}", verified=result["verified"],
+                    event_type=result["status"].lower(),
                 )
                 print(f"    ✅ 已投递 ({applied_count + skipped_count}/{count + skipped_count})"
-                      + (" [UNCERTAIN]" if not verified else ""))
+                      + (" [UNCERTAIN]" if not result["verified"] else ""))
 
                 # 投递间延迟
                 time.sleep(1 + random.uniform(0, 2))
 
             except Exception as e:
+                # A8：与拆分前语义一致——若已跨过最低分门槛（原 page_all_zero=False 已执行），
+                # 异常路径同样补齐该状态，再进入统一失败处理
+                if ctx.get("passed_min_score"):
+                    page_all_zero = False
                 failed_count += 1
-                err = str(e)[:120]
-                trace = traceback.format_exc()
-                print(f"    ❌ 失败: {err}")
-                # ── tab↔页面断连自愈：重绑活 tab，后续卡片不再全废（Boss 页重载/session 掉线）──
-                if _looks_disconnected(e):
-                    try:
-                        search_tab = _recover_search_tab(page, search_tab, search_url)
-                        print("    🔌 检测到页面断连，已重新连接搜索页 tab")
-                    except Exception as re_e:
-                        print(f"    🔌 重连仍失败（{str(re_e)[:60]}），本关键词提前结束")
-                        break
-                _record_outcome(city, company, title, salary, keyword, score,
-                                f"异常:{err}", decision="failed", status="FAILED",
-                                event="apply_exception", event_error=trace)
-                time.sleep(1)
+                search_tab, should_break = _handle_apply_failure(
+                    page, search_tab, search_url, city, keyword, title,
+                    company, salary, ctx, e
+                )
+                if should_break:
+                    break
 
         page_num += 1
         if page_all_zero:
