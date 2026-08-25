@@ -6,6 +6,36 @@
 
 ---
 
+## 2026-08-26 凌晨批次实施记录
+
+**已完成（含此前未记档批次）：**
+
+| 项目 | 内容 | 落点 commit |
+|---|---|---|
+| match_engine 统一评分引擎 | 五维加权+可解释输出（新增能力），词边界修复误报，README 评估框架自动化 | `47a6b28` |
+| B4 报告模板加固 | string.Template+分段拼装替代精确匹配字符串替换，动态字段统一 html.escape | `14f8e57` |
+| A6 SIGINT 不写暂停锁 | Ctrl+C 只置 SHOULD_STOP 优雅退出本轮；SIGHUP/SIGTERM 保持写锁防 launchd 重拉 | `5326841` |
+| hr_auto_reply 内联扫描 | 归档 boss_full.scan_messages 行为并入 _scan_chat_page(unread_only)，消除 ModuleNotFoundError 路径 | `70ba106` |
+| A4 词表统一 | job_pools/city_pools 以 config.json 为唯一事实源，旧硬编码降级 LEGACY 兜底 | `7f0a3bd` |
+| config.example.json 补全 | 补齐 salary_filter/body_exclude/job_pools/city_pools/safety/keyword_tiers/schedule 真实结构 | `b970489` |
+| B5/B6 死代码清理 + CITY_CODES 统一 | 删 MAX_RETRIES/get_today_new/_fetch_company_jobs；CITY_CODES 收敛进 shared.py | `98379ef` |
+| **R1（原 P3）合并两次全卡片 JS 遍历** | 查公司名+薪资合并为一次 run_js 返回 {company,salary}，查不到两字段空串、兜底/跳过分支语义不变 | `d2b2ce2` |
+| **R2（原 P4）同页续投** | 每份投递后不再整页 reload：新增 `_reset_after_apply` 最小 DOM 重置残留态（移除残留聊天输入框/沟通按钮、清空详情面板，只删节点不点按钮）；仅 tab 被导航离开搜索页时才回退整页加载；翻页仍走懒加载滚动、换关键词走入口自愈 | `4cc2f94` |
+
+**更正（从「仍待做」划掉）：**
+
+- **B2（--daily 接线）已修好**（经核实为后续批次完成）：`boss_apply._resolve_cities/_resolve_keywords` 已从 `city_pools.city_priority` / `job_pools.keywords` 派生（顶层键优先），不再是"只跑深圳+智驾测试"。
+- **tab 断连自愈已随 P0 批次提交**：`_looks_disconnected` + `_recover_search_tab`（`8287bd6`），投递循环异常路径已接线。
+- **P1（全量 JSON 重写+fsync）已自然消解**：运行时只写 SQLite 单一事实源，`shared.save_log` 已无调用方；`*-log.json` 为迁移前只读历史快照。
+
+**仍待做（如实盘点）：**
+
+- **A8 部分**：异常 traceback 已入 events 表（event_error），但投递循环仍是巨型 try，未按步骤拆分。
+- **A3 三副本未统一**：`~/.hermes/skills/job-hunting/job-hunter` 与 `~/.claude/skills/job-hunter` 副本仍在，与本仓库并存。
+- 产品级方向（手动确认制投递 / kill switch 语义分层 / 三线简历实验重启）未启动。
+
+---
+
 ## 2026-08-20 P0 实施记录（本仓库）
 
 以下 P0 项已落地并有测试覆盖（`tests/test_p0.py` 8 项 + `tests/regression.py` 19 例）：
@@ -22,6 +52,7 @@
 **已知迁移语义**：旧 JSON 中 245 条缺 `time` 的记录按"文件 mtime 当天中午 + 文件内序号"生成稳定 ID 导入，不伪造到今天；同文件内完全重复的条目会按 ID 幂等去重。
 
 **仍待做（P1/P2）**：`--daily` 接线和 tab 断连自愈仍在工作区未提交；report 模板仍是字符串替换（B4）；投递后整页 reload（P4）与 company/salary 两次 JS（P3）未合并；SIGINT 仍写暂停锁（A6）；`hr_auto_reply.py` 默认模式 import 已归档的 `boss_full`（会 ModuleNotFoundError）；`ab_test_track.POOL_KEYWORDS` 仍与 config 词表不一致（A4）；`config.example.json` 缺 job_pools/city_pools/safety。
+> **（2026-08-26 更正：上行为 08-20 时点快照，已全部过时——各项状态见上方「2026-08-26 凌晨批次实施记录」。）**
 
 ---
 
