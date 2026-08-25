@@ -31,7 +31,7 @@
 1. `git mv BRIEF_MATCH_ENGINE.md BRIEF_P2_CLEANUP.md docs/briefs/`（目录新建），再 `git add` 本任务书改名后的副本也放进去（先 cp 本文件到 docs/briefs/BRIEF_P3_HOTPATH.md 再 mv 根目录原件）。
 2. 更新 OPTIMIZATION_PLAN.md：在顶部实施记录区追加「2026-08-26 凌晨批次」小节，逐条标注已完成项：match_engine 统一评分引擎（新增能力）、B4 报告模板、A6 SIGINT、hr_auto_reply 内联扫描、A4 词表统一、B5/B6 死代码+CITY_CODES 统一；并更正「仍待做」清单——B2（--daily 接线）经核实此前批次已修好（boss_apply `_target_cities/_search_keywords` 已从 city_pools/job_pools 派生），从待做中划掉；剩余未做的如实列出（tab 断连自愈等）。
 3. README「关键指标」表下方加一行口径说明：累计投递以 `ab_experiment.db`（store.py 单一事实源）为准，JSON 日志为历史快照；然后用**只读 SQL** 从 applications_v2 统计当前真实累计数，把表里三个口径数字更新为单一口径 + 统计日期。统计命令和结果贴进报告。
-- 自证：git status 干净（除运行态文件）；README/OPTIMIZATION_PLAN 无本机敏感路径泄露检查（grep 掉 /Users/REDACTED 若新引入）。
+- 自证：git status 干净（除运行态文件）；README/OPTIMIZATION_PLAN 无本机敏感路径泄露检查（新引入本机绝对路径则清除）。
 
 ## 三、最终验收（逐条贴真实输出）
 
