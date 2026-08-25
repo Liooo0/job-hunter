@@ -1,0 +1,4 @@
+# 评分引擎 match_engine.py 零依赖，无需安装任何东西即可运行。
+# 以下依赖仅自动投递/HR 消息功能需要：
+DrissionPage>=4.0
+httpx
