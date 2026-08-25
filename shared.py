@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 from datetime import datetime, date, timedelta
 from pathlib import Path
 from typing import Optional
@@ -102,6 +103,45 @@ def load_log(log_file: Path) -> dict:
     return {"applied": [], "skipped": [], "failed": []}
 
 
+# ═══════════════════════════════════════════════════════════════
+#  词边界关键词匹配（2026-08-26）
+#  修裸子串误报: "AI" 命中 "Maintained"、"Go" 命中 "Google"、"API" 命中 "Rapid"。
+#  规则（参考 BossZhiPin_Job_Search 的 job_matcher.py）:
+#  - 关键词首/尾是 ASCII 字母数字时，该侧加 (?<![A-Za-z0-9]) / (?![A-Za-z0-9])
+#  - 纯符号侧（".NET" 的 "."、"C++" 的 "+"）不加边界
+#  - 中文关键词无词边界概念，退化为子串匹配
+# ═══════════════════════════════════════════════════════════════
+_KW_PATTERN_CACHE = {}
+
+
+def contains_kw(haystack: str, kw: str) -> bool:
+    """词边界关键词匹配。ASCII 词首尾加字母数字边界，中文退化子串；空串安全。"""
+    if not haystack or not kw:
+        return False
+    key = kw.lower()
+    pat = _KW_PATTERN_CACHE.get(key)
+    if pat is None:
+        left = r"(?<![A-Za-z0-9])" if re.match(r"[a-z0-9]", key[:1]) else ""
+        right = r"(?![A-Za-z0-9])" if re.match(r"[a-z0-9]", key[-1:]) else ""
+        pat = re.compile(left + re.escape(key) + right, re.IGNORECASE)
+        _KW_PATTERN_CACHE[key] = pat
+    return bool(pat.search(haystack))
+
+
+# ── 外包公司名单 / 高价值项目词表（原 smart_filter 局部变量提为模块级，供 match_engine 复用）──
+KNOWN_OUTSOURCING = [
+    "中软", "软通动力", "博彦", "法本", "纬致", "东信创智",
+    "中科创达", "润和", "信必优", "微创", "文思海辉",
+    "外企德科", "亿达", "京北方", "汉克时代", "柯莱特",
+    "易诚高科", "海橘", "华苏", "诚迈", "拓保", "神州信息",
+]
+BOOST_PROJECTS = [
+    "特斯拉", "蔚来", "理想", "小鹏", "比亚迪", "吉利",
+    "大众", "博世", "主机厂", "智驾", "adas", "autopilot",
+    "fsd", "noa", "l4", "自动驾驶", "车联网",
+]
+
+
 def save_log(log: dict, log_file: Path):
     log_file.write_text(json.dumps(log, ensure_ascii=False, indent=2))
     # Flush to disk immediately (prevent data loss on kill)
@@ -127,14 +167,14 @@ def score_jd(title: str, desc: str, config: Optional[dict] = None) -> tuple[int,
     # must_contain 检查（标题或JD正文中至少命中一个）
     must = cfg.get("must_contain", [])
     if must:
-        if not any(kw.lower() in combined for kw in must):
+        if not any(contains_kw(combined, kw) for kw in must):
             return 0, f"缺少必须关键词: {must[0]}..."
 
     # 排除词只匹配标题，不扫JD正文（避免"网约车"出现在公司描述里就误杀）
     # 注意: "实习/实习生" 跳过标题排除——高薪实习(日薪≥300)由下方放行逻辑处理，
     #       低薪实习由 smart_filter 薪资规则拦截（2026-08-12 修复回归）
     for kw in cfg.get("exclude_keywords", []):
-        if kw.lower() in title_lower:
+        if contains_kw(title, kw):
             if kw in ("实习", "实习生"):
                 continue
             return 0, f"标题包含排除词: {kw}"
@@ -143,23 +183,23 @@ def score_jd(title: str, desc: str, config: Optional[dict] = None) -> tuple[int,
     hits = []
 
     for role in cfg.get("target_roles", []):
-        if role.lower() in title_lower:
+        if contains_kw(title, role):
             score += 30
             hits.append(f"目标岗位:{role}")
             break
 
-    if any(kw in combined for kw in ["实习", "校招", "应届", "intern"]):
+    if any(contains_kw(combined, kw) for kw in ["实习", "校招", "应届", "intern"]):
         score += 30
         hits.append("接受实习/应届")
 
-    skill_matches = [s for s in cfg.get("skills", []) if s.lower() in combined]
+    skill_matches = [s for s in cfg.get("skills", []) if contains_kw(combined, s)]
     if skill_matches:
         bonus = min(len(skill_matches) * 5, 30)
         score += bonus
         hits.append(f"技能匹配:{'/'.join(skill_matches[:3])}")
 
     for kw in cfg.get("boost_keywords", []):
-        if kw.lower() in combined:
+        if contains_kw(combined, kw):
             score += 10
             hits.append(kw)
             break
@@ -186,24 +226,12 @@ def smart_filter(company: str, title: str, desc: str, salary: str, score: int, c
 
     # ── 公司名关键词排除（如"科技"类公司） ──
     for kw in cfg.get("exclude_company_keywords", []):
-        if kw.lower() in company_lower:
+        if contains_kw(company, kw):
             return 0, f"公司名含「{kw}」→排除"
 
-    # ── 识别外包公司（驻场类，但可能对接好项目） ──
-    KNOWN_OUTSOURCING = [
-        "中软", "软通动力", "博彦", "法本", "纬致", "东信创智",
-        "中科创达", "润和", "信必优", "微创", "文思海辉",
-        "外企德科", "亿达", "京北方", "汉克时代", "柯莱特",
-        "易诚高科", "海橘", "华苏", "诚迈", "拓保", "神州信息",
-    ]
-    # ── 高价值项目关键词（外包+这类项目=优质跳板） ──
-    BOOST_PROJECTS = [
-        "特斯拉", "蔚来", "理想", "小鹏", "比亚迪", "吉利",
-        "大众", "博世", "主机厂", "智驾", "adas", "autopilot",
-        "fsd", "noa", "l4", "自动驾驶", "车联网",
-    ]
+    # KNOWN_OUTSOURCING / BOOST_PROJECTS 已提为模块级（match_engine 复用）
 
-    is_outsourcing = any(kw in company_lower for kw in KNOWN_OUTSOURCING)
+    is_outsourcing = any(contains_kw(company, kw) for kw in KNOWN_OUTSOURCING)
 
     # ── 解析薪资下限（K/月） ──
     # 兼容: "12-20K"、"1.2-2万"、"15-25K·13薪"、"3.5-4万"
@@ -253,22 +281,22 @@ def smart_filter(company: str, title: str, desc: str, salary: str, score: int, c
         "诊断", "diagnos", "hil", "sil", "台架", "仿真",
         "标定", "calibration", "功能安全", "aspice", "iso",
     ]
-    tech_score = sum(1 for kw in TECH_KEYWORDS if kw in combined)
+    tech_score = sum(1 for kw in TECH_KEYWORDS if contains_kw(combined, kw))
 
     # ── 司机类关键词（没有技术含量=纯开车） ──
     DRIVER_ONLY = [
         "自动挡", "接送", "司机", "代驾", "网约车", "货运",
         "押运", "配送", "日结", "临时", "驾驶员", "c1",
     ]
-    is_driver_focused = any(kw in title_lower for kw in DRIVER_ONLY)
+    is_driver_focused = any(contains_kw(title, kw) for kw in DRIVER_ONLY)
 
     # Rule 0: 公司名含排除词 → 直接过滤
-    if any(kw in company_lower for kw in cfg.get("exclude_company_keywords", [])):
+    if any(contains_kw(company, kw) for kw in cfg.get("exclude_company_keywords", [])):
         return 0, "公司名排除→过滤"
 
     # Rule 0.5: 身体条件/高级Python框架 在JD正文中 → 直接过滤
     for kw in cfg.get("body_exclude_keywords", []):
-        if kw.lower() in combined:
+        if contains_kw(combined, kw):
             return 0, f"JD含排除词'{kw}'→过滤"
 
     # Rule 1: 薪资过滤 (v1.0)
@@ -293,11 +321,11 @@ def smart_filter(company: str, title: str, desc: str, salary: str, score: int, c
         return 0, "纯司机岗无技术→过滤"
 
     # Rule 4: 工人/操作工类岗位 → 过滤
-    if any(kw in title_lower for kw in ["学徒", "师傅", "组装", "装配", "操作工", "普工"]):
+    if any(contains_kw(title, kw) for kw in ["学徒", "师傅", "组装", "装配", "操作工", "普工"]):
         return 0, "非测试类工人岗→过滤"
 
     # Rule 5: 外包+高价值项目 → 加分（职业跳板）
-    if is_outsourcing and any(kw in combined for kw in BOOST_PROJECTS):
+    if is_outsourcing and any(contains_kw(combined, kw) for kw in BOOST_PROJECTS):
         boost = 10
         reason_parts.append("高价值外包跳板+" + str(boost))
         return score + boost, "、".join(reason_parts) if reason_parts else ""
@@ -305,7 +333,7 @@ def smart_filter(company: str, title: str, desc: str, salary: str, score: int, c
     # Rule 6: 技术含量很低（<=1个技术关键词）且薪资<8K → 降级
     # 豁免：B级方向岗（实施/运营/顾问/知识库/工作流）——运营类岗位天然技术词少但方向对
     if tech_score <= 1 and salary_low > 0 and salary_low < 8:
-        b_direction = any(kw in title_lower for kw in ["实施", "运营", "顾问", "知识库", "工作流", "解决方案", "技术支持", "培训师", "训练师", "助理"])
+        b_direction = any(contains_kw(title, kw) for kw in ["实施", "运营", "顾问", "知识库", "工作流", "解决方案", "技术支持", "培训师", "训练师", "助理"])
         if b_direction:
             reason_parts.append(f"B级方向岗豁免Rule6({tech_score}技/{salary_low}K)")
         elif score > 0:
