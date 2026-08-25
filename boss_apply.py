@@ -21,6 +21,7 @@ from store import (
     record_application, count_applied_since,
 )
 from deep_filter import deep_filter, run_company_background_check
+from match_engine import explain_match
 from report import print_terminal_summary, generate_html
 
 # ═══════════════════════════════════════════════════════════════
@@ -887,6 +888,23 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
                 except Exception as e:
                     # 背调失败降级：不误杀，正常继续
                     pass
+
+                # ── 五维评估引擎（2026-08-26）：资格层之上的评估层，只记录不拦截 ──
+                # verdict/total 追加进 reason → 随 _record_outcome/record_application 落库
+                try:
+                    match_result = explain_match(title, desc, company=company,
+                                                 salary=salary, city=city, cfg=cfg)
+                    md = match_result["dimensions"]
+                    reason += " |五维{}分:{}{}".format(
+                        match_result["total"], match_result["verdict"],
+                        ("；风险:" + "、".join(match_result["risks"][:2])) if match_result["risks"] else "")
+                    print(f"  [🎯] {match_result['total']}分 {match_result['verdict']} | "
+                          f"技术{md['technical']['weighted']:.0f}/30 方向{md['direction']['weighted']:.0f}/30 "
+                          f"经验{md['experience']['weighted']:.0f}/15 文化{md['culture']['weighted']:.0f}/15 "
+                          f"地点{md['location']['weighted']:.0f}/10")
+                except Exception as me:
+                    match_result = None
+                    print(f"  [⚠️五维评估异常(不拦截)] {str(me)[:60]}")
 
                 print(f"  [{score:3d}分] {company[:15]} | {title[:25]} | {salary} → {reason}")
 
