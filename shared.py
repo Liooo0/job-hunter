@@ -123,10 +123,14 @@ FALLBACK_CONFIG = {
     "skills": [
         "Python", "RAG", "Dify", "Agent", "智能体", "知识库", "工作流",
         "LLM", "大模型", "Prompt", "MCP", "Coze", "LangChain", "FastAPI",
+        "AI", "GPT", "OpenAI", "ChatGPT", "Embedding", "Transformer",
+        "机器学习", "深度学习", "自动化", "Linux", "Shell", "Git",
+        "CAN", "CANoe", "OTA", "车联网", "车载", "T-Box", "V2X", "通信", "5G",
     ],
     "boost_keywords": [
         "Agent", "RAG", "Dify", "LLM", "大模型", "MCP", "工作流",
         "知识库", "AI实施", "解决方案", "企业AI落地",
+        "AI", "人工智能", "OTA", "车联网", "CAN", "通信", "5G", "自动化",
     ],
     "exclude_keywords": [
         "总监", "架构师", "首席", "资深", "P7", "P8", "销售", "电销", "地推",
