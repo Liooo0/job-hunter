@@ -93,6 +93,12 @@ def _signal_handler(signum, frame):
              signal.SIGINT: "Ctrl+C(SIGINT)"}
     SHOULD_STOP = True
     STOP_REASON = names.get(signum, f"信号{signum}")
+    if signum == signal.SIGINT:
+        # A6: Ctrl+C = 用户只想结束本轮，不写暂停锁。
+        # 旧行为会把 .paused 写下去，导致 launchd 定时任务停摆到手动 --resume。
+        # SIGHUP/SIGTERM（真·终端关闭/被杀）仍走 pause() 写锁防重拉。
+        print("\n🛑 收到 Ctrl+C，手动中断，本轮结束（未写暂停锁，定时任务照常）")
+        return
     pause(STOP_REASON)
     print(f"\n⏸️  收到 {STOP_REASON}，正在优雅停止...")
 
