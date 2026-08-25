@@ -26,6 +26,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 import store
+from shared import load_config
 
 PROJECT = Path(__file__).resolve().parent
 DB = PROJECT / "ab_experiment.db"
@@ -36,18 +37,50 @@ BASELINE_DAY = date(2026, 8, 10)   # 预实验（不参与裁决）
 EXPERIMENT_START = date(2026, 8, 14)
 EXPERIMENT_END = date(2026, 8, 20)
 
-POOL_KEYWORDS = {
+# ── 词表加载（P2-T5 / A4：修复实验词表与实际投递词表漂移）──────────
+# 唯一事实源 = config.json 的 job_pools.keywords / city_pools.city_priority；
+# 下方两个 LEGACY_* 旧硬编码只在 config 缺字段时兜底，不再新增词条。
+#
+# 历史 category 兼容映射（勿删）：
+#   show_funnel 每次都会用 pool_of() 对存量记录的搜索词重新归类（_v2_row_to_legacy），
+#   而 applications 表历史行的 category 用的是旧池名。所以 pool_of 的查找顺序：
+#     ① LEGACY_POOL_KEYWORDS —— 老关键词继续落回原桶名
+#        （如 "AI应用工程师"→"AI应用/AI工程师"，而不是漂移成 "S级-AI应用工程师"）；
+#     ② POOL_KEYWORDS（config 新池）—— 只承接旧表没有的新词（如 "车载测试"）。
+#   新旧桶在漏斗里各自显示、不互相改名，避免历史实验结论失真。
+#   新旧池名对应关系参考（人工维护，仅作文档）：
+#     AI应用/AI工程师          ≈ S级-AI应用工程师
+#     AI实施/工作流/RAG/Dify    ≈ S级-AI实施/解决方案
+#     技术支持/AI产品           ≈ A级-IT技术支持/数字化
+#     RPA/Python自动化         ≈ （已并入上面各池，无独立新池）
+LEGACY_POOL_KEYWORDS = {
     "AI应用/AI工程师": ["AI应用工程师", "AI工程师", "LLM应用", "大模型应用", "Agent应用", "智能体开发"],
     "AI实施/工作流/RAG/Dify": ["AI实施", "AI实施工程师", "工作流工程师", "RAG", "知识库运营", "Dify", "Coze", "AI解决方案"],
     "RPA/Python自动化": ["RPA开发", "Python开发", "自动化", "数字员工", "低代码开发", "AI自动化"],
     "技术支持/AI产品": ["AI技术支持", "AI产品", "AI运营", "AI训练师", "AI文档"],
 }
 
-CITY_PRIORITY = {
+LEGACY_CITY_PRIORITY = {
     "深圳": "primary",
     "广州": "secondary", "东莞": "secondary", "佛山": "secondary",
     "北京": "opportunistic", "上海": "opportunistic", "杭州": "opportunistic", "成都": "opportunistic",
 }
+
+
+def _load_wordlists():
+    """从 config.json 读 job_pools/city_pools；缺字段时回退旧硬编码。
+
+    返回 (POOL_KEYWORDS, CITY_PRIORITY, 来源标记)。"""
+    cfg = load_config()
+    cfg_pools = (cfg.get("job_pools") or {}).get("keywords") or {}
+    cfg_cities = (cfg.get("city_pools") or {}).get("city_priority") or {}
+    pools = cfg_pools if cfg_pools else dict(LEGACY_POOL_KEYWORDS)
+    cities = cfg_cities if cfg_cities else dict(LEGACY_CITY_PRIORITY)
+    source = "config.json" if (cfg_pools and cfg_cities) else "内置兜底(LEGACY)"
+    return pools, cities, source
+
+
+POOL_KEYWORDS, CITY_PRIORITY, WORDLIST_SOURCE = _load_wordlists()
 
 REJECT_REASONS = [
     "NO_READ", "READ_NO_REPLY", "REJECT_LOW_EXPERIENCE", "REJECT_EDUCATION",
@@ -89,9 +122,11 @@ def get_db():
 
 
 def pool_of(keyword: str) -> str:
-    for pool, kws in POOL_KEYWORDS.items():
-        if keyword in kws:
-            return pool
+    """搜索词 → 岗位池名。先查 LEGACY 旧池（历史桶名兼容，见文件头注释），再查 config 新池，都没有归「其他」。"""
+    for pools in (LEGACY_POOL_KEYWORDS, POOL_KEYWORDS):
+        for pool, kws in pools.items():
+            if keyword in kws:
+                return pool
     return "其他"
 
 
@@ -260,6 +295,9 @@ def main():
     ap.add_argument("--update", nargs=3, metavar=("公司", "岗位", "字段"), help="补录状态 read/replied/interview/offer")
     ap.add_argument("--reject", nargs=3, metavar=("公司", "岗位", "原因"), help="记录拒绝原因")
     args = ap.parse_args()
+
+    total_kw = sum(len(v) for v in POOL_KEYWORDS.values())
+    print(f"[词表] 来源={WORDLIST_SOURCE} | 分组 {len(POOL_KEYWORDS)} 个 / 关键词 {total_kw} 个 | 城市 {len(CITY_PRIORITY)} 个")
 
     if args.import_logs:
         import_logs()
