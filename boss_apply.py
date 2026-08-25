@@ -444,6 +444,52 @@ def _recover_search_tab(page, search_tab, url):
     return new_tab
 
 
+def _reset_after_apply(page, search_tab, search_url):
+    """R2 同页续投：清掉上一份投递在页面上的残留状态，替代整页 reload。
+
+    整页刷新原来保证的"干净初始态"，用最小 DOM 操作等价复现（只删节点，不点任何按钮）：
+      1. 残留聊天输入框/会话 → 移除节点（防下一轮 _chat_signal 误判、招呼语误发进上一会话）
+      2. 残留职位详情文本   → 清空（防 score_jd 读到上一岗位 JD）
+      3. 残留"立即沟通"按钮 → 移除（防误点到上一岗位的沟通入口）
+    卡片列表本身不动：外层循环靠 seen_titles 游标跳过已处理卡片，滚动位置/懒加载全保留。
+    仅当 tab 已被导航离开搜索页时才回退为整页加载（等价旧自愈路径，属罕见分支）。
+    返回可继续使用的 search_tab。
+    """
+    try:
+        url = search_tab.url or ""
+    except Exception:
+        url = ""
+    if "zhipin.com" not in url or "/web/geek/job" not in url:
+        # tab 被导航走（如整页跳到聊天页）→ 沿用旧的整页加载自愈
+        try:
+            search_tab.get(search_url)
+        except Exception:
+            search_tab = page.new_tab(search_url)
+        time.sleep(3 + random.uniform(0, 2))
+        return search_tab
+    try:
+        search_tab.run_js("""
+            var eds = document.querySelectorAll('[contenteditable="true"]');
+            for (var i = 0; i < eds.length; i++) {
+                if (eds[i].offsetParent !== null) eds[i].remove();
+            }
+            var tas = document.querySelectorAll('textarea');
+            for (var j = 0; j < tas.length; j++) {
+                if (tas[j].offsetParent !== null) tas[j].remove();
+            }
+            var b = document.querySelector('.op-btn-chat');
+            if (b) b.remove();
+            var d1 = document.querySelector('.job-detail-body');
+            if (d1) d1.textContent = '';
+            var d2 = document.querySelector('.job-sec-text');
+            if (d2) d2.textContent = '';
+        """)
+    except Exception:
+        pass
+    time.sleep(0.5 + random.uniform(0, 0.8))
+    return search_tab
+
+
 def _record_outcome(city, company, title, salary, keyword, score, reason, *,
                     decision="skipped", status="SKIPPED", resume_version="",
                     event=None, event_error=None):
@@ -943,12 +989,8 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
                         app_status, app_decision, verified, verify_note = "UNCERTAIN", "uncertain", 0, note
                 print(f"    {'✅' if verified else '⚠️'} {verify_note}")
 
-                # 导回搜索页
-                try:
-                    search_tab.get(search_url)
-                except Exception:
-                    search_tab = page.new_tab(search_url)
-                time.sleep(3 + random.uniform(0, 2))
+                # R2：同页续投 —— 最小 DOM 重置上一份的残留状态，不再整页刷新（翻页/换关键词才 reload）
+                search_tab = _reset_after_apply(page, search_tab, search_url)
 
                 applied_count += 1
                 record_application(
