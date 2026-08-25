@@ -33,3 +33,6 @@ dry_run_plan.json
 # ===== 个人隐私文件（本机保留，不入库）=====
 persona.md
 HANDOFF_CLAUDE.md
+
+# ===== 任务书(含敏感信息示例,永不入库)=====
+BRIEF_*.md
