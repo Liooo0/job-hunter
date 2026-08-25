@@ -138,6 +138,20 @@ def _application_id(platform: str, city: str, company_norm: str, title: str, app
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:20]
 
 
+def _event_payload(platform, city, company, title, salary, keyword,
+                   score, decision, status, reason, verified, extra_payload=None) -> dict:
+    """事件 payload（键序固定，保证与历史记录字节一致；extra_payload 仅追加新键）。"""
+    payload = {
+        "platform": platform, "city": city, "company": company,
+        "title": title, "salary": salary, "keyword": keyword,
+        "score": score, "decision": decision, "status": status,
+        "reason": reason, "verified": verified,
+    }
+    if extra_payload:
+        payload.update(extra_payload)
+    return payload
+
+
 def record_application(
     *,
     platform: str = "boss",
@@ -156,6 +170,7 @@ def record_application(
     applied_at: Optional[str] = None,
     event_type: Optional[str] = None,
     event_error: Optional[str] = None,
+    extra_payload: Optional[dict] = None,
 ) -> str:
     """写入一条 application 记录 + 一条 event。返回 application_id。
 
@@ -164,6 +179,9 @@ def record_application(
       uncertain  / UNCERTAIN    动作已发生但未完全验证（人工复核）
       skipped    / SKIPPED      规则过滤/去重/已沟通过
       failed     / FAILED       动作失败（弹窗拦截/异常）
+
+    extra_payload：可选，合并进事件 payload JSON（如 A8 的 traceback 字段），
+    不传时与旧行为完全一致。
     """
     applied_at = applied_at or datetime.now().isoformat()
     now = datetime.now().isoformat()
@@ -195,12 +213,10 @@ def record_application(
            VALUES (?,?,?,?,?,?)""",
         (
             aid, jid, event_type or decision, applied_at,
-            json.dumps({
-                "platform": platform, "city": city, "company": company,
-                "title": title, "salary": salary, "keyword": keyword,
-                "score": score, "decision": decision, "status": status,
-                "reason": reason, "verified": verified,
-            }, ensure_ascii=False),
+            json.dumps(_event_payload(platform, city, company, title, salary,
+                                      keyword, score, decision, status,
+                                      reason, verified, extra_payload),
+                       ensure_ascii=False),
             event_error,
         ),
     )
