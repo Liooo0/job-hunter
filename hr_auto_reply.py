@@ -144,14 +144,45 @@ HR说: {msg_text[:300]}
     return "interest", ""  # 空则跳过发送
 
 
-def scan_all_conversations():
+def _is_hr_real_message(msg: str) -> bool:
+    """过滤非 HR 真实消息（自己发的招呼语/礼貌回复、系统占位、系统消息、Boss 广告）。"""
+    if not msg or len(msg) < 2:
+        return False
+    # 自己发的招呼语
+    if "您好！我是刘文迪" in msg or "我是刘文迪" in msg:
+        return False
+    # 自己发的礼貌回复（防重复回）
+    if any(msg.startswith(p) for p in [
+        "好的，谢谢您", "好的，感谢", "收到，感谢", "收到，谢谢",
+        "了解，谢谢您", "了解，感谢", "抱歉，我没有", "不好意思，我没有",
+        "好的，谢谢您的回复", "好的，谢谢您的反馈",
+    ]):
+        return False
+    # 系统占位消息（"您正在与BossX沟通"）
+    if msg.startswith("您正在与Boss") or msg.startswith("您正在与boss"):
+        return False
+    # 系统消息
+    if msg.startswith("您的附件简历") or "撤回了一条消息" in msg:
+        return False
+    # Boss 广告/系统推送
+    if "职位竞争者" in msg or "查看详细分析" in msg:
+        return False
+    return True
+
+
+def _scan_chat_page(unread_only: bool = False) -> list:
     """
-    全量扫描所有会话：找出最后一条消息是 HR 真实消息（非系统占位/非自己发的招呼语）的会话。
-    不依赖未读标记——即使被点开过也能扫到。
+    扫描 Boss 聊天页会话列表，返回 HR 真实消息列表。
+    unread_only=True 时只保留有未读角标的会话（P2-T3：原 archive/legacy/boss_full.py
+    的 scan_messages 行为内联至此——该模块已归档，import 会直接 ModuleNotFoundError）。
     """
     from DrissionPage import ChromiumPage
     import time as _t
-    page = ChromiumPage(9222)
+    try:
+        page = ChromiumPage(9222)
+    except Exception as e:
+        print(f"❌ Chrome连接失败: {e}")
+        return []
 
     tab = None
     for tid in page.tab_ids:
@@ -177,10 +208,12 @@ def scan_all_conversations():
         lis.forEach(function(li) {
             var nameBox = li.querySelector(".name-box");
             if (!nameBox) return;
+            var badge = li.querySelector(".notice-badge");
             var msgEl = li.querySelector(".last-msg-text");
             var timeEl = li.querySelector(".time");
             out.push({
                 nameBox: nameBox.textContent.trim().slice(0, 30),
+                unread: badge ? parseInt(badge.textContent.trim()) || 0 : 0,
                 lastMsg: msgEl ? msgEl.textContent.trim() : '',
                 time: timeEl ? timeEl.textContent.trim() : ''
             });
@@ -188,30 +221,13 @@ def scan_all_conversations():
         return out;
     ''')
 
-    # 过滤：只保留 HR 真实消息
+    # 过滤：只保留 HR 真实消息；未读模式额外要求角标 ≥ 1
     hr_replies = []
     for item in result:
+        if unread_only and item.get("unread", 0) < 1:
+            continue
         msg = item.get("lastMsg", "")
-        if not msg or len(msg) < 2:
-            continue
-        # 自己发的招呼语
-        if "您好！我是刘文迪" in msg or "我是刘文迪" in msg:
-            continue
-        # 自己发的礼貌回复（防重复回）
-        if any(msg.startswith(p) for p in [
-            "好的，谢谢您", "好的，感谢", "收到，感谢", "收到，谢谢",
-            "了解，谢谢您", "了解，感谢", "抱歉，我没有", "不好意思，我没有",
-            "好的，谢谢您的回复", "好的，谢谢您的反馈",
-        ]):
-            continue
-        # 系统占位消息（"您正在与BossX沟通"）
-        if msg.startswith("您正在与Boss") or msg.startswith("您正在与boss"):
-            continue
-        # 系统消息
-        if msg.startswith("您的附件简历") or "撤回了一条消息" in msg:
-            continue
-        # Boss 广告/系统推送
-        if "职位竞争者" in msg or "查看详细分析" in msg:
+        if not _is_hr_real_message(msg):
             continue
 
         hr_replies.append({
@@ -219,10 +235,24 @@ def scan_all_conversations():
             "name": item["nameBox"][:12],
             "nameBox": item["nameBox"],
             "message": msg,
+            "unread": item.get("unread", 0),
             "time": item.get("time", ""),
             "job_context": {},
         })
     return hr_replies
+
+
+def scan_all_conversations():
+    """
+    全量扫描所有会话：找出最后一条消息是 HR 真实消息（非系统占位/非自己发的招呼语）的会话。
+    不依赖未读标记——即使被点开过也能扫到。
+    """
+    return _scan_chat_page(unread_only=False)
+
+
+def scan_unread_messages():
+    """扫描未读消息（只保留有未读角标的会话）。替代已归档 boss_full.scan_messages。"""
+    return _scan_chat_page(unread_only=True)
 
 
 def _extract_company(name_box: str) -> str:
@@ -242,9 +272,8 @@ def main():
         print("🔍 全量扫描所有会话（不依赖未读标记）...")
         msgs = scan_all_conversations()
     else:
-        from boss_full import scan_messages
         print("🔍 扫描未读消息...")
-        msgs = scan_messages()
+        msgs = scan_unread_messages()
 
     if not msgs:
         print("📭 没有新消息")
@@ -293,7 +322,7 @@ def main():
             time.sleep(SCAN_INTERVAL)
             print(f"\n🔄 第 {rnd} 轮扫描...")
             try:
-                msgs = scan_messages()
+                msgs = scan_unread_messages()
             except Exception as e:
                 print(f"❌ 扫描失败: {e}")
                 continue
