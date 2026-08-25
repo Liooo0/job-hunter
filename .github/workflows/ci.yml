@@ -1,0 +1,16 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: 语法编译检查 + 模块导入冒烟
+        run: |
+          python -m compileall -q . -x 'archive/'
+          python -c "import failure_tracking; import shared; print('import ok')"
