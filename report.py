@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
-"""报告生成器 — 终端汇总 + 自包含 HTML 报告"""
+"""报告生成器 — 终端汇总 + 自包含 HTML 报告
+
+渲染方式（B4 加固）：页面骨架用 string.Template（$占位符），
+三个数据区块（投递表/趋势/跳过抽样）由分段函数拼装后整体注入。
+所有动态文本字段统一过 _esc() → html.escape，公司名/岗位名含 <>&" 不会破坏页面。
+"""
 
 import json
+from html import escape
+from string import Template
 from datetime import datetime, date
 from pathlib import Path
 from typing import Optional
@@ -10,12 +17,58 @@ from shared import load_config, merge_logs, recent_activity, ensure_dir, format_
 
 SKILL_DIR = Path(__file__).parent
 
-HTML_TEMPLATE = """<!DOCTYPE html>
+# 无数据时的占位块（原 {% else %} 分支内容）
+NO_DATA_HTML = '<div class="no-data">暂无投递记录</div>'
+
+APPLIED_SECTION_TEMPLATE = Template("""<h2>📋 所有投递记录</h2>
+<table>
+<thead><tr><th>评分</th><th>公司</th><th>岗位</th><th>薪资</th><th>日志来源</th></tr></thead>
+<tbody>
+$rows</tbody>
+</table>""")
+
+APPLIED_ROW_TEMPLATE = Template(
+    '<tr>\n'
+    '  <td><span class="score-badge $score_class">$score</span></td>\n'
+    '  <td>$company</td>\n'
+    '  <td>$job</td>\n'
+    '  <td>$salary</td>\n'
+    '  <td style="color:#aaa;font-size:12px">$log_file</td>\n'
+    '</tr>\n'
+)
+
+TREND_SECTION_TEMPLATE = Template("""<h2>📈 近 7 天趋势</h2>
+<div class="trend-bar">
+$bars</div>""")
+
+TREND_BAR_TEMPLATE = Template(
+    '  <div class="trend-day">\n'
+    '    <div class="trend-fill" style="height: $height_pct%"></div>\n'
+    '    <div class="trend-label">$label</div>\n'
+    '  </div>\n'
+)
+
+SKIPPED_SECTION_TEMPLATE = Template("""<h2>⏭️ 最近跳过的岗位（抽样）</h2>
+<table>
+<thead><tr><th>评分</th><th>岗位</th><th>跳过原因</th></tr></thead>
+<tbody>
+$rows</tbody>
+</table>""")
+
+SKIPPED_ROW_TEMPLATE = Template(
+    '<tr>\n'
+    '  <td><span class="score-badge score-low">$score</span></td>\n'
+    '  <td>$job</td>\n'
+    '  <td style="color:#888;font-size:13px">$reason</td>\n'
+    '</tr>\n'
+)
+
+HTML_TEMPLATE = Template("""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Job Hunter 报告 — {{ report_time }}</title>
+<title>Job Hunter 报告 — $report_time</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -52,77 +105,35 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 </head>
 <body>
 <h1>🤖 Job Hunter 报告</h1>
-<div class="subtitle">生成时间: {{ report_time }} | 平台: {{ platform }} | ⚠️ 未验证投递: {{ total_uncertain }}</div>
+<div class="subtitle">生成时间: $report_time | 平台: $platform | ⚠️ 未验证投递: $total_uncertain</div>
 
 <div class="cards">
   <div class="card blue">
-    <div class="num">{{ total_jobs_seen }}</div>
+    <div class="num">$total_jobs_seen</div>
     <div class="label">浏览岗位</div>
   </div>
   <div class="card green">
-    <div class="num">{{ total_applied }}</div>
+    <div class="num">$total_applied</div>
     <div class="label">累计投递</div>
   </div>
   <div class="card yellow">
-    <div class="num">{{ total_skipped }}</div>
+    <div class="num">$total_skipped</div>
     <div class="label">已跳过</div>
   </div>
   <div class="card red">
-    <div class="num">{{ total_failed }}</div>
+    <div class="num">$total_failed</div>
     <div class="label">失败</div>
   </div>
 </div>
 
-{% if new_applied %}
-<h2>📋 所有投递记录</h2>
-<table>
-<thead><tr><th>评分</th><th>公司</th><th>岗位</th><th>薪资</th><th>日志来源</th></tr></thead>
-<tbody>
-{% for entry in new_applied %}
-<tr>
-  <td><span class="score-badge {{ entry.score_class }}">{{ entry.score }}</span></td>
-  <td>{{ entry.company }}</td>
-  <td>{{ entry.job }}</td>
-  <td>{{ entry.salary }}</td>
-  <td style="color:#aaa;font-size:12px">{{ entry._log_file }}</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-{% else %}
-<div class="no-data">暂无投递记录</div>
-{% endif %}
+$applied_section
 
-{% if trend_data %}
-<h2>📈 近 7 天趋势</h2>
-<div class="trend-bar">
-{% for day in trend_data %}
-  <div class="trend-day">
-    <div class="trend-fill" style="height: {{ day.height_pct }}%"></div>
-    <div class="trend-label">{{ day.label }}</div>
-  </div>
-{% endfor %}
-</div>
-{% endif %}
+$trend_section
 
-{% if skipped_sample %}
-<h2>⏭️ 最近跳过的岗位（抽样）</h2>
-<table>
-<thead><tr><th>评分</th><th>岗位</th><th>跳过原因</th></tr></thead>
-<tbody>
-{% for entry in skipped_sample %}
-<tr>
-  <td><span class="score-badge score-low">{{ entry.score }}</span></td>
-  <td>{{ entry.job }}</td>
-  <td style="color:#888;font-size:13px">{{ entry.reason }}</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-{% endif %}
+$skipped_section
 
 </body>
-</html>"""
+</html>""")
 
 
 def score_class(score: int) -> str:
@@ -131,6 +142,54 @@ def score_class(score: int) -> str:
     elif score >= 30:
         return "score-mid"
     return "score-low"
+
+
+def _esc(value) -> str:
+    """动态文本统一 HTML 转义（公司名/岗位名等含 <>&" 时页面不破）。"""
+    return escape(str(value)) if value is not None else ""
+
+
+def _render_applied_section(applied: list) -> str:
+    if not applied:
+        return NO_DATA_HTML
+    rows = "".join(
+        APPLIED_ROW_TEMPLATE.substitute(
+            score_class=e["score_class"],
+            score=e.get("score", 0),
+            company=_esc(e.get("company", "")),
+            job=_esc(e.get("job", "")),
+            salary=_esc(e.get("salary", "")),
+            log_file=_esc(e.get("_log_file", "")),
+        )
+        for e in applied
+    )
+    return APPLIED_SECTION_TEMPLATE.substitute(rows=rows)
+
+
+def _render_trend_section(trend_data: list) -> str:
+    if not trend_data:
+        return ""
+    bars = "".join(
+        TREND_BAR_TEMPLATE.substitute(
+            height_pct=d["height_pct"], label=_esc(d["label"])
+        )
+        for d in trend_data
+    )
+    return TREND_SECTION_TEMPLATE.substitute(bars=bars)
+
+
+def _render_skipped_section(skipped: list) -> str:
+    if not skipped:
+        return ""
+    rows = "".join(
+        SKIPPED_ROW_TEMPLATE.substitute(
+            score=e.get("score", 0),
+            job=_esc(e.get("job", "")),
+            reason=_esc(e.get("reason", "")),
+        )
+        for e in skipped
+    )
+    return SKIPPED_SECTION_TEMPLATE.substitute(rows=rows)
 
 
 def generate_html(
@@ -164,83 +223,18 @@ def generate_html(
         pct = round(d["applied"] / max_applied * 100) if max_applied > 0 else 0
         trend_data.append({"label": d["date"][5:], "height_pct": max(pct, 5), "count": d["applied"]})
 
-    # Jinja2 可选，这里用简单字符串替换
-    html = HTML_TEMPLATE
-    replacements = {
-        "{{ report_time }}": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "{{ platform }}": "Boss直聘",
-        "{{ total_jobs_seen }}": str(merged["applied"].__len__() + merged["skipped"].__len__()),
-        "{{ total_applied }}": str(len(merged["applied"])),
-        "{{ total_skipped }}": str(len(merged["skipped"])),
-        "{{ total_failed }}": str(len(merged["failed"])),
-        "{{ total_uncertain }}": str(sum(1 for e in merged["applied"] if e.get("status") == "UNCERTAIN")),
-    }
-    for k, v in replacements.items():
-        html = html.replace(k, v)
-
-    # 投递表格行
-    if applied:
-        rows = ""
-        for e in applied:
-            rows += (
-                f'<tr><td><span class="score-badge {e["score_class"]}">{e["score"]}</span></td>'
-                f'<td>{e.get("company","")}</td><td>{e.get("job","")}</td>'
-                f'<td>{e.get("salary","")}</td>'
-                f'<td style="color:#aaa;font-size:12px">{e.get("_log_file","")}</td></tr>\n'
-            )
-        html = html.replace(
-            '{% for entry in new_applied %}\n<tr>\n<td><span class="score-badge {{ entry.score_class }}">{{ entry.score }}</span></td>\n<td>{{ entry.company }}</td>\n<td>{{ entry.job }}</td>\n<td>{{ entry.salary }}</td>\n<td style="color:#aaa;font-size:12px">{{ entry._log_file }}</td>\n</tr>\n{% endfor %}',
-            rows,
-        )
-        html = html.replace(
-            "{% if new_applied %}", ""
-        ).replace(
-            "{% else %}\n<div class=\"no-data\">暂无投递记录</div>\n{% endif %}",
-            ""
-        )
-    else:
-        html = html.replace(
-            "{% if new_applied %}", ""
-        ).replace(
-            "{% else %}",
-            ""
-        ).replace(
-            "{% endif %}",
-            ""
-        )
-
-    # 趋势图
-    if trend_data:
-        bars = ""
-        for d in trend_data:
-            bars += (
-                f'<div class="trend-day">'
-                f'<div class="trend-fill" style="height: {d["height_pct"]}%"></div>'
-                f'<div class="trend-label">{d["label"]}</div></div>\n'
-            )
-        html = html.replace(
-            '{% for day in trend_data %}\n  <div class="trend-day">\n    <div class="trend-fill" style="height: {{ day.height_pct }}%"></div>\n    <div class="trend-label">{{ day.label }}</div>\n  </div>\n{% endfor %}',
-            bars,
-        )
-        html = html.replace("{% if trend_data %}", "").replace("{% endif %}", "")
-    else:
-        html = html.replace("{% if trend_data %}", "").replace("{% endif %}", "")
-
-    # 跳过抽样
-    if skipped:
-        rows = ""
-        for e in skipped:
-            rows += (
-                f'<tr><td><span class="score-badge score-low">{e["score"]}</span></td>'
-                f'<td>{e.get("job","")}</td><td style="color:#888;font-size:13px">{e.get("reason","")}</td></tr>\n'
-            )
-        html = html.replace(
-            '{% for entry in skipped_sample %}\n<tr>\n<td><span class="score-badge score-low">{{ entry.score }}</span></td>\n<td>{{ entry.job }}</td>\n<td style="color:#888;font-size:13px">{{ entry.reason }}</td>\n</tr>\n{% endfor %}',
-            rows,
-        )
-        html = html.replace("{% if skipped_sample %}", "").replace("{% endif %}", "")
-    else:
-        html = html.replace("{% if skipped_sample %}", "").replace("{% endif %}", "")
+    html = HTML_TEMPLATE.substitute(
+        report_time=datetime.now().strftime("%Y-%m-%d %H:%M"),
+        platform="Boss直聘",
+        total_jobs_seen=len(merged["applied"]) + len(merged["skipped"]),
+        total_applied=len(merged["applied"]),
+        total_skipped=len(merged["skipped"]),
+        total_failed=len(merged["failed"]),
+        total_uncertain=str(sum(1 for e in merged["applied"] if e.get("status") == "UNCERTAIN")),
+        applied_section=_render_applied_section(applied),
+        trend_section=_render_trend_section(trend_data),
+        skipped_section=_render_skipped_section(skipped),
+    )
 
     # 写入
     if output_path is None:
