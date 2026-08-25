@@ -163,12 +163,8 @@ RISK_COMPANY_WORDS = ["人力资源", "劳务派遣", "人才服务", "外包", 
 # 公司名出现这些词且岗位是 AI 类 → 高风险降级
 RISK_COMPANY_STRONG = ["人力资源", "劳务", "派遣", "代招", "猎头"]
 
-CITY_CODES = {
-    "深圳": "101280600", "广州": "101280100", "北京": "101010100",
-    "上海": "101020100", "杭州": "101210100", "成都": "101270100",
-    "武汉": "101200100", "南京": "101190100", "东莞": "101281600",
-    "西安": "101110100", "长沙": "101250100", "重庆": "101040100",
-}
+# CITY_CODES 已统一到 shared.py（P2-T6）。原本地副本唯一使用方 _fetch_company_jobs
+# 是 NotImplementedError 死代码，已一并删除，故本文件不再需要城市代码。
 
 
 def _load_cache() -> dict:
@@ -183,27 +179,6 @@ def _load_cache() -> dict:
 def _save_cache(cache: dict):
     CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
     CACHE_FILE.write_text(json.dumps(cache, ensure_ascii=False, indent=1), encoding="utf-8")
-
-
-def _fetch_company_jobs(company: str, city: str) -> Optional[list]:
-    """页面内 fetch 搜索 API 拉公司全部在招岗位。失败返回 None（降级为未知）。"""
-    code = CITY_CODES.get(city, "101280600")
-    # 公司名太长时截断（搜索词太长命中率低）
-    query = company[:8]
-    js = f"""
-    (async () => {{
-      try {{
-        const r = await fetch('/wapi/zpgeek/search/joblist.json?scene=1&query={query}&city={code}&page=1&pageSize=15', {{
-          headers: {{'accept': 'application/json'}}
-        }});
-        const d = await r.json();
-        const list = (d.zpData && d.zpData.jobList) || [];
-        return JSON.stringify(list.map(j => ({{name: j.jobName, brand: j.brandName}})));
-      }} catch(e) {{ return 'ERR:' + e.message; }}
-    }})()
-    """
-    # 需要 tab 上下文执行，由调用方提供
-    raise NotImplementedError("由 caller 注入执行器")
 
 
 def profile_company(jobs: list) -> dict:

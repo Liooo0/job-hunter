@@ -15,7 +15,7 @@ from pathlib import Path
 from DrissionPage import ChromiumPage, ChromiumOptions
 from typing import Optional
 
-from shared import load_config, score_jd, smart_filter, get_chrome_opts, kill_switch_check, kill_switch_off, kill_switch_on, kill_switch_status
+from shared import load_config, score_jd, smart_filter, get_chrome_opts, kill_switch_check, kill_switch_off, kill_switch_on, kill_switch_status, CITY_CODES
 from store import (
     ensure_migrated, migrate_legacy_logs, list_city_titles, company_applied_recently,
     record_application, count_applied_since,
@@ -333,30 +333,7 @@ def generate_greeting(title: str, desc: str, company: str = "") -> str:
     return greeting
 
 
-# 常用城市代码
-CITY_CODES = {
-    "全国": "100010000",
-    "北京": "101010100",
-    "上海": "101020100",
-    "广州": "101280100",
-    "深圳": "101280600",
-    "杭州": "101210100",
-    "成都": "101270100",
-    "武汉": "101200100",
-    "南京": "101190100",
-    "重庆": "101040100",
-    "苏州": "101190400",
-    "合肥": "101220100",
-    "西安": "101110100",
-    "长沙": "101250100",
-    "东莞": "101281600",
-    "天津": "101030100",
-    "厦门": "101230200",
-    "佛山": "101280500",
-    "无锡": "101190200",
-    "珠海": "101280700",
-    "宁波": "101210400",
-}
+# CITY_CODES 已统一到 shared.py（P2-T6），本文件从 shared 导入。
 
 
 def parse_args(cfg: dict):
@@ -1235,7 +1212,6 @@ def main():
     SAFETY_DAILY_CAP = DAILY_LIMIT   # 跨进程：今日已投达到此值 → 无论 count 多少都停（防再次超投封号）
     HOURLY_CAP = _safety["hourly_cap"]  # 单小时已投达到此值 → 休息 30 分钟再继续
     CIRCUIT_BREAK_THRESHOLD = 3  # 连续 3 次失败 → 自动熔断（S2 级防护）
-    MAX_RETRIES = 2     # 断连最多重试 2 次（之前 10 次导致封号）
 
     for city in cities:
         if not city.strip():
