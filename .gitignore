@@ -29,3 +29,7 @@ config.json
 com.*.job-hunter.plist
 dry_run_plan.json
 .DS_Store
+
+# ===== 个人隐私文件（本机保留，不入库）=====
+persona.md
+HANDOFF_CLAUDE.md
