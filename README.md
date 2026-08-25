@@ -65,8 +65,8 @@ python3 match_engine.py "AI应用工程师" \
 # 1. 放进 Claude Code skills 目录
 git clone https://github.com/Liooo0/job-hunter.git ~/.claude/skills/job-hunter
 
-# 2. 装浏览器控制依赖
-pip install DrissionPage
+# 2. 装浏览器控制依赖（评分引擎不需要，自动投递需要）
+pip install DrissionPage httpx
 
 # 3. 启动带调试端口的 Chrome 并登录招聘平台（macOS 示例）
 /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
@@ -82,6 +82,14 @@ cp config.example.json config.json
 cd ~/.claude/skills/job-hunter
 PYTHONPATH="" python3 boss_apply.py --cities "深圳,广州" --jobs "AI应用工程师,AI实施" --count 20
 ```
+
+> 💡 手动跑显示「夜间禁投」是正常的风控保护（默认 23:00-08:00 不投递），白天再试即可。
+> 想验证整套规则而不碰浏览器，可以跑测试（纯标准库，无需安装任何东西）：
+>
+> ```bash
+> python3 tests/regression.py          # 19 个真实 JD 回归案例
+> python3 -m unittest discover -s tests -p "test_*.py" -t .   # 31 个单元测试
+> ```
 
 ## 配置说明
 

@@ -38,12 +38,12 @@
     "notes": "target_distribution 各项加总应为 1.0，用于控制投递结构"
   },
 
-  "city_pools_说明": "city_priority 值为 primary/secondary/tertiary，决定城市扫描优先级与顺序。",
+  "city_pools_说明": "city_priority 值为 primary/secondary/opportunistic，决定城市扫描优先级与地点评分档位（match_engine 地点维度：primary=90/secondary=70/opportunistic=55）。",
   "city_pools": {
     "city_priority": {
       "深圳": "primary",
       "广州": "secondary",
-      "佛山": "tertiary"
+      "佛山": "opportunistic"
     }
   },
 
