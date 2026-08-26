@@ -65,6 +65,8 @@ CREATE TABLE IF NOT EXISTS applications_v2 (
     technical_interview INTEGER NOT NULL DEFAULT 0,
     offer INTEGER NOT NULL DEFAULT 0,
     reject_reason TEXT,
+    gates TEXT,                    -- v2.1 决策链快照 JSON（decision_trace.to_json）
+    greeting_template_id TEXT,     -- v2.1 招呼语模板版本（如 T2:Python）
     applied_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
@@ -121,10 +123,34 @@ def normalize_company(company: str) -> str:
     return s.strip(" ·-—()（）").lower()
 
 
+# ── v2.1 增量列迁移（幂等：新库由 SCHEMA 直接带列；旧库 ALTER 补列，重复执行无副作用）──
+_V21_EXTRA_COLUMNS = (
+    ("applications_v2", "gates"),
+    ("applications_v2", "greeting_template_id"),
+)
+_v21_columns_ready = False
+
+
+def _ensure_v21_columns(conn):
+    """给旧库补 v2.1 新列。已存在则跳过（duplicate column 幂等忽略）。"""
+    global _v21_columns_ready
+    if _v21_columns_ready:
+        return
+    for table, col in _V21_EXTRA_COLUMNS:
+        existing = {row[1] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+        if col not in existing:
+            try:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} TEXT")
+            except sqlite3.OperationalError:
+                pass  # 列已存在/并发迁移 → 幂等
+    _v21_columns_ready = True
+
+
 def _conn() -> sqlite3.Connection:
     conn = sqlite3.connect(DB)
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
+    _ensure_v21_columns(conn)
     return conn
 
 
@@ -171,6 +197,8 @@ def record_application(
     event_type: Optional[str] = None,
     event_error: Optional[str] = None,
     extra_payload: Optional[dict] = None,
+    gates: Optional[str] = None,
+    greeting_template_id: Optional[str] = None,
 ) -> str:
     """写入一条 application 记录 + 一条 event。返回 application_id。
 
@@ -182,12 +210,19 @@ def record_application(
 
     extra_payload：可选，合并进事件 payload JSON（如 A8 的 traceback 字段），
     不传时与旧行为完全一致。
+    gates：可选，v2.1 决策链快照 JSON 字符串（decision_trace.to_json 产物）；
+    同时并入 events payload。不传时该列落 NULL（旧数据兼容）。
+    greeting_template_id：可选，v2.1 招呼语模板版本标识。
     """
     applied_at = applied_at or datetime.now().isoformat()
     now = datetime.now().isoformat()
     cn = normalize_company(company)
     jid = _job_id(platform, city, cn, title)
     aid = _application_id(platform, city, cn, title, applied_at)
+
+    merged_extra = dict(extra_payload) if extra_payload else {}
+    if gates:
+        merged_extra.setdefault("gates", gates)
 
     conn = _conn()
     conn.execute(
@@ -200,13 +235,15 @@ def record_application(
     conn.execute(
         """INSERT INTO applications_v2
            (application_id, job_id, platform, city, company, company_norm, title, salary, keyword,
-            jd_text, score, resume_version, decision, status, reason, verified, applied_at, created_at, updated_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            jd_text, score, resume_version, decision, status, reason, verified,
+            gates, greeting_template_id, applied_at, created_at, updated_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
            ON CONFLICT(application_id) DO UPDATE SET
              decision=excluded.decision, status=excluded.status, reason=excluded.reason,
              verified=excluded.verified, updated_at=excluded.updated_at""",
         (aid, jid, platform, city, company, cn, title, salary, keyword,
-         jd_text, score, resume_version, decision, status, reason, verified, applied_at, now, now),
+         jd_text, score, resume_version, decision, status, reason, verified,
+         gates, greeting_template_id, applied_at, now, now),
     )
     conn.execute(
         """INSERT INTO events (application_id, job_id, type, timestamp, payload, error)
@@ -215,7 +252,7 @@ def record_application(
             aid, jid, event_type or decision, applied_at,
             json.dumps(_event_payload(platform, city, company, title, salary,
                                       keyword, score, decision, status,
-                                      reason, verified, extra_payload),
+                                      reason, verified, merged_extra or None),
                        ensure_ascii=False),
             event_error,
         ),
