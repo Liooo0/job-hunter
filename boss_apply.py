@@ -2,6 +2,7 @@
 """Boss直聘自动投递脚本 v2 — 多城市 + 多关键词 + 自动报告"""
 
 import argparse
+import hashlib
 import json
 import os
 import random
@@ -15,6 +16,8 @@ from pathlib import Path
 from DrissionPage import ChromiumPage, ChromiumOptions
 from typing import Optional
 
+import decision_trace
+import risk_slowdown
 from shared import load_config, score_jd, smart_filter, get_chrome_opts, kill_switch_check, kill_switch_off, kill_switch_on, kill_switch_status, CITY_CODES
 from store import (
     ensure_migrated, migrate_legacy_logs, list_city_titles, company_applied_recently,
@@ -53,6 +56,10 @@ def get_safety(cfg: dict) -> dict:
         "night_ban_start": 22,       # 夜间禁投开始
         "night_ban_end": 8,          # 夜间禁投结束（次日）
         "dedup_days": 7,             # 同公司×同城 N 天内不重复投
+        # ── v2.1 风控阶梯降速（只作用于异常路径，正常节奏不受影响）──
+        "uncertain_slowdown_factor": 2.0,   # 出现 uncertain 后，下一次投递前间隔倍率
+        "max_consecutive_uncertain": 2,     # 连续 N 次 uncertain → 本轮提前收工（写 .paused）
+        "failure_rate_stop": 0.30,          # 本轮尝试≥10次且失败率超此值 → 提前收工
     }
     defaults.update(cfg.get("safety") or {})
     return defaults
@@ -282,34 +289,40 @@ USER_BG = {
     "默认": "我擅长用AI工具解决实际业务问题，独立交付过完整的自动化项目，能快速上手干活",
 }
 
-# 招呼语模板（JD角色 → 开场白）
-GREETING_TEMPLATES = {
-    "采购": "看到贵司的{title}岗位，{bg}。想了解这个岗位主要负责哪类物资品类，是IT/办公设备还是工程项目物料？",
-    "AI应用": "看到贵司的{title}岗位，{bg}。想了解一下这个岗位主要负责哪个业务方向的产品或场景？",
-    "Agent": "看到贵司在招{title}，{bg}。好奇咱们团队主要用哪些Agent框架和工具链？",
-    "RPA": "看到贵司的{title}，{bg}。想了解这个岗位主要做哪类流程自动化，电商还是内部系统？",
-    "自动化": "看到贵司的{title}，{bg}。这个岗位偏向业务侧的流程自动化还是偏底层的系统开发？",
-    "低代码": "看到贵司的{title}，{bg}。咱们主要用哪些低代码平台？Dify/Coze还是影刀？",
-    "AI产品": "看到贵司招{title}，{bg}。好奇这个岗位是偏向AI能力的产品化，还是用AI提升现有产品体验？",
-    "AI运营": "看到贵司的{title}，{bg}。想了解咱们运营团队目前用了哪些AI工具提效？",
-    "测试": "看到贵司的{title}，{bg}。想了解这个岗位的测试对象和主要用到的工具链？",
-    "车联网": "看到贵司在招{title}，{bg}。咱们主要做T-BOX还是整车OTA方向的测试？",
-    "座舱": "看到贵司的{title}，{bg}。想了解一下这个岗位主要负责座舱的哪些功能模块？",
-    "Python": "看到贵司的{title}，{bg}。想了解这个岗位的技术栈和主要业务场景？",
-    "知识库": "看到贵司的{title}，{bg}。咱们的知识库主要服务内部还是对外产品？",
-    "默认": "看到贵司的{title}，{bg}。期待进一步了解这个岗位的具体方向和团队情况！",
+# 招呼语三风格变体（v2.1 任务三）：
+#   T1 技术栈对齐型 / T2 业务场景型 / T3 项目亮点型
+# 素材约束：bg 一律取 USER_BG（用户真实背景），问句 q 按 JD 匹配角色选取，
+# 绝不编造经历。按公司名确定性轮换，同一岗位重跑必得同一模板。
+GREETING_STYLE_ORDER = ("T1", "T2", "T3")
+GREETING_STYLES = {
+    "T1": {"name": "技术栈对齐型", "pattern": "看到贵司的{title}岗位，{bg}。{q}"},
+    "T2": {"name": "业务场景型", "pattern": "您好，看到贵司在招{title}，{bg}。想了解这个岗位主要负责的业务场景，另外{q}"},
+    "T3": {"name": "项目亮点型", "pattern": "{bg}——这是我独立跑通的项目。看到贵司的{title}岗位方向很匹配，{q}"},
+}
+
+# 各角色的追问（从原 GREETING_TEMPLATES 的问句部分拆出，随 JD 关键词变化）
+ROLE_QUESTIONS = {
+    "采购": "想了解这个岗位主要负责哪类物资品类，是IT/办公设备还是工程项目物料？",
+    "AI应用": "想了解一下这个岗位主要负责哪个业务方向的产品或场景？",
+    "Agent": "好奇咱们团队主要用哪些Agent框架和工具链？",
+    "RPA": "想了解这个岗位主要做哪类流程自动化，电商还是内部系统？",
+    "自动化": "这个岗位偏向业务侧的流程自动化还是偏底层的系统开发？",
+    "低代码": "咱们主要用哪些低代码平台？Dify/Coze还是影刀？",
+    "AI产品": "好奇这个岗位是偏向AI能力的产品化，还是用AI提升现有产品体验？",
+    "AI运营": "想了解咱们运营团队目前用了哪些AI工具提效？",
+    "测试": "想了解这个岗位的测试对象和主要用到的工具链？",
+    "车联网": "咱们主要做T-BOX还是整车OTA方向的测试？",
+    "座舱": "想了解一下这个岗位主要负责座舱的哪些功能模块？",
+    "Python": "想了解这个岗位的技术栈和主要业务场景？",
+    "知识库": "咱们的知识库主要服务内部还是对外产品？",
+    "默认": "期待进一步了解这个岗位的具体方向和团队情况！",
 }
 
 
-def generate_greeting(title: str, desc: str, company: str = "") -> str:
-    """根据JD内容智能生成个性化招呼语。
-
-    匹配顺序: JD关键词 → 默认
-    返回: 50-100字的自然招呼语
-    """
+def _match_greeting_role(title: str, desc: str) -> str:
+    """JD 关键词 → 角色匹配（原 generate_greeting 的匹配逻辑原样保留）。"""
     combined = ((title or "") + " " + (desc or "")).lower()
 
-    # 按优先级匹配角色类型
     ROLE_PRIORITY = [
         "Agent", "AI应用", "AI产品", "AI运营", "RPA",
         "低代码", "自动化", "车联网", "座舱", "测试",
@@ -326,16 +339,43 @@ def generate_greeting(title: str, desc: str, company: str = "") -> str:
     # 采购岗专属人设优先（采购JD常含"自动化/测试/Python"等词，防止被AI人设截胡）
     if "采购" in (title or ""):
         matched_role = "采购"
+    return matched_role
+
+
+def pick_greeting_style(company: str) -> str:
+    """按公司名确定性轮换风格：md5(company)%3。
+
+    注意不能用内建 hash()——str 的 hash 受 PYTHONHASHSEED 随机化，
+    跨进程不稳定；md5 保证同一岗位重跑拿到同一模板。
+    """
+    digest = hashlib.md5((company or "").encode("utf-8")).hexdigest()
+    return GREETING_STYLE_ORDER[int(digest, 16) % len(GREETING_STYLE_ORDER)]
+
+
+def generate_greeting_with_meta(title: str, desc: str, company: str = "") -> tuple:
+    """根据JD内容智能生成个性化招呼语，并返回模板版本标识。
+
+    匹配顺序: JD关键词 → 默认角色；风格按公司名 md5%3 确定性轮换。
+    返回: (50-100字自然招呼语, 模板id 如 "T1:Python"/"T3:默认")
+    """
+    matched_role = _match_greeting_role(title, desc)
+    style = pick_greeting_style(company)
 
     bg = USER_BG.get(matched_role, USER_BG["默认"])
-    template = GREETING_TEMPLATES.get(matched_role, GREETING_TEMPLATES["默认"])
+    q = ROLE_QUESTIONS.get(matched_role, ROLE_QUESTIONS["默认"])
+    pattern = GREETING_STYLES[style]["pattern"]
 
-    # 限制招呼语总长度（Boss有字数限制）
-    greeting = template.format(title=title[:20], bg=bg)
+    greeting = pattern.format(title=(title or "")[:20], bg=bg, q=q)
     if len(greeting) > 120:
         greeting = greeting[:117] + "..."
 
-    return greeting
+    template_id = f"{style}:{matched_role}"
+    return greeting, template_id
+
+
+def generate_greeting(title: str, desc: str, company: str = "") -> str:
+    """兼容包装：只返回招呼语文本（旧调用点/测试不受影响）。"""
+    return generate_greeting_with_meta(title, desc, company)[0]
 
 
 # CITY_CODES 已统一到 shared.py（P2-T6），本文件从 shared 导入。
@@ -499,12 +539,18 @@ def _reset_after_apply(page, search_tab, search_url):
 
 def _record_outcome(city, company, title, salary, keyword, score, reason, *,
                     decision="skipped", status="SKIPPED", resume_version="",
-                    event=None, event_error=None, traceback=None):
+                    event=None, event_error=None, traceback=None,
+                    trace=None, greeting_template_id=None):
     """把一次投递结果写入 SQLite 单一事实源（store.py）。
 
     A8：traceback 为可选增强字段——异常失败时随事件 payload 落库完整堆栈，
     原有 reason(err) 字段格式不变。
+    v2.1：trace 为 decision_trace 快照——落库前补 final_decision/final_reason，
+    gates JSON 随 applications_v2.gates 列 + events payload 落库。
     """
+    if trace is not None:
+        decision_trace.finalize(trace, decision, reason)
+    gates_json = decision_trace.to_json(trace)
     extra_payload = {"traceback": traceback} if traceback else None
     record_application(
         platform="boss", city=city, company=company, title=title, salary=salary,
@@ -512,6 +558,7 @@ def _record_outcome(city, company, title, salary, keyword, score, reason, *,
         decision=decision, status=status, reason=reason, verified=0,
         event_type=event or decision, event_error=event_error,
         extra_payload=extra_payload,
+        gates=gates_json, greeting_template_id=greeting_template_id,
     )
 
 
@@ -746,28 +793,36 @@ def _prepare_job_context(search_tab, city, keyword, title, company, salary,
 
     score, reason = score_jd(title, desc, cfg)
     ctx["score"], ctx["reason"] = score, reason
+    tr = ctx.get("trace")  # v2.1 决策链快照（ctx 未带 trace 时各 gate 调用为无操作）
 
     # 智能过滤：公司规模/性质/薪资/技术含量
     smart_score, smart_reason = smart_filter(company, title, desc, salary, score, cfg, city=city)
     if smart_score != score:
         if smart_score == 0:
+            decision_trace.gate(tr, "smart_filter", f"rejected:{smart_reason}")
             print(f"  [🔴过滤] {company[:15]} | {title[:25]} | {salary} → {smart_reason}")
             _record_outcome(city, company, title, salary, keyword, score,
-                            smart_reason, event="smart_filter")
+                            smart_reason, event="smart_filter", trace=tr)
             return "skip"
         else:
+            decision_trace.gate(tr, "smart_filter", "pass",
+                                detail=f"{score}->{smart_score}:{smart_reason}")
             print(f"  [🟡调整] {score}→{smart_score}分 {company[:15]} | {title[:25]} | {salary} → {smart_reason}")
             score = smart_score
             reason = reason + "、" + smart_reason
             ctx["score"], ctx["reason"] = score, reason
+    else:
+        decision_trace.gate(tr, "smart_filter", "pass")
 
     # ── 深度筛选 v2 (2026-08-07)：标题党检测 + 实习薪资陷阱（本地，零成本）──
     deep_score, deep_reason = deep_filter(company, title, desc, salary, score)
     if deep_score == 0:
+        decision_trace.gate(tr, "deep_filter", f"rejected:{deep_reason}")
         print(f"  [🔴深度过滤] {company[:15]} | {title[:25]} | {salary} → {deep_reason}")
         _record_outcome(city, company, title, salary, keyword, score,
-                        deep_reason, event="deep_filter")
+                        deep_reason, event="deep_filter", trace=tr)
         return "skip"
+    decision_trace.gate(tr, "deep_filter", "pass")
 
     # ── 公司背调 v2 (2026-08-07)：只对即将投递的做，带缓存，失败降级 ──
     try:
@@ -788,13 +843,16 @@ def _prepare_job_context(search_tab, city, keyword, title, company, salary,
         profile = run_company_background_check(company, city, _company_eval)
         prof_score, prof_reason = deep_filter(company, title, desc, salary, score, profile=profile)
         if prof_score == 0:
+            decision_trace.gate(tr, "company_profile", f"rejected:{prof_reason}")
             print(f"  [🔴公司背调] {company[:15]} | {title[:25]} → {prof_reason}")
             _record_outcome(city, company, title, salary, keyword, score,
-                            prof_reason, event="company_profile")
+                            prof_reason, event="company_profile", trace=tr)
             return "skip"
+        decision_trace.gate(tr, "company_profile", "pass")
     except Exception as e:
         # 背调失败降级：不误杀，正常继续
-        pass
+        decision_trace.gate(tr, "company_profile", "pass",
+                            detail=f"背调失败降级:{str(e)[:60]}")
 
     # ── 五维评估引擎（2026-08-26）：资格层之上的评估层，只记录不拦截 ──
     # verdict/total 追加进 reason → 随 _record_outcome/record_application 落库
@@ -817,9 +875,11 @@ def _prepare_job_context(search_tab, city, keyword, title, company, salary,
     print(f"  [{score:3d}分] {company[:15]} | {title[:25]} | {salary} → {reason}")
 
     if score < min_score:
+        decision_trace.gate(tr, "min_score", f"rejected:{score}<{min_score}")
         _record_outcome(city, company, title, salary, keyword, score,
-                        reason, event="below_min_score")
+                        reason, event="below_min_score", trace=tr)
         return "skip"
+    decision_trace.gate(tr, "min_score", "pass")
 
     ctx["passed_min_score"] = True
 
@@ -828,15 +888,18 @@ def _prepare_job_context(search_tab, city, keyword, title, company, salary,
         'var b=document.querySelector(".op-btn-chat"); return b ? b.classList.contains("is-disabled") : false;'
     )
     if btn_disabled:
+        decision_trace.gate(tr, "already_chatted", "rejected:已沟通过")
         _record_outcome(city, company, title, salary, keyword, score,
-                        "已沟通过", event="already_chatted")
+                        "已沟通过", event="already_chatted", trace=tr)
         print(f"    ⏭️  已沟通过，跳过")
         return "skip"
+    decision_trace.gate(tr, "already_chatted", "pass")
 
-    # 生成智能招呼语
-    greeting = generate_greeting(title, desc, company)
+    # 生成智能招呼语（v2.1：带模板版本标识，供归因落库）
+    greeting, template_id = generate_greeting_with_meta(title, desc, company)
     ctx["greeting"] = greeting
-    print(f"    💬 招呼语: {greeting[:50]}...")
+    ctx["greeting_template_id"] = template_id
+    print(f"    💬 招呼语[{template_id}]: {greeting[:50]}...")
     return "proceed"
 
 
@@ -848,6 +911,7 @@ def _execute_apply(page, search_tab, city, keyword, title, company, salary, ctx)
     {"action": "sent", "status", "decision", "verified", "verify_note"}。
     """
     # ── 点击"立即沟通" + 验证（A7：代码没报错 ≠ 业务动作成功）──
+    tr = ctx.get("trace")  # v2.1 决策链快照
     search_tab.run_js(
         'var b=document.querySelector(".op-btn-chat"); if(b) b.click();'
     )
@@ -856,17 +920,19 @@ def _execute_apply(page, search_tab, city, keyword, title, company, salary, ctx)
     # 弹窗处理 + 拦截识别（沟通上限/频繁等 → 记 FAILED，不记 applied）
     modal_text = _dismiss_modals(search_tab)
     if any(k in modal_text for k in ["上限", "频繁", "限制", "无法", "验证", "封禁", "异常"]):
+        decision_trace.gate(tr, "apply", f"rejected:弹窗拦截:{modal_text[:60]}")
         _record_outcome(city, company, title, salary, keyword, ctx["score"],
                         f"弹窗拦截:{modal_text[:60]}", decision="failed",
-                        status="FAILED", event="apply_blocked")
+                        status="FAILED", event="apply_blocked", trace=tr)
         print(f"    🚫 弹窗拦截: {modal_text[:60]} → FAILED")
         return {"action": "failed"}
 
     signal = _chat_signal(search_tab)
     if signal == "":
+        decision_trace.gate(tr, "apply", "rejected:点击立即沟通后未检测到会话/已沟通信号")
         _record_outcome(city, company, title, salary, keyword, ctx["score"],
                         "点击立即沟通后未检测到会话/已沟通信号", decision="failed",
-                        status="FAILED", event="chat_not_opened")
+                        status="FAILED", event="chat_not_opened", trace=tr)
         print(f"    ❌ 会话未打开（未检测到输入框/已沟通信号）→ FAILED")
         return {"action": "failed"}
 
@@ -885,6 +951,10 @@ def _execute_apply(page, search_tab, city, keyword, title, company, salary, ctx)
         else:
             app_status, app_decision, verified, verify_note = "UNCERTAIN", "uncertain", 0, note
     print(f"    {'✅' if verified else '⚠️'} {verify_note}")
+
+    # v2.1：动作已执行 → apply 门 pass（uncertain 与否由 final_decision 体现），收口快照
+    decision_trace.gate(tr, "apply", "pass", detail=f"{app_status}:{verify_note}")
+    decision_trace.finalize(tr, app_decision, verify_note)
 
     return {"action": "sent", "status": app_status, "decision": app_decision,
             "verified": verified, "verify_note": verify_note}
@@ -909,10 +979,12 @@ def _handle_apply_failure(page, search_tab, search_url, city, keyword, title,
         except Exception as re_e:
             print(f"    🔌 重连仍失败（{str(re_e)[:60]}），本关键词提前结束")
             should_break = True
+    # v2.1：异常路径同样收口决策链快照
+    decision_trace.gate(ctx.get("trace"), "apply", "rejected:异常", detail=err)
     _record_outcome(city, company, title, salary, keyword, ctx["score"],
                     f"异常:{err}", decision="failed", status="FAILED",
                     event="apply_exception", event_error=trace,
-                    traceback=trace)
+                    traceback=trace, trace=ctx.get("trace"))
     time.sleep(1)
     return search_tab, should_break
 
@@ -937,6 +1009,31 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
     applied_count = 0
     skipped_count = 0
     failed_count = 0
+
+    # ── v2.1 风控阶梯降速：本轮尝试事件序列（只作用于异常路径；正常节奏一行不动）──
+    _sd = get_safety(cfg)
+    sd_factor = float(_sd.get("uncertain_slowdown_factor", 2.0))
+    sd_max_consec = int(_sd.get("max_consecutive_uncertain", 2))
+    sd_rate_stop = float(_sd.get("failure_rate_stop", 0.30))
+    attempt_events = []       # 'applied' / 'uncertain' / 'failed'
+
+    def _sd_after_attempt(ev):
+        """记录一次投递尝试事件并做阶梯降速判定（判定逻辑在 risk_slowdown.evaluate）。
+
+        返回 (should_stop, next_interval_multiplier)：
+        - stop=True → 已写 .paused 暂停锁（不动 kill switch，uncertain ≠ 风险实锤），
+          调用方应立即收工返回；
+        - multiplier>1 仅在上一次发送为 uncertain 时出现（下一次投递前间隔 ×N，
+          只影响后续等待，不重试已发生的）。
+        """
+        attempt_events.append(ev)
+        st = risk_slowdown.evaluate(attempt_events, factor=sd_factor,
+                                    max_consecutive_uncertain=sd_max_consec,
+                                    failure_rate_stop=sd_rate_stop)
+        if st["stop"]:
+            print(f"\n🛑 风控阶梯降速触发，本轮提前收工：{st['reason']}")
+            pause(f"风控阶梯降速提前收工（未动 kill switch）：{st['reason']}")
+        return st["stop"], st["next_interval_multiplier"]
 
     search_url = (
         f"https://www.zhipin.com/web/geek/job?query={keyword}&city={city_code}"
@@ -1037,7 +1134,8 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
                 return applied_count, skipped_count, failed_count
             seen_titles.add(title)
             # A8：原 score/reason 局部变量改为共享上下文（异常处理器按拆分前语义读取最新值）
-            ctx = {"score": 0, "reason": ""}
+            # v2.1：ctx 携带决策链快照，各过滤点/执行阶段写入
+            ctx = {"score": 0, "reason": "", "trace": decision_trace.new_trace()}
 
             # 获取公司名和薪资（R1：合并为一次卡片遍历）
             _info = search_tab.run_js(f"""
@@ -1062,10 +1160,14 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
             _ddays = (cfg.get("safety") or {}).get("dedup_days", 7)
             if _ddays > 0 and company_applied_recently(city, company, _ddays):
                 print(f"  [🔁去重] {company[:15]} | {title[:25]} — {_ddays}天内已投过该公司，跳过")
+                decision_trace.gate(ctx.get("trace"), "dedup",
+                                    f"rejected:同公司{_ddays}天内已投(去重)")
                 skipped_count += 1
                 _record_outcome(city, company, title, salary, keyword, 0,
-                                f"同公司{_ddays}天内已投(去重)", event="dedup_skip")
+                                f"同公司{_ddays}天内已投(去重)", event="dedup_skip",
+                                trace=ctx.get("trace"))
                 continue
+            decision_trace.gate(ctx.get("trace"), "dedup", "pass")
 
             try:
                 # A8 拆分：准备（详情/评分/过滤链）→ 执行（点击沟通/验证）→ 收尾（R2重置）→ 记账
@@ -1083,6 +1185,10 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
                                         company, salary, ctx)
                 if result["action"] == "failed":
                     failed_count += 1
+                    # v2.1：明确失败计入失败率阶梯（可能触发提前收工）
+                    _stopped, _mult = _sd_after_attempt("failed")
+                    if _stopped:
+                        return applied_count, skipped_count, failed_count
                     continue
 
                 # R2：同页续投 —— 在 _cleanup_after_attempt 内做最小 DOM 重置；
@@ -1090,18 +1196,29 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
                 search_tab = _cleanup_after_attempt(page, search_tab, search_url)
 
                 applied_count += 1
+                # v2.1：applied/uncertain 路径同样落库决策链快照与招呼语模板版本
+                #（trace 已在 _execute_apply 内收口 final_decision/final_reason）
                 record_application(
                     platform="boss", city=city, company=company, title=title, salary=salary,
                     keyword=keyword, score=ctx["score"], resume_version=resume_version_for(title),
                     decision=result["decision"], status=result["status"],
                     reason=f"{ctx['reason']}；{result['verify_note']}", verified=result["verified"],
                     event_type=result["status"].lower(),
+                    gates=decision_trace.to_json(ctx.get("trace")),
+                    greeting_template_id=ctx.get("greeting_template_id"),
                 )
                 print(f"    ✅ 已投递 ({applied_count + skipped_count}/{count + skipped_count})"
                       + (" [UNCERTAIN]" if not result["verified"] else ""))
 
-                # 投递间延迟
-                time.sleep(1 + random.uniform(0, 2))
+                # ── v2.1 风控阶梯降速：记录本次尝试并判定 ──
+                _stopped, _mult = _sd_after_attempt(
+                    "applied" if result["verified"] else "uncertain")
+                if _stopped:
+                    return applied_count, skipped_count, failed_count
+
+                # 投递间延迟（v2.1：上一发为 uncertain 时按倍率放大，仅影响后续等待；
+                # 正常路径 multiplier=1.0，节奏与原来完全一致）
+                time.sleep((1 + random.uniform(0, 2)) * _mult)
 
             except Exception as e:
                 # A8：与拆分前语义一致——若已跨过最低分门槛（原 page_all_zero=False 已执行），
@@ -1115,6 +1232,10 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
                 )
                 if should_break:
                     break
+                # v2.1：异常失败同样计入失败率阶梯（可能触发提前收工）
+                _stopped, _mult = _sd_after_attempt("failed")
+                if _stopped:
+                    return applied_count, skipped_count, failed_count
 
         page_num += 1
         if page_all_zero:
