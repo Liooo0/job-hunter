@@ -266,6 +266,7 @@ def _safe_input_or_skip(prompt: str, timeout: int = 60):
 
 # 用户背景素材库（JD匹配到哪个方向就用对应的经历）
 USER_BG = {
+    "采购": "我独立负责过小型工程项目采购全流程，从需求拆解、供应商寻源、询价比价到合同履约和付款控制都亲手跑通，还用Python搭过3万+条比价数据的自动化台账",
     "AI应用": "我独立搭建过完整的AI应用系统，比如多平台数据自动化采集与智能筛选的管线，从浏览器操控到AI评分引擎全链路自己搞定",
     "Agent": "我深挖过Agent编排和MCP协议，用Dify和Coze搭过工作流，能独立交付从需求到上线的智能体方案",
     "RPA": "我用Python全自研了多平台自动化操控系统，对RPA的思路很熟悉，影刀也跑过完整流程",
@@ -283,6 +284,7 @@ USER_BG = {
 
 # 招呼语模板（JD角色 → 开场白）
 GREETING_TEMPLATES = {
+    "采购": "看到贵司的{title}岗位，{bg}。想了解这个岗位主要负责哪类物资品类，是IT/办公设备还是工程项目物料？",
     "AI应用": "看到贵司的{title}岗位，{bg}。想了解一下这个岗位主要负责哪个业务方向的产品或场景？",
     "Agent": "看到贵司在招{title}，{bg}。好奇咱们团队主要用哪些Agent框架和工具链？",
     "RPA": "看到贵司的{title}，{bg}。想了解这个岗位主要做哪类流程自动化，电商还是内部系统？",
@@ -321,6 +323,9 @@ def generate_greeting(title: str, desc: str, company: str = "") -> str:
         if role_lower in combined or any(kw in combined for kw in role_lower.split()):
             matched_role = role
             break
+    # 采购岗专属人设优先（采购JD常含"自动化/测试/Python"等词，防止被AI人设截胡）
+    if "采购" in (title or ""):
+        matched_role = "采购"
 
     bg = USER_BG.get(matched_role, USER_BG["默认"])
     template = GREETING_TEMPLATES.get(matched_role, GREETING_TEMPLATES["默认"])
@@ -398,8 +403,10 @@ def parse_args(cfg: dict):
 
 
 def resume_version_for(title: str) -> str:
-    """按岗位标题判断应使用的简历版本（A/B/C）"""
+    """按岗位标题判断应使用的简历版本（A/B/C/D）"""
     t = (title or "").lower()
+    if any(k in t for k in ["采购", "寻源", "招采", "sourcing", "buyer", "供应商管理"]):
+        return "D-采购"
     if any(k in t for k in ["车联网", "车载", "智能座舱", "ota", "adas", "t-box", "v2x", "整车", "台架", "hil", "can", "三电", "电池", "bms", "车机", "导航测试", "汽车电子", "自动驾驶", "智能驾驶"]):
         return "C-车联网"
     if any(k in t for k in ["实施", "解决方案", "技术支持", "数字化", "顾问", "运营"]):
