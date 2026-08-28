@@ -362,26 +362,10 @@ def smart_filter(company: str, title: str, desc: str, salary: str, score: int, c
     except Exception:
         pass
 
-    # ── 高薪实习放行：标题含"实习"且日薪≥300 → 恢复分数 ──
-    # 日薪来源：salary 字段（元/天格式）或 JD 正文（如"560-600元/天"）
+    # ── 实习岗直接过滤（2026-08-28 策略转向：全职1w+现金流，实习不再放行）──
+    # 旧「高薪实习放行」会+60硬拉回可投区，与日薪折算薪资线冲突，已废除
     if "实习" in title_lower:
-        daily_salary = 0
-        try:
-            if "元/天" in salary or "元/日" in salary:
-                daily_salary = float(salary.split("-")[0].split("元")[0])
-            else:
-                # 从正文提取日薪（如 "实习560-600元/天"）
-                import re as _re
-                m = _re.search(r"(\d+(?:\.\d+)?)\s*[-~—]\s*(\d+(?:\.\d+)?)\s*元/(?:天|日)", desc_lower or "")
-                if m:
-                    daily_salary = float(m.group(1))
-                elif _re.search(r"(\d+(?:\.\d+)?)\s*元/(?:天|日)", desc_lower or ""):
-                    daily_salary = float(_re.search(r"(\d+(?:\.\d+)?)\s*元/(?:天|日)", desc_lower or "").group(1))
-        except Exception:
-            pass
-        if daily_salary >= 300:
-            score = max(score, 60)
-            reason_parts.append(f"高薪实习({daily_salary:.0f}元/天)")
+        return 0, "实习岗→过滤(全职策略)"
 
     # ── 技术含量检测 ──
     TECH_KEYWORDS = [
