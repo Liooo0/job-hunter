@@ -26,18 +26,18 @@
       "company": "某数字化公司",
       "title": "AI实施工程师",
       "desc": "为企业落地RAG知识库、自动化流程，Python基础，客户现场部署",
-      "salary": "7-12K",
+      "salary": "10-12K",
       "expect": "pass",
-      "note": "AI实施=第一份AI工作入口"
+      "note": "AI实施=第一份AI工作入口(0828薪资线对齐)"
     },
     {
       "id": "pass_ai_solution",
       "company": "某科技",
       "title": "AI解决方案工程师",
       "desc": "需求分析，方案设计，Dify/Coze工作流搭建，企业AI落地",
-      "salary": "8-15K",
+      "salary": "10-15K",
       "expect": "pass",
-      "note": "解决方案岗"
+      "note": "解决方案岗(0828薪资线对齐)"
     },
     {
       "id": "pass_vehicle_test",
