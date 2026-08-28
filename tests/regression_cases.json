@@ -121,22 +121,22 @@
       "note": "实习日薪<300"
     },
     {
-      "id": "pass_intern_high",
+      "id": "filter_intern_fulltime",
       "company": "字节跳动",
       "title": "Coze实习生",
       "desc": "实习560-600元/天，Agent工作流开发",
       "salary": "10-12K",
-      "expect": "pass",
-      "note": "实习日薪≥300放行"
+      "expect": "filter",
+      "note": "0828策略:实习一律过滤"
     },
     {
-      "id": "pass_intern_high_daily_from_desc",
+      "id": "filter_intern_fulltime_desc",
       "company": "某AI应用公司",
       "title": "AI应用工程师实习",
       "desc": "负责AI应用开发，实习560-600元/天，转正后12-16K",
       "salary": "10-15K",
-      "expect": "pass",
-      "note": "B1回归：日薪从正文提取，smart_filter 应保底 60"
+      "expect": "filter",
+      "note": "0828策略:实习一律过滤(正文日薪)"
     },
     {
       "id": "reject_ai_washing",
@@ -161,9 +161,9 @@
       "company": "某企业科技",
       "title": "知识库运营工程师",
       "desc": "基于Dify搭建企业知识库，文档解析，智能问答",
-      "salary": "6-9K",
+      "salary": "10-13K",
       "expect": "pass",
-      "note": "知识库运营"
+      "note": "知识库运营(薪资线对齐0828≥10K)"
     },
     {
       "id": "reject_edu_trainer",
