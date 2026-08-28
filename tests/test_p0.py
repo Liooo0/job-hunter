@@ -50,7 +50,7 @@ def minimal_cfg():
     }
 
 
-# ── B1：smart_filter 高薪实习 ──
+# ── B1：实习岗一律过滤（0828策略: 全职1w+现金流，高薪实习放行已废除）──
 def test_high_salary_intern_boosted():
     cfg = minimal_cfg()
     score, reason = shared.smart_filter(
@@ -58,8 +58,8 @@ def test_high_salary_intern_boosted():
         "负责AI应用开发，实习560-600元/天，转正后12-16K",
         "10-15K", 40, cfg, city="深圳",
     )
-    assert score >= 60, f"高薪实习应保底60，实际 {score}"
-    assert "高薪实习" in reason, f"原因应包含高薪实习，实际 {reason!r}"
+    assert score == 0, f"实习岗应一律过滤，实际 {score}"
+    assert "实习" in reason, f"原因应含实习过滤，实际 {reason!r}"
 
 
 def test_high_salary_intern_does_not_lower_higher_score():
@@ -68,7 +68,7 @@ def test_high_salary_intern_does_not_lower_higher_score():
         "某公司", "Coze实习生", "实习560-600元/天，Agent工作流开发",
         "10-12K", 80, cfg, city="深圳",
     )
-    assert score >= 80, f"已有更高分不应被降低，实际 {score}"
+    assert score == 0, f"实习岗无论基础分一律过滤，实际 {score}"
 
 
 def test_low_salary_intern_still_rejected():
