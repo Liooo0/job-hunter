@@ -1,7 +1,7 @@
 {
-  "version": "AI_JOB_FILTER_v1.2",
-  "updated": "2026-08-20",
-  "description": "回归测试集：真实 JD 案例（来自历史投递日志），目标降低假阳/假阴。运行: tests/regression.py",
+  "version": "AI_JOB_FILTER_v4.0",
+  "updated": "2026-08-29",
+  "description": "回归测试集 v4.0：历史真实案例 + v4.0 判断内核用例（8类别归档，含 expected_class/reality/decision）",
   "cases": [
     {
       "id": "pass_python_ai_backend",
@@ -10,7 +10,8 @@
       "desc": "负责AI应用后端开发，Python+FastAPI，对接大模型API，实现RAG知识库问答",
       "salary": "15-25K",
       "expect": "pass",
-      "note": "Python后端+LLM=AI应用岗，勿杀"
+      "note": "Python后端+LLM=AI应用岗，勿杀",
+      "category": "A"
     },
     {
       "id": "pass_uses_transformer",
@@ -19,7 +20,8 @@
       "desc": "了解Transformer原理，调用Embedding模型，LoRA微调，模型部署",
       "salary": "12-20K",
       "expect": "pass",
-      "note": "会用模型≠算法岗"
+      "note": "会用模型≠算法岗",
+      "category": "A"
     },
     {
       "id": "pass_ai_impl",
@@ -28,7 +30,8 @@
       "desc": "为企业落地RAG知识库、自动化流程，Python基础，客户现场部署",
       "salary": "10-12K",
       "expect": "pass",
-      "note": "AI实施=第一份AI工作入口(0828薪资线对齐)"
+      "note": "AI实施=第一份AI工作入口(0828薪资线对齐)",
+      "category": "A"
     },
     {
       "id": "pass_ai_solution",
@@ -37,7 +40,8 @@
       "desc": "需求分析，方案设计，Dify/Coze工作流搭建，企业AI落地",
       "salary": "10-15K",
       "expect": "pass",
-      "note": "解决方案岗(0828薪资线对齐)"
+      "note": "解决方案岗(0828薪资线对齐)",
+      "category": "D"
     },
     {
       "id": "pass_vehicle_test",
@@ -46,7 +50,8 @@
       "desc": "车载网络诊断测试，CAN总线，T-Box，OTA升级验证",
       "salary": "10-15K",
       "expect": "pass",
-      "note": "C版方向"
+      "note": "C版方向",
+      "category": "A"
     },
     {
       "id": "pass_helpdesk",
@@ -55,7 +60,8 @@
       "desc": "桌面支持，网络基础，英文邮件，ITIL流程",
       "salary": "8-12K",
       "expect": "reject",
-      "note": "外企IT支持不走AI过滤线——测试期望修正"
+      "note": "外企IT支持不走AI过滤线——测试期望修正",
+      "category": "D"
     },
     {
       "id": "reject_java_traditional",
@@ -64,7 +70,8 @@
       "desc": "负责Java后端开发，Spring Cloud微服务，高并发交易系统，电商后台",
       "salary": "20-35K",
       "expect": "reject",
-      "note": "标题党：AI标题+纯Java传统栈"
+      "note": "标题党：AI标题+纯Java传统栈",
+      "category": "C"
     },
     {
       "id": "reject_sales",
@@ -73,7 +80,8 @@
       "desc": "负责客户开发、客户拜访、商务谈判、完成销售指标",
       "salary": "8-16K",
       "expect": "reject",
-      "note": "销售包装成AI岗"
+      "note": "销售包装成AI岗",
+      "category": "C"
     },
     {
       "id": "reject_android_clickbait",
@@ -82,7 +90,8 @@
       "desc": "负责Android应用开发，Kotlin，Flutter，移动端UI",
       "salary": "15-25K",
       "expect": "reject",
-      "note": "AI标题+Android传统开发"
+      "note": "AI标题+Android传统开发",
+      "category": "C"
     },
     {
       "id": "reject_annotation",
@@ -91,7 +100,8 @@
       "desc": "负责数据标注、文本标注、图像标注任务",
       "salary": "4-6K",
       "expect": "reject",
-      "note": "标注岗"
+      "note": "标注岗",
+      "category": "C"
     },
     {
       "id": "reject_algorithm_research",
@@ -100,7 +110,8 @@
       "desc": "模型训练、算法优化、论文复现、分布式训练",
       "salary": "30-50K",
       "expect": "reject",
-      "note": "算法研究岗（score_jd层拦截）"
+      "note": "算法研究岗（score_jd层拦截）",
+      "category": "C"
     },
     {
       "id": "reject_single_rest",
@@ -109,7 +120,8 @@
       "desc": "大小周工作制，周六加班，负责AI应用开发",
       "salary": "10-15K",
       "expect": "reject",
-      "note": "大小周"
+      "note": "大小周",
+      "category": "G"
     },
     {
       "id": "reject_intern_low",
@@ -118,7 +130,8 @@
       "desc": "实习期120元/天，负责数据整理",
       "salary": "3-4K",
       "expect": "reject",
-      "note": "实习日薪<300"
+      "note": "实习日薪<300",
+      "category": "F"
     },
     {
       "id": "filter_intern_fulltime",
@@ -127,7 +140,8 @@
       "desc": "实习560-600元/天，Agent工作流开发",
       "salary": "10-12K",
       "expect": "reject",
-      "note": "0828策略:实习一律过滤"
+      "note": "0828策略:实习一律过滤",
+      "category": "F"
     },
     {
       "id": "filter_intern_fulltime_desc",
@@ -136,7 +150,8 @@
       "desc": "负责AI应用开发，实习560-600元/天，转正后12-16K",
       "salary": "10-15K",
       "expect": "reject",
-      "note": "0828策略:实习一律过滤(正文日薪)"
+      "note": "0828策略:实习一律过滤(正文日薪)",
+      "category": "F"
     },
     {
       "id": "reject_ai_washing",
@@ -145,7 +160,8 @@
       "desc": "推动AI赋能企业，建设AI生态，探索人工智能未来，引领数字化转型",
       "salary": "6-10K",
       "expect": "reject",
-      "note": "AI包装废话词多无技术词"
+      "note": "AI包装废话词多无技术词",
+      "category": "H"
     },
     {
       "id": "reject_hr_company",
@@ -154,7 +170,8 @@
       "desc": "代招岗位，驻场客户现场",
       "salary": "10-15K",
       "expect": "reject",
-      "note": "人力代招"
+      "note": "人力代招",
+      "category": "E"
     },
     {
       "id": "pass_rag_kb",
@@ -163,7 +180,8 @@
       "desc": "基于Dify搭建企业知识库，文档解析，智能问答",
       "salary": "10-13K",
       "expect": "pass",
-      "note": "知识库运营(薪资线对齐0828≥10K)"
+      "note": "知识库运营(薪资线对齐0828≥10K)",
+      "category": "B"
     },
     {
       "id": "reject_edu_trainer",
@@ -172,7 +190,86 @@
       "desc": "负责AI课程讲授，学员辅导，招生转化",
       "salary": "8-15K",
       "expect": "reject",
-      "note": "教培讲师"
+      "note": "教培讲师",
+      "category": "C"
+    },
+    {
+      "id": "pass_ai_core_unknown_salary",
+      "category": "A",
+      "company": "某Agent科技",
+      "title": "Agent应用工程师",
+      "desc": "基于大模型API开发企业内部Agent，RAG知识库问答，Python+FastAPI，工作流自动化编排",
+      "salary": "面议",
+      "expect": "pass",
+      "expected_class": "AI-5",
+      "expected_reality": "high",
+      "expected_decision": "A",
+      "note": "v4.0:薪资未知(面议)≠放弃，真AI岗放行"
+    },
+    {
+      "id": "pass_ai_impl_evidence",
+      "category": "B",
+      "company": "某数字化公司",
+      "title": "AI实施工程师",
+      "desc": "负责Dify工作流配置、API调用、RAG知识库构建、Prompt调优及部署，企业现场交付",
+      "salary": "10-13K",
+      "expect": "pass",
+      "expected_class": "AI-4",
+      "expected_reality": "high",
+      "expected_decision": "A",
+      "note": "v4.0:AI-4+E3证据足(具体任务/技术流程/交付)"
+    },
+    {
+      "id": "reject_ai_wrapped_ops",
+      "category": "H",
+      "company": "某新媒体公司",
+      "title": "AI内容运营",
+      "desc": "使用ChatGPT/DeepSeek撰写公众号文案、维护社群、回复客户咨询，AI工具提升内容效率",
+      "salary": "8-15K",
+      "expect": "reject",
+      "expected_class": "AI-1",
+      "expected_reality": "low",
+      "expected_decision": "D",
+      "note": "v4.0 AI-1:标题AI但职责=文案/社群/客服，无技术动作；删掉AI字样=内容运营"
+    },
+    {
+      "id": "reject_role_creep",
+      "category": "H",
+      "company": "某小公司",
+      "title": "AI工程师",
+      "desc": "负责AI应用开发、Python后端、产品设计、UI设计、销售拓展、客服维护、运维部署",
+      "salary": "12-18K",
+      "expect": "reject",
+      "expected_class": "AI-2",
+      "expected_reality": "medium",
+      "expected_decision": "D",
+      "note": "v4.0 Role Creep:一人多岗(研发/产品/设计/销售/客服/运维6域)"
+    },
+    {
+      "id": "reject_high_salary_single_rest",
+      "category": "G",
+      "company": "某科技",
+      "title": "AI应用工程师",
+      "desc": "负责AI应用开发，单休，周六固定上班",
+      "salary": "12-18K",
+      "expect": "reject",
+      "expected_class": "AI-4",
+      "expected_reality": "medium",
+      "expected_decision": "D",
+      "note": "v4.0宪法04:制度优先于名义薪资，12K单休仍否决"
+    },
+    {
+      "id": "reject_ai_sales_kpi",
+      "category": "C",
+      "company": "某教育科技",
+      "title": "AI顾问",
+      "desc": "负责客户开发、销售转化、AI课程推广，利用AI提升销售效率，熟悉ChatGPT",
+      "salary": "10-15K",
+      "expect": "reject",
+      "expected_class": "AI-1",
+      "expected_reality": "low",
+      "expected_decision": "D",
+      "note": "v4.0反证机制:ChatGPT字样不覆盖销售KPI负证据"
     }
   ]
 }
