@@ -212,7 +212,7 @@ class TestRegression19(unittest.TestCase):
             self.assertNotEqual(r["verdict"], "skip",
                                 f"{c['id']} verdict=skip | {format_report(r)}")
             checked += 1
-        self.assertEqual(checked, 6)  # 0828策略后: 19例中6例 expect=pass(2实习例转reject)
+        self.assertEqual(checked, 8)  # v4.0后: 25例中8例 expect=pass(新增2例 pass)
 
 
 if __name__ == "__main__":
