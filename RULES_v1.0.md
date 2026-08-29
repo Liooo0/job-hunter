@@ -1,5 +1,10 @@
 # Lio 求职筛选规则 v1.0
 
+> **DEPRECATED — superseded by RULES v4.0 (2026-08-29).**
+> 本文件是早期硬过滤规则的存档（历史档案，勿作现行标准使用）。
+> 现行规则见 ~/.hermes/skills/job-hunting/job-hunter/（v2 速筛 / v3 对话判断 / v4.0 决策宪法+判断内核）。
+> 保留意义：记录系统如何从硬过滤器（FastAPI/Flask/PyTorch 一刀切否决）演化成决策引擎。
+
 ## 核心目标
 30-60天内获得正式Offer
 
