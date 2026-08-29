@@ -142,6 +142,76 @@ def detect_ai_washing(title: str, desc: str) -> tuple[bool, str]:
 
 
 # ═══════════════════════════════════════════════════════════════
+# v4.0 判断内核：AI 包装运营（AI-1）+ 职责过宽（Role Creep）
+# ═══════════════════════════════════════════════════════════════
+
+# 标题宣称"AI 内容/运营"类岗位（AI-1 重点检查对象）
+AI_OP_TITLE_SIGNALS = [
+    "ai运营", "ai 运营", "ai内容", "ai 内容", "ai文案", "ai 文案",
+    "ai新媒体", "ai 新媒体", "aigc运营", "数字人运营", "ai主播", "ai 主播",
+    "ai视频运营", "ai 视频运营",
+]
+
+# 纯运营执行词：出现这些=干的还是内容号/社群的活
+OPS_EXEC_WORDS = ["公众号", "文案", "社群", "粉丝", "短视频运营", "直播带货",
+                  "直播运营", "探店", "种草", "引流内容", "日常更新", "稿件"]
+
+# 真实技术动作词：有这些=复合岗（AI+运营/内容技术化），不拦
+TECH_ACTION_WORDS = ["搭建", "接口开发", "api开发", "部署", "集成", "检索优化",
+                     "知识库构建", "workflow配置", "工作流配置", "agent开发",
+                     "rag开发", "后端开发", "前端开发", "自动化脚本", "脚本开发",
+                     "系统开发", "数据清洗", "数据处理", "流程自动化", "应用开发",
+                     "模型调用", "prompt调优", "提示词工程", "向量化", "embedding"]
+
+# 职责域（Role Creep：一人多岗 = 公司风险信号，v4.0 公司风险/Reality 第4维）
+ROLE_DOMAINS = {
+    "研发": ["开发", "编码", "后端", "前端", "全栈", "接口", "代码"],
+    "产品": ["产品设计", "产品规划", "需求分析", "原型", "产品经理"],
+    "设计": ["ui设计", "ux", "界面设计", "视觉设计", "美工", "网页设计"],
+    "销售": ["销售", "客户开发", "商务", "拓展", "业绩", "kpi", "招商", "渠道", "客户拜访"],
+    "客服": ["客服", "售后", "客户维护", "客户咨询", "接待", "答疑"],
+    "运营": ["运营", "社群", "公众号", "新媒体", "直播", "推广", "引流"],
+    "运维": ["运维", "部署", "服务器", "网管", "监控告警"],
+    "行政": ["行政", "人事", "财务", "报销", "考勤"],
+}
+
+
+def detect_ai_wrapped_ops(title: str, desc: str) -> tuple[bool, str]:
+    """AI 包装运营检测（v4.0 AI-1 落地）。
+
+    标题宣称 AI 运营/内容，正文只有运营执行词（公众号/文案/社群），
+    且无任何真实技术动作 → 干的还是内容号/客服的活 = AI-1 包装。
+    有真实技术动作（搭建/开发/部署/流程自动化等）→ 复合岗，不拦。
+    """
+    t = (title or "").lower()
+    d = (desc or "").lower()
+    if not any(sig in t for sig in AI_OP_TITLE_SIGNALS):
+        return False, ""
+    ops_hits = [w for w in OPS_EXEC_WORDS if w in d]
+    if not ops_hits:
+        return False, ""
+    if any(w in d for w in TECH_ACTION_WORDS):
+        return False, ""
+    return True, f"AI包装运营:标题AI但职责是运营执行({'/'.join(ops_hits[:3])})，无技术动作"
+
+
+def detect_role_creep(desc: str) -> tuple[bool, str]:
+    """职责过宽检测（v4.0 Role Creep / Reality Score 第4维）。
+
+    统计不同职责域命中数（研发/产品/设计/销售/客服/运营/运维/行政）。
+    技术词 ≥2（复合 AI 岗正常）→ 需 ≥6 域才拦；否则 ≥4 域拦。
+    一个 8K 岗要求 AI+Python+产品+UI+销售+客服+运维 = 一人干五人的活。
+    """
+    d = (desc or "").lower()
+    ai_tech = sum(1 for kw in REAL_AI_STACK if kw in d)
+    hits = [dom for dom, kws in ROLE_DOMAINS.items() if any(kw in d for kw in kws)]
+    threshold = 6 if ai_tech >= 2 else 4
+    if len(hits) >= threshold:
+        return True, f"一人多岗:职责过宽({'/'.join(hits)})"
+    return False, ""
+
+
+# ═══════════════════════════════════════════════════════════════
 # 公司背调（搜索 API + 本地缓存）
 # ═══════════════════════════════════════════════════════════════
 
@@ -230,6 +300,16 @@ def deep_filter(company: str, title: str, desc: str, salary: str,
     # 2.5 AI 包装检测（本地）：赋能/生态废话多但无技术词
     wash, reason = detect_ai_washing(title, desc)
     if wash:
+        return 0, reason
+
+    # 2.6 AI 包装运营检测（v4.0 AI-1）：标题AI运营+正文纯运营执行+无技术动作
+    wrap_ops, reason = detect_ai_wrapped_ops(title, desc)
+    if wrap_ops:
+        return 0, reason
+
+    # 2.7 职责过宽检测（v4.0 Role Creep）：一人多岗=公司风险信号
+    creep, reason = detect_role_creep(desc)
+    if creep:
         return 0, reason
 
     # 3. 公司性质（需背调结果）
