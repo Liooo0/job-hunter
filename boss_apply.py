@@ -812,6 +812,7 @@ def _prepare_job_context(search_tab, city, keyword, title, company, salary,
         reason += f" |v2:({jd.priority}|{jd.salary_band})"
         ctx["reason"] = reason
     except Exception as jde:
+        jd = None
         print(f"  [⚠️决策器异常(不拦截)] {str(jde)[:60]}")
 
     # 智能过滤：公司规模/性质/薪资/技术含量
@@ -890,6 +891,23 @@ def _prepare_job_context(search_tab, city, keyword, title, company, salary,
     except Exception as me:
         match_result = None
         print(f"  [⚠️五维评估异常(不拦截)] {str(me)[:60]}")
+
+    # ── RULES_v2.0 第三层：岗位价值评分 VSCORE（2026-08-31）—— 只排序不拦截 ──
+    # 综合 薪资/AI匹配度/制度/稳定性/成长/福利/城市/强度 → 0-100 + HIGH/NORMAL/LOW
+    # 用途：投递优先级排序；任何异常降级为跳过评分，绝不阻断投递。
+    try:
+        from value_score import value_score
+        jd_band = getattr(jd, "salary_band", "unknown") if jd else "unknown"
+        vs = value_score(company, title, desc, salary, city=city,
+                         decision=jd, match_result=match_result,
+                         salary_band=jd_band)
+        reason += f" |价值{vs.score}分[{vs.tier}]"
+        ctx["reason"] = reason
+        ctx["value_score"] = vs.score
+        ctx["value_tier"] = vs.tier
+        print(f"  [💎] {str(vs)}")
+    except Exception as vse:
+        print(f"  [⚠️价值评分异常(不拦截)] {str(vse)[:60]}")
 
     print(f"  [{score:3d}分] {company[:15]} | {title[:25]} | {salary} → {reason}")
 
