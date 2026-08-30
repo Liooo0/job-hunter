@@ -1,0 +1,96 @@
+{
+  "_comment": "VSCORE 权重演进的基准岗位集（2026-08-31 定稿，不可删除）。每次改 WEIGHTS 必须跑 scripts/vscore_benchmark.py 对比基线；变化需人话可解释，否则回退。v1.0_scores 为 2026-08-31 实测基线（由脚本首次运行记录）。",
+  "baseline_version": "1.0",
+  "v1.0_scores": {
+    "ai_12k": 92,
+    "ai_8k": 84,
+    "agent_unknown_sal": 70,
+    "south_grid_5k": 63,
+    "outsourcing_12k": 63,
+    "customer_service_9k": 56,
+    "south_grid_vs_ai_startup": 63,
+    "ai_startup_10k": 81
+  },
+  "roles": [
+    {
+      "id": "ai_12k",
+      "company": "某科技",
+      "title": "AI应用工程师",
+      "desc": "负责RAG知识库,Agent工作流,双休,五险一金",
+      "salary": "12-20K",
+      "city": "深圳",
+      "expect_band": ">=10K",
+      "note": "主航道锚点：12K AI 应稳居顶端"
+    },
+    {
+      "id": "ai_8k",
+      "company": "某科技",
+      "title": "AI应用工程师",
+      "desc": "RAG知识库开发,双休,五险一金",
+      "salary": "8.5-12K",
+      "city": "深圳",
+      "expect_band": "8-10K",
+      "note": "次锚点：8.5K AI 应高于外包12K"
+    },
+    {
+      "id": "agent_unknown_sal",
+      "company": "某Agent科技",
+      "title": "Agent应用工程师",
+      "desc": "Agent工作流开发,双休",
+      "salary": "面议",
+      "city": "成都",
+      "expect_band": "unknown",
+      "note": "薪资未知不拒，且评分≥60"
+    },
+    {
+      "id": "south_grid_5k",
+      "company": "南方电网",
+      "title": "数据运维值班员",
+      "desc": "正式编制,五险一金齐全,稳定,双休,工作轻松",
+      "salary": "5-7K",
+      "city": "广州",
+      "expect_band": "5-8K",
+      "note": "低薪但高稳定：必须 ALLOW(LOW) 特批，但不排最前"
+    },
+    {
+      "id": "outsourcing_12k",
+      "company": "某外包",
+      "title": "测试驻场",
+      "desc": "华为驻场",
+      "salary": "12-16K",
+      "city": "深圳",
+      "expect_band": ">=10K",
+      "note": "同薪外包：AI匹配度低 → 应低于 8.5K AI"
+    },
+    {
+      "id": "customer_service_9k",
+      "company": "某公司",
+      "title": "客服专员",
+      "desc": "客户服务",
+      "salary": "8-10K",
+      "city": "北京",
+      "expect_band": "8-10K",
+      "note": "低价值岗：ALLOW但 LOW"
+    },
+    {
+      "id": "south_grid_vs_ai_startup",
+      "company": "南方电网",
+      "title": "数据运维值班员",
+      "desc": "正式编制,五险一金齐全,稳定,双休,工作非常轻松",
+      "salary": "5-7K",
+      "city": "广州",
+      "expect_band": "5-8K",
+      "note": "边界案例A：极稳极轻松正式岗（低薪）→ v1.0:63"
+    },
+    {
+      "id": "ai_startup_10k",
+      "company": "某AI创业公司",
+      "title": "AI应用工程师",
+      "desc": "Agent开发,工作强度高,公司不到20人,项目不稳定",
+      "salary": "10-15K",
+      "city": "深圳",
+      "expect_band": ">=10K",
+      "note": "边界案例B：高薪AI初创（不稳）→ v1.0:81，当前权重偏好高薪AI"
+    }
+  ]
+}
