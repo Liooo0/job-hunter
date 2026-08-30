@@ -796,6 +796,24 @@ def _prepare_job_context(search_tab, city, keyword, title, company, salary,
     ctx["score"], ctx["reason"] = score, reason
     tr = ctx.get("trace")  # v2.1 决策链快照（ctx 未带 trace 时各 gate 调用为无操作）
 
+    # ── RULES_v2.0 岗位价值决策器（2026-08-31）：资格层先行，代码判死刑 ──
+    # 薪资分层(<5K拒/5-8K特批/8-10K正常/>=10K优先/未知不拒) + 制度红线(单休大小周996夜班)
+    # + 实习/公司主体红线。deterministic，零 LLM。
+    try:
+        from job_decision import evaluate_job
+        jd = evaluate_job(company, title, desc, salary, city=city, cfg=cfg)
+        if jd.action == "REJECT":
+            decision_trace.gate(tr, "job_decision", f"rejected:{jd.reason}")
+            print(f"  [🚫决策器] {company[:15]} | {title[:25]} | {salary} → {jd.reason}")
+            _record_outcome(city, company, title, salary, keyword, score,
+                            jd.reason, event="job_decision", trace=tr)
+            ctx["reason"] = jd.reason
+            return "skip"
+        reason += f" |v2:({jd.priority}|{jd.salary_band})"
+        ctx["reason"] = reason
+    except Exception as jde:
+        print(f"  [⚠️决策器异常(不拦截)] {str(jde)[:60]}")
+
     # 智能过滤：公司规模/性质/薪资/技术含量
     smart_score, smart_reason = smart_filter(company, title, desc, salary, score, cfg, city=city)
     if smart_score != score:
