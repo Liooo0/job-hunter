@@ -1,22 +1,28 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Guardrails v1.0 (2026-08-31) — 投递安全红线固化层。
+"""Guardrails v2.0 (2026-08-31) — 投递安全红线固化层（RULES_v2.0 配套）。
 
-目的：不依赖模型智力。任何模型/任何人启动投递前，main() 强制跑本检查，
-安全关键配置被改松（薪资线下调/双休词被删/日限放大/夜禁放宽）→ 拒绝启动。
+目的：不依赖模型智力。任何模型/任何人启动投递前，main() 强制跑本检查：
+  A. 系统级硬红线（薪资分层参数不被改松/双休/实习词表在/夜禁/日限/时限）
+  B. 岗位价值决策器 job_decision.py 的存在性与完整性（分层规则不可被删改）
 规则单一事实源：docs/GUARDRAILS.md。改规则 = 改文档+这里+回归，三者同步。
 """
 import json
+import sys
 from pathlib import Path
 
-GUARDRAILS_VER = "1.0"
-# 红线下限（用户定稿，勿松）：
+GUARDRAILS_VER = "2.0"
+# 红线下限（用户定稿 RULES_v2.0，勿松）：
 NIGHT_BAN_START_MAX = 22          # 夜间禁投开始不得晚于 22:00
 NIGHT_BAN_END_MAX = 8             # 结束不得晚于 08:00
 DAILY_CAP_MAX = 100               # 正常期日上限不得 >100
 HOURLY_CAP_MAX = 15               # 单小时上限不得 >15
-SALARY_HOME_MIN = 10              # 1w+ 硬线（本机，单位 K）
-SALARY_AWAY_MIN = 10
+
+# 分层薪资参数下限（可更严，不可更松；单位 K/月）：
+SALARY_HARD_FLOOR_MIN = 5.0       # <5K 默认拒绝 —— 地板不得低于 5
+SALARY_NORMAL_FLOOR_MIN = 8.0     # 8-10K 正常档 —— 不得低于 8
+SALARY_PRIORITY_MIN = 10.0        # >=10K 优先档 —— 不得低于 10
+
 # 双休红线：这些词一旦从正文排除词消失 → 拒绝启动
 WEEKEND_MANDATORY_WORDS = ["单休", "大小周", "996", "夜班"]
 # 实习硬过滤：标题排除词必须含
@@ -28,7 +34,7 @@ class GuardrailError(Exception):
 
 
 def check_safety(cfg: dict) -> list:
-    """返回违规列表；空 = 通过。"""
+    """A1: 系统级安全参数（夜间/日限/时限）。"""
     v = []
     s = cfg.get("safety", {}) or {}
     sb = s.get("night_ban_start", 23)
@@ -47,22 +53,33 @@ def check_safety(cfg: dict) -> list:
 
 
 def check_salary(cfg: dict) -> list:
+    """A2: 分层薪资参数完整性（RULES_v2.0）。
+
+    旧版（v1.0）校验 home/away_min_accept>=10 —— 那是过时的 1w 硬线；
+    v2.0 改为校验 job_decision.py 中的分层常量不可被改松。
+    cfg 里只允许携带覆盖值（可更严），若缺失则读 job_decision 默认。
+    """
     v = []
-    sf = cfg.get("salary_filter", {}) or {}
-    # 采购线（line=procurement）沿用其历史下限 8K，其余一律 1w+ 硬线
-    line = cfg.get("line", "ai")
-    home = sf.get("home_min_accept", 0)
-    away = sf.get("away_min_accept", 0)
-    if line == "procurement":
-        if home < 8 or away < 8:
-            v.append(f"采购线薪资下限被改松 (home={home}, away={away}), 红线 8K")
-    else:
-        if home < SALARY_HOME_MIN or away < SALARY_AWAY_MIN:
-            v.append(f"薪资 1w+ 硬线被改松 (home={home}K, away={away}K), 红线 {SALARY_HOME_MIN}K")
+    # 优先读 config 覆盖（允许更严），否则读 job_decision 常量
+    try:
+        import job_decision as jd
+        hard = cfg.get("salary_bands", {}).get("hard_floor", jd.SALARY_HARD_FLOOR)
+        normal = cfg.get("salary_bands", {}).get("normal_floor", jd.SALARY_NORMAL_FLOOR)
+        pri = cfg.get("salary_bands", {}).get("priority", jd.SALARY_PRIORITY)
+    except Exception as e:
+        v.append(f"job_decision.py 不可用: {str(e)[:60]} —— 分层决策器必须存在")
+        return v
+    if hard + 1e-9 < SALARY_HARD_FLOOR_MIN:
+        v.append(f"薪资地板被改松 ({hard}K < 红线 {SALARY_HARD_FLOOR_MIN}K)")
+    if normal + 1e-9 < SALARY_NORMAL_FLOOR_MIN:
+        v.append(f"正常档被改松 ({normal}K < 红线 {SALARY_NORMAL_FLOOR_MIN}K)")
+    if pri + 1e-9 < SALARY_PRIORITY_MIN:
+        v.append(f"优先档被改松 ({pri}K < 红线 {SALARY_PRIORITY_MIN}K)")
     return v
 
 
 def check_exclude_words(cfg: dict) -> list:
+    """A3: 词表完整性（双休/实习硬过滤词不可被删）。"""
     v = []
     body = cfg.get("body_exclude_keywords", []) or []
     missing = [w for w in WEEKEND_MANDATORY_WORDS if w not in body]
@@ -75,12 +92,37 @@ def check_exclude_words(cfg: dict) -> list:
     return v
 
 
+def check_decisioner(cfg: dict) -> list:
+    """B: 岗位价值决策器完整性（分层规则不被删改）。
+
+    只验「关键常量仍然存在且方向正确」，不锁死全部源码 ——
+    决策器内部逻辑由 tests/test_job_decision.py 兜底。
+    """
+    v = []
+    try:
+        import job_decision as jd
+        need = ["SALARY_HARD_FLOOR", "SALARY_NORMAL_FLOOR", "SALARY_PRIORITY",
+                "WORKDAY_REDLINES", "SPECIAL_APPROVAL_SIGNALS"]
+        for name in need:
+            if not hasattr(jd, name):
+                v.append(f"job_decision.py 缺失关键常量 {name} —— 分层规则被破坏")
+        if not hasattr(jd, "evaluate_job"):
+            v.append("job_decision.py 缺失 evaluate_job() —— 决策器被破坏")
+        elif len(jd.WORKDAY_REDLINES) < 6:
+            v.append("WORKDAY_REDLINES 过短（<6词）—— 制度红线被抽空")
+        elif len(jd.SPECIAL_APPROVAL_SIGNALS) < 6:
+            v.append("SPECIAL_APPROVAL_SIGNALS 过短（<6词）—— 特批通道被抽空")
+    except Exception as e:
+        v.append(f"job_decision.py 不可用: {str(e)[:60]}")
+    return v
+
+
 def run_all(cfg: dict) -> list:
-    return check_safety(cfg) + check_salary(cfg) + check_exclude_words(cfg)
+    return (check_safety(cfg) + check_salary(cfg) + check_exclude_words(cfg)
+            + check_decisioner(cfg))
 
 
 if __name__ == "__main__":
-    import sys
     p = Path(__file__).parent / "config.json"
     cfg = json.loads(p.read_text())
     viol = run_all(cfg)
@@ -89,4 +131,4 @@ if __name__ == "__main__":
         for x in viol:
             print("  ✗", x)
         sys.exit(2)
-    print(f"✅ GUARDRAILS v{GUARDRAILS_VER} 校验通过（薪资/双休/实习/夜禁/日限/时限）")
+    print(f"✅ GUARDRAILS v{GUARDRAILS_VER} 校验通过（分层薪资/双休/实习/夜禁/日限/时限/决策器）")

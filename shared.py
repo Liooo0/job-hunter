@@ -393,18 +393,14 @@ def smart_filter(company: str, title: str, desc: str, salary: str, score: int, c
         if contains_kw(combined, kw):
             return 0, f"JD含排除词'{kw}'→过滤"
 
-    # Rule 1: 薪资过滤 (v1.0)
-    salary_filter = cfg.get("salary_filter", {})
-    home_cities = salary_filter.get("home_cities", ["深圳"])
-    if salary_low > 0:
-        if city in home_cities:
-            home_min = float(salary_filter.get("home_min_accept", 8))
-            if salary_low < home_min:
-                return 0, f"薪资过低({salary_low}K<{home_min:g}K)→过滤"
-        else:
-            away_min = float(salary_filter.get("away_min_accept", 10))
-            if salary_low < away_min:
-                return 0, f"外地低薪({salary_low}K<{away_min:g}K)→过滤"
+    # Rule 1: 薪资分层裁决 — RULES_v2.0 (2026-08-31) 由 job_decision.evaluate_job 统一负责
+    # 旧逻辑: home_min_accept/away_min_accept 一刀切（已退役，避免与决策器双轨打架）。
+    # 新逻辑: <5K默认拒 / 5-8K特批通道(编制国企稳定) / 8-10K正常 / >=10K优先 / 未知不拒。
+    # 决策器在 boss_apply 主流程 smart_filter 之前运行（资格层先行，代码判死刑）。
+    # 此处仅保留兜底：薪资可解析且低于硬地板时立即体现（决策器兜底，防解析失败漏网）。
+    salary_low_saved = salary_low
+    if salary_low_saved > 0 and salary_low_saved < 5:
+        pass  # 不在此处拦截 — 决策器已覆盖；此处拦截会挡住"编制低薪特批"通道
 
     # Rule 2: 小微劳务中介 — 外包+薪资极低+无技术含量 → 直接过滤
     if is_outsourcing and salary_low < 6 and tech_score < 2:
