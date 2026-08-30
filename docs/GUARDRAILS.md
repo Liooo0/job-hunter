@@ -1,8 +1,30 @@
-# GUARDRAILS v2.0 + VSCORE — 三层决策体系（2026-08-31 定稿，RULES_v2.0）
+# GUARDRAILS v2.0 + VSCORE — L0~L3 确定性岗位决策系统（2026-08-31 定稿，RULES_v2.0）
 
-**定位**：换任何模型/任何人，投递决策分三层，前两层代码强制、第三层确定性排序。
+**定位**：换任何模型/任何人，投递决策走固定五步，职责不串线。
 **核心公式：先判不能投什么（L1），再判能不能投（L2），最后判最值得投什么（L3）。**
-**1万不是规则，8千也不是规则——L1/L2 是资格，L3 才是排序。**
+**1万不是规则，8千也不是规则——L1/L2 是资格，L3 才是排序。模型只负责理解信息。**
+
+## 总架构（用户定稿，勿回退）
+
+```
+L0  数据采集（Boss列表/详情 → 结构化信号 salary/workday/shift/intern/outsourcing/travel/role_type）
+      ↓
+L1  Hard Guardrails（guardrails.py，启动强制）  违规 → 拒绝启动投递
+      ↓
+L2  Job Decision（job_decision.py，资格层先行） 不符资格 → REJECT
+      ↓
+L3  Value Score（value_score.py，确定性排序）   0-100 → HIGH/NORMAL/LOW
+      ↓
+投递排序 / 优先级
+```
+
+**架构不变量（tests/test_architecture.py 10 例锁死，违反 = 测试红 = 不许合）**：
+1. ALLOW/REJECT 只来自 L2 `Decision.action`；L3 的 ValueScore **没有 action 字段、代码级不出现 REJECT 字样**
+2. boss_apply 主流程中 L3 结果从不进入 `if vs.score < N` 比较、从不触发 `return "skip"`
+   → 永远 `if decision.action == "REJECT": do_not_apply() / elif ALLOW: rank_by(value_score)`，
+   绝不 `if value_score < 60: reject()`（防 L3 偷偷变成第二个 L2 的退化）
+3. 权重版本化：改 WEIGHTS → `VSCORE_VERSION` +0.1 → 跑 `scripts/vscore_benchmark.py` 对比 v1.0 基线；
+   变化必须人话可解释，解释不了 → 回退。基准岗位集 `tests/benchmark_roles.json` 不可删除。
 
 ## 第一层：Hard Guardrails（代码强制，全部不可由模型决定）
 

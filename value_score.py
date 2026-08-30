@@ -12,9 +12,29 @@
 
 维度权重（合计 100）：
   薪资 30 | AI匹配度 25 | 工作制度 10 | 稳定性 10 | 技术成长 10 | 福利 5 | 城市 5 | 工作强度 5
+
+权重版本化协议（2026-08-31 定稿，防「感觉式调权重」）：
+  - VSCORE_VERSION 是唯一版本标识；改任何权重 → 版本 +0.1
+  - 每版必须跑 scripts/vscore_benchmark.py 输出基准岗位得分表
+  - 对比 v1.0 基线后，变化必须是人话可解释的，不许拍脑袋
+  - 基准岗位集 tests/benchmark_roles.json 不可删除
 """
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
+
+VSCORE_VERSION = "1.0"
+
+# 权重表（只读约定：排序用，永不参与 ALLOW/REJECT —— 见 tests/test_architecture.py）
+WEIGHTS = {
+    "salary": 30,        # 薪资带分
+    "ai_match": 25,      # AI匹配度（复用 explain_match 技术+方向）
+    "workday": 10,       # 工作制度（双休信号）
+    "stability": 10,     # 稳定性（编制/国企/央企/上市）
+    "growth": 10,        # 技术成长（AI核心/实施/弱AI）
+    "welfare": 5,        # 福利（五险一金/公积金）
+    "city": 5,           # 城市（home优先）
+    "intensity": 5,      # 工作强度（不加班/加班少）
+}
 
 # ── 薪资分（K/月，与 job_decision 分层对齐） ──
 SALARY_SCORE = {">=10K": 30, "8-10K": 24, "5-8K": 18, "<5K": 10, "unknown": 15}
@@ -185,7 +205,7 @@ if __name__ == "__main__":
     ]
     for c, t, d, s, city in cases:
         dec = evaluate_job(c, t, d, s, city=city, cfg=cfg)
-        if dec.action == "REJECT":
+        if dec.action != "ALLOW":  # L2 判决展示（架构上 REJECT 只属于 job_decision）
             print(f"{t[:18]:20s} | {s:10s} | {str(dec):55s} → 不投")
             continue
         mr = explain_match(t, d, company=c, salary=s, city=city, cfg=cfg)
