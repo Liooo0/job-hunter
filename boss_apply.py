@@ -9,6 +9,7 @@ import random
 import signal
 import sys
 import time
+import guardrails as GR
 import traceback
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -449,7 +450,7 @@ def resume_version_for(title: str) -> str:
         return "D-采购"
     if any(k in t for k in ["车联网", "车载", "智能座舱", "ota", "adas", "t-box", "v2x", "整车", "台架", "hil", "can", "三电", "电池", "bms", "车机", "导航测试", "汽车电子", "自动驾驶", "智能驾驶"]):
         return "C-车联网"
-    if any(k in t for k in ["实施", "解决方案", "技术支持", "数字化", "顾问", "运营"]):
+    if any(k in t for k in ["实施", "解决方案", "技术支持", "数字化", "顾问", "运营", "低代码", "rpa", "自动化", "影刀"]):
         return "B-解决方案"
     if any(k in t for k in ["ai", "llm", "agent", "rag", "dify", "coze", "大模型", "智能体", "知识库", "工作流", "prompt"]):
         return "A-AI应用"
@@ -1341,6 +1342,18 @@ def main():
         print(f"   原因: {reason}")
         print(f"   恢复: python3 boss_apply.py --resume")
         return
+
+    # ── GUARDRAILS 固定校验（v1.0, 2026-08-31）：安全配置被改松 → 拒绝启动 ──
+    # 不依赖模型自觉：薪资线/双休词/实习过滤/夜禁/日限/时限全部下沉为代码强制。
+    # dry-run 不投递不碰账号，跳过；真实投递路径必过。
+    if not args.dry_run:
+        _gr_viol = GR.run_all(cfg)
+        if _gr_viol:
+            print("🛑  GUARDRAILS 校验失败，投递被拒绝（安全配置被改松）")
+            for _x in _gr_viol:
+                print(f"      ✗ {_x}")
+            print("   修复: 恢复 config.json 中的红线参数（见 docs/GUARDRAILS.md）")
+            return
 
     # ── Kill Switch 检查（全局开关，优先于一切写操作）──
     if not args.dry_run:
