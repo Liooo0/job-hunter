@@ -10,6 +10,7 @@ import signal
 import sys
 import time
 import guardrails as GR
+import reply_lock
 import traceback
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -1637,6 +1638,13 @@ def main():
     HOURLY_CAP = _safety["hourly_cap"]  # 单小时已投达到此值 → 休息 30 分钟再继续
     CIRCUIT_BREAK_THRESHOLD = 3  # 连续 3 次失败 → 自动熔断（S2 级防护）
 
+    # ── REPLY_REVIEW_LOCK（v5 第十二条·最高优先级）：待审核 HR 回复存在时，
+    #    本 worker 一律不得发送简历；保存断点退出，审核完从断点恢复，绝不重新初始化整轮。
+    #    这是 Scheduler 层的确定性文件锁，不依赖模型自觉。──
+    _ck = reply_lock.load_checkpoint()
+    _done_combos = set(tuple(str(x).split("×")) for x in _ck.get("done_combos", []))
+    _lock_halt = False  # 锁触发后跳出城市外层，整轮收工
+
     for city in cities:
         if not city.strip():
             continue
@@ -1649,6 +1657,31 @@ def main():
                 continue
             # ── 终端/Chrome存活检查 ──
             if check_should_stop(page):
+                break
+            # ── 断点恢复：本轮已完成的 (城市,关键词) 直接跳过，不重复消耗额度 ──
+            if (city, keyword) in _done_combos:
+                print(f"\n  ⏭️ [断点恢复] 跳过已完成: {city}×{keyword}")
+                continue
+            # ── 回复审核锁检查（每个任务边界，最迟一个关键词后生效）──
+            if reply_lock.is_locked():
+                # 已完成 = 断点已有 + 本轮已跑完的 + 当前城市里排在此关键词之前的
+                _done_now = set(_done_combos)
+                for _c in cities[:cities.index(city)]:
+                    for _k in keywords:
+                        _done_now.add((_c, _k))
+                _ki = keywords.index(keyword)
+                for _k in keywords[:_ki]:
+                    _done_now.add((city, _k))
+                reply_lock.save_checkpoint({
+                    "done_combos": sorted("×".join(c) for c in _done_now),
+                    "stopped_at": f"{city}×{keyword}",
+                    "total_applied_this_round": total_applied,
+                })
+                print(f"\n  🔒 [REPLY_REVIEW_LOCK] 检测到待审核 HR 回复 — "
+                      f"自动投递在 {city}×{keyword} 前暂停")
+                print(f"     回复优先级 > 投递（v5 第十二条）。断点已保存，"
+                      f"运行 python3 reply_lock.py review 审核后自动恢复")
+                _lock_halt = True
                 break
             # ── 夜间禁投实时检查（跨过 22:00 就停，不恋战）──
             if in_night_window(_safety):
@@ -1670,6 +1703,13 @@ def main():
                 # 本轮成功执行（无论投出几份），重置连续失败计数
                 if f == 0:
                     consecutive_failures = 0
+                # ── 断点推进：该 (城市,关键词) 已完成，落盘（崩溃也不重复投）──
+                _done_combos.add((city, keyword))
+                reply_lock.save_checkpoint({
+                    "done_combos": sorted("×".join(c) for c in _done_combos),
+                    "last_done": f"{city}×{keyword}",
+                    "total_applied_this_round": total_applied,
+                })
 
             # ── 熔断器：连续失败达到阈值 → risk_triggered 层级（异常，关全局开关）──
             if consecutive_failures >= CIRCUIT_BREAK_THRESHOLD:
@@ -1711,8 +1751,14 @@ def main():
                 print(f"\n  ☕ 休息 {rest:.0f}s ... (今日已投 {total_applied}/{DAILY_LIMIT})\n")
                 time.sleep(rest)
 
+        if _lock_halt:
+            break
         if total_applied >= DAILY_LIMIT:
             break
+
+    # ── 本轮正常跑完（未被锁中断）→ 断点作废；被锁中断 → 断点保留待恢复 ──
+    if not _lock_halt and not SHOULD_STOP:
+        reply_lock.clear_checkpoint()
 
     print(f"""
 ╔══════════════════════════════════════╗
