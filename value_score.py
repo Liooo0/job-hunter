@@ -1,43 +1,50 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""RULES_v2.0 第三层：岗位价值评分器 VSCORE v1.0 (2026-08-31 定稿)。
+"""RULES_v2.0 第三层：岗位价值评分器 VSCORE v1.1 (2026-08-31 定稿)。
 
 定位：资格裁决器(job_decision)只回答「能不能投」；本模块回答「最值得投什么」——
-把薪资/AI匹配度/制度/稳定性/成长/福利/城市/强度 合成一个可排序价值分。
+把薪资/AI匹配度/制度/稳定性/成长/福利/地区可达性 合成一个可排序价值分。
 
 铁律：
 - 纯确定性规则，零 LLM（模型/解析层负责提供结构化信号，代码负责算分）
 - 只排序不拦截：REJECT 永远归 job_decision，本模块输出 HIGH/NORMAL/LOW 投递优先级
-- 1万不是规则、8千也不是规则 —— 规则是「先判不能投，再判能不能投，最后判最值得投」
+- 地区永远不是硬门槛（拦截归 L1/L2），只是「值得消耗一个额度的程度」
+
+v1.0→v1.1（2026-08-31 地区升级定稿）：
+- 城市5 → 地区可达性15（S深圳15/A广州13/B杭宁蓉8/C其他3，异地接受+3、仅限本地-10）
+- 薪资30→25 且 >=10K 内部细分（15K 压过 10K）；强度并入制度15；稳定/成长 10→8；福利 5→4
 
 维度权重（合计 100）：
-  薪资 30 | AI匹配度 25 | 工作制度 10 | 稳定性 10 | 技术成长 10 | 福利 5 | 城市 5 | 工作强度 5
+  薪资 25 | AI匹配度 25 | 工作制度 15 | 地区可达性 15 | 稳定性 8 | 技术成长 8 | 福利 4
 
 权重版本化协议（2026-08-31 定稿，防「感觉式调权重」）：
   - VSCORE_VERSION 是唯一版本标识；改任何权重 → 版本 +0.1
   - 每版必须跑 scripts/vscore_benchmark.py 输出基准岗位得分表
-  - 对比 v1.0 基线后，变化必须是人话可解释的，不许拍脑袋
+  - 对比上一版基线后，变化必须是人话可解释的，不许拍脑袋
   - 基准岗位集 tests/benchmark_roles.json 不可删除
 """
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
-VSCORE_VERSION = "1.0"
+VSCORE_VERSION = "1.1"   # 2026-08-31 v1.1：城市5 → 地区可达性15（relocation 四档+异地信号）
 
 # 权重表（只读约定：排序用，永不参与 ALLOW/REJECT —— 见 tests/test_architecture.py）
+# v1.1（2026-08-31 地区升级定稿）：城市5 → 地区可达性15；薪资30→25；强度并入制度15。
+# 合计 25+25+15+8+8+4+15 = 100（tests 锁死）。
 WEIGHTS = {
-    "salary": 30,        # 薪资带分
+    "salary": 25,        # 薪资带分
     "ai_match": 25,      # AI匹配度（复用 explain_match 技术+方向）
-    "workday": 10,       # 工作制度（双休信号）
-    "stability": 10,     # 稳定性（编制/国企/央企/上市）
-    "growth": 10,        # 技术成长（AI核心/实施/弱AI）
-    "welfare": 5,        # 福利（五险一金/公积金）
-    "city": 5,           # 城市（home优先）
-    "intensity": 5,      # 工作强度（不加班/加班少）
+    "workday": 15,       # 工作制度（双休信号；v1.1 起并入原"强度"维度）
+    "stability": 8,      # 稳定性（编制/国企/央企/上市）
+    "growth": 8,         # 技术成长（AI核心/实施/弱AI）
+    "location": 15,      # 地区可达性 v1.1（S深圳15/A广州13/B杭宁蓉8/C其他3 ±异地信号）
+    "welfare": 4,        # 福利（五险一金/公积金）
 }
 
-# ── 薪资分（K/月，与 job_decision 分层对齐） ──
-SALARY_SCORE = {">=10K": 30, "8-10K": 24, "5-8K": 18, "<5K": 10, "unknown": 15}
+# ── 薪资分（K/月，与 job_decision 分层对齐；v1.1 满分 25，10K+ 内部再细分：
+#    用户定稿示例要求 杭州15K 必须排到 杭州10K 之前，一刀切25分会让两者同权） ──
+SALARY_SCORE = {">=20K": 25, ">=15K": 23, ">=10K": 20,
+                "8-10K": 15, "5-8K": 11, "<5K": 6, "unknown": 10}
 
 # ── 稳定性信号 ──
 STABILITY_HIGH = ["编制", "国企", "央企", "事业单位", "事业编", "正式工", "公务员",
@@ -82,7 +89,8 @@ def _count_signal(text: str, words) -> int:
 
 def value_score(company: str, title: str, desc: str, salary: str,
                 city: str = "", decision=None, match_result=None,
-                salary_band: str = "unknown") -> ValueScore:
+                salary_band: str = "unknown",
+                salary_low_k: Optional[float] = None) -> ValueScore:
     """综合价值评分。decision=job_decision.Decision; match_result=explain_match 结果。
 
     任何一步失败都降级为「基础分」，绝不抛异常阻断投递。
@@ -93,15 +101,18 @@ def value_score(company: str, title: str, desc: str, salary: str,
     bd: Dict[str, int] = {}
     sig: List[str] = []
 
-    # 1) 薪资（30）—— 用 salary_band 优先（决策器已算），兜底自查
+    # 1) 薪资（25）—— salary_band 优先；unknown 但能解析出数时兜底解析；
+    #    v1.1：>=10K 按实际下限细分 20/23/25（15K 必须压过 10K，见 relocation 定稿示例）
+    from job_decision import parse_salary_low
+    _low = salary_low_k if salary_low_k is not None else parse_salary_low(salary)
     band = salary_band or "unknown"
-    if band not in SALARY_SCORE:
-        from job_decision import parse_salary_low
-        low = parse_salary_low(salary)
-        band = ">=10K" if low >= 10 else "8-10K" if low >= 8 else "5-8K" if low >= 5 else "<5K" if low > 0 else "unknown"
-    bd["薪资"] = SALARY_SCORE.get(band, 15)
-    if band in (">=10K", "8-10K"):
-        sig.append(f"薪资带:{band}({bd['薪资']}/30)")
+    if band == "unknown" and _low > 0:
+        band = ">=10K" if _low >= 10 else "8-10K" if _low >= 8 else "5-8K" if _low >= 5 else "<5K"
+    if band == ">=10K":
+        band = ">=20K" if _low >= 20 else ">=15K" if _low >= 15 else ">=10K"
+    bd["薪资"] = SALARY_SCORE.get(band, 10)
+    if band in (">=10K", ">=15K", ">=20K", "8-10K"):
+        sig.append(f"薪资带:{band}({bd['薪资']}/25)")
 
     # 2) AI匹配度（25）—— 复用 explain_match 的 technical+direction 加权
     if match_result and match_result.get("dimensions"):
@@ -121,62 +132,58 @@ def value_score(company: str, title: str, desc: str, salary: str,
     if bd["AI匹配度"] >= 20:
         sig.append(f"AI核心职责({bd['AI匹配度']}/25)")
 
-    # 3) 工作制度（10）—— 结构化信号优先，关键词兜底
+    # 3) 工作制度（15，v1.1 起并入原"强度"维度）—— 结构化信号优先，关键词兜底
     if _has_any(combined, ["双休", "周末双休", "做五休二", "上五休二", "正常双休"]):
-        bd["制度"] = 10
+        bd["制度"] = 15 if not _has_any(combined, STRENGTH_BAD) else 11
         sig.append("双休")
     elif _has_any(combined, STRENGTH_BAD):
-        bd["制度"] = 4
+        bd["制度"] = 5
         sig.append("制度未明示")
     else:
-        bd["制度"] = 7
+        bd["制度"] = 10
 
-    # 4) 稳定性（10）
+    # 4) 稳定性（8）
     if _has_any(combined, STABILITY_HIGH):
-        bd["稳定性"] = 10
+        bd["稳定性"] = 8
         sig.append("高稳定主体")
     elif _has_any(combined, STABILITY_MID):
-        bd["稳定性"] = 8
+        bd["稳定性"] = 6
     elif decision is not None and getattr(decision, "special_approval", False):
-        bd["稳定性"] = 9  # 特批通道必有稳定信号
+        bd["稳定性"] = 7  # 特批通道必有稳定信号
     else:
-        bd["稳定性"] = 5
+        bd["稳定性"] = 4
 
-    # 5) 技术成长（10）
+    # 5) 技术成长（8）
     c = combined.lower()
     if _has_any(c, [w.lower() for w in AI_CORE]):
-        bd["成长"] = 10
-    elif _has_any(c, [w.lower() for w in AI_IMPL]):
         bd["成长"] = 8
-    elif _has_any(c, [w.lower() for w in AI_WEAK]):
+    elif _has_any(c, [w.lower() for w in AI_IMPL]):
         bd["成长"] = 6
+    elif _has_any(c, [w.lower() for w in AI_WEAK]):
+        bd["成长"] = 5
     else:
-        bd["成长"] = 3
+        bd["成长"] = 2
 
-    # 6) 福利（5）
+    # 6) 福利（4）
     if _has_any(combined, WELFARE_HIGH):
-        bd["福利"] = 5
+        bd["福利"] = 4
     elif _has_any(combined, WELFARE_MID):
-        bd["福利"] = 3
+        bd["福利"] = 2
     else:
         bd["福利"] = 1
 
-    # 7) 城市（5）—— home 城市优先（无租房压力，深圳主投）
-    HOME = ["深圳", "广州", "东莞", "佛山", "惠州", "珠海", "中山"]
-    if city in HOME:
-        bd["城市"] = 5
-    elif city in ("北京", "上海", "杭州", "南京", "苏州", "成都", "武汉", "西安"):
-        bd["城市"] = 4
-    else:
-        bd["城市"] = 3
-
-    # 8) 工作强度（5）
-    if _has_any(combined, STRENGTH_GOOD):
-        bd["强度"] = 5
-    elif _has_any(combined, STRENGTH_BAD):
-        bd["强度"] = 1
-    else:
-        bd["强度"] = 3
+    # 7) 地区可达性（15）—— v1.1：城市是 HR 的第一道筛，不是普通加分
+    # 深圳15 广州13 杭宁蓉8 其他3；明示接受异地+3；明示仅限本地-10（S档母城豁免）
+    try:
+        from relocation import evaluate_location as _loc_eval
+        _le = _loc_eval(city, combined)
+        bd["地区可达性"] = _le.score
+        if _le.signals:
+            sig.append(f"地区{_le.tier}:{';'.join(_le.signals)}")
+        elif _le.tier != "S":
+            sig.append(f"地区{_le.tier}({bd['地区可达性']}/15)")
+    except Exception:
+        bd["地区可达性"] = 8   # 降级中位分，绝不因地区评估异常阻断投递
 
     total = sum(bd.values())
     tier = "HIGH" if total >= 80 else "NORMAL" if total >= 60 else "LOW"

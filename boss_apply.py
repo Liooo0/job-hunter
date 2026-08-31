@@ -769,6 +769,41 @@ def _fill_and_send(tab, greeting: str) -> bool:
 # ctx 为共享可变上下文，承载跨函数的 score/reason/greeting/passed_min_score，
 # 使 except 处理器读到的变量状态与拆分前局部变量完全一致。
 
+# ── v5 额度账本挂钩（2026-08-31）：预算 = min(profile 150, 风控硬顶)。
+#    发送前 acquire 预留（UNCERTAIN 占额度不扣完成数）；SENT→confirm 扣额；
+#    明确失败/异常→release 回血。账本不可用时放行——真实日上限另有
+#    count_applied_today 硬顶双保险，记账失败绝不能误杀投递。──
+_QUOTA_SCHED = {"s": None}  # type: ignore
+
+
+def _quota():
+    if _QUOTA_SCHED["s"] is None:
+        from quota_scheduler import QuotaScheduler
+        _QUOTA_SCHED["s"] = QuotaScheduler()
+    return _QUOTA_SCHED["s"]
+
+
+def _quota_acquire(city, company, title, slot):
+    try:
+        return _quota().acquire(f"{city}|{company}|{title}", plan=slot or "")
+    except Exception:
+        return True
+
+
+def _quota_confirm(city, company, title, verified):
+    try:
+        _quota().confirm(f"{city}|{company}|{title}", verified=bool(verified))
+    except Exception:
+        pass
+
+
+def _quota_release(city, company, title):
+    try:
+        _quota().release(f"{city}|{company}|{title}")
+    except Exception:
+        pass
+
+
 def _prepare_job_context(search_tab, city, keyword, title, company, salary,
                          cfg, min_score, ctx) -> str:
     """准备阶段：点击卡片加载详情 → JD评分 → 过滤链 → 最低分门槛 → 沟通按钮检查 → 招呼语。
@@ -811,9 +846,32 @@ def _prepare_job_context(search_tab, city, keyword, title, company, salary,
             return "skip"
         reason += f" |v2:({jd.priority}|{jd.salary_band})"
         ctx["reason"] = reason
+        ctx["jd"] = jd
     except Exception as jde:
         jd = None
         print(f"  [⚠️决策器异常(不拦截)] {str(jde)[:60]}")
+
+    # ── v5 Plan 路由（2026-08-31）：L2 ALLOW 后判定 P1-A~D / P2-A~C / NO_PLAN ──
+    # NO_PLAN=不进池（岗位错位/未达该城市档Plan2线），消耗额度前的确定性闸。
+    # 异常降级：路由失败不拦截，视作无计划继续（宁可多投不误杀）。
+    try:
+        from plan_router import route_plan
+        from job_decision import parse_salary_low
+        _pr = route_plan(company, title, desc, parse_salary_low(salary), city=city,
+                         special_approval=bool(jd and getattr(jd, "special_approval", False)))
+        if _pr.plan == "NO_PLAN":
+            decision_trace.gate(tr, "plan_router", f"rejected:{_pr.reason}")
+            print(f"  [🗺️路由] {company[:15]} | {title[:25]} → NO_PLAN: {_pr.reason}")
+            _record_outcome(city, company, title, salary, keyword, score,
+                            _pr.reason, event="plan_route", trace=tr)
+            ctx["reason"] = _pr.reason
+            return "skip"
+        ctx["plan_slot"] = _pr.slot
+        reason += f" |{_pr.slot}"
+        ctx["reason"] = reason
+        decision_trace.gate(tr, "plan_router", "pass", detail=_pr.slot)
+    except Exception as pre:
+        print(f"  [⚠️Plan路由异常(不拦截)] {str(pre)[:60]}")
 
     # 智能过滤：公司规模/性质/薪资/技术含量
     smart_score, smart_reason = smart_filter(company, title, desc, salary, score, cfg, city=city)
@@ -892,15 +950,16 @@ def _prepare_job_context(search_tab, city, keyword, title, company, salary,
         match_result = None
         print(f"  [⚠️五维评估异常(不拦截)] {str(me)[:60]}")
 
-    # ── RULES_v2.0 第三层：岗位价值评分 VSCORE（2026-08-31）—— 只排序不拦截 ──
-    # 综合 薪资/AI匹配度/制度/稳定性/成长/福利/城市/强度 → 0-100 + HIGH/NORMAL/LOW
+    # ── RULES_v2.0 第三层：岗位价值评分 VSCORE v1.1（2026-08-31 地区升级）—— 只排序不拦截 ──
+    # 综合 薪资/AI匹配度/制度/稳定性/成长/福利/地区可达性 → 0-100 + HIGH/NORMAL/LOW
     # 用途：投递优先级排序；任何异常降级为跳过评分，绝不阻断投递。
     try:
         from value_score import value_score
         jd_band = getattr(jd, "salary_band", "unknown") if jd else "unknown"
+        jd_low = float(getattr(jd, "salary_low", 0) or 0) if jd else 0.0
         vs = value_score(company, title, desc, salary, city=city,
                          decision=jd, match_result=match_result,
-                         salary_band=jd_band)
+                         salary_band=jd_band, salary_low_k=jd_low)
         reason += f" |价值{vs.score}分[{vs.tier}]"
         ctx["reason"] = reason
         ctx["value_score"] = vs.score
@@ -937,6 +996,14 @@ def _prepare_job_context(search_tab, city, keyword, title, company, salary,
     ctx["greeting"] = greeting
     ctx["greeting_template_id"] = template_id
     print(f"    💬 招呼语[{template_id}]: {greeting[:50]}...")
+
+    # ── v5 额度：点击前预留（UNCERTAIN 占额度不扣完成数；明确失败回血）。
+    #    拿不到额度 = 今日预算耗尽 → 确定性 skip，不突破预算（验收标准5/6）──
+    if not _quota_acquire(city, company, title, ctx.get("plan_slot", "")):
+        decision_trace.gate(tr, "quota", "rejected:今日额度已耗尽")
+        print(f"    ⏸️ 额度耗尽，停止消耗（{city} {company[:12]}）")
+        return "quota_stop"
+    decision_trace.gate(tr, "quota", "pass", detail=ctx.get("plan_slot", ""))
     return "proceed"
 
 
@@ -1217,11 +1284,16 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
                 if action == "skip":
                     skipped_count += 1
                     continue
+                if action == "quota_stop":
+                    # v5：今日预算耗尽 → 整轮收工（确定性，不突破预算）
+                    print("  ⏹️ 额度账本：今日预算已耗尽，本轮收工")
+                    return applied_count, skipped_count, failed_count
 
                 result = _execute_apply(page, search_tab, city, keyword, title,
                                         company, salary, ctx)
                 if result["action"] == "failed":
                     failed_count += 1
+                    _quota_release(city, company, title)   # 明确失败 → 释放预留额度
                     # v2.1：明确失败计入失败率阶梯（可能触发提前收工）
                     _stopped, _mult = _sd_after_attempt("failed")
                     if _stopped:
@@ -1246,6 +1318,8 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
                 )
                 print(f"    ✅ 已投递 ({applied_count + skipped_count}/{count + skipped_count})"
                       + (" [UNCERTAIN]" if not result["verified"] else ""))
+                # v5 额度回写：verified→SENT 扣额；UNCERTAIN→挂起占预留不回血
+                _quota_confirm(city, company, title, result["verified"])
 
                 # ── v2.1 风控阶梯降速：记录本次尝试并判定 ──
                 _stopped, _mult = _sd_after_attempt(
@@ -1263,6 +1337,7 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
                 if ctx.get("passed_min_score"):
                     page_all_zero = False
                 failed_count += 1
+                _quota_release(city, company, title)   # v5：异常失败 → 释放预留额度
                 search_tab, should_break = _handle_apply_failure(
                     page, search_tab, search_url, city, keyword, title,
                     company, salary, ctx, e
@@ -1435,6 +1510,26 @@ def main():
 
     count = args.count or cfg.get("default_count", 15)
     min_score = args.min_score if args.min_score is not None else cfg.get("min_score", 30)
+
+    # ── v5 搜索调度层（2026-08-31 地区升级）：城市按可达性档位 S深圳→A广州→B→C 重排，
+    #    关键词按 Plan1 词表档位 P1-A→P1-D 重排。地区优先级同时作用于
+    #    "搜索顺序"和"最终评分"，额度先喂主场+主线，不是只加5分。──
+    try:
+        from relocation import order_cities_by_tier
+        _ordered = order_cities_by_tier(cities)
+        if _ordered != cities:
+            print(f"🗺️ 城市按可达性重排: {' → '.join(_ordered)}")
+            cities = _ordered
+    except Exception as _le:
+        print(f"  [⚠️城市重排降级(按传入顺序)] {str(_le)[:50]}")
+    try:
+        from plan_router import order_keywords_by_plan
+        _okw = order_keywords_by_plan(keywords)
+        if _okw != keywords:
+            print(f"🎯 关键词按Plan1档位重排: {' → '.join(_okw)}")
+            keywords = _okw
+    except Exception as _ke:
+        print(f"  [⚠️关键词重排降级(按传入顺序)] {str(_ke)[:50]}")
 
     # ── --dry-run: 演练模式，只输出计划，绝不连接浏览器/投递 ──
     if args.dry_run:

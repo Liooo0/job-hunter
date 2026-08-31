@@ -5,6 +5,30 @@ version: "5.0"
 updated: "2026-08-31"
 
 location:
+  # v5.1 地区可达性分级（2026-08-31 定稿）：候选人所在地本身就是 HR 的筛选条件。
+  # 地区不再只是 Value Score 的普通加分，而是贯穿 搜索顺序 + Plan2门槛 + 价值评分 三层。
+  # 不是"外地不要"，而是"外地需要更高价值才值得消耗一个投递额度"。
+  tier:
+    S: [深圳]                      # 人在深圳，HR 零迁移不确定性 → 主战场
+    A: [广州]                      # 珠三角低成本流动 → 近距离扩展
+    B: [杭州, 南京, 成都]          # 可考虑，但需更强岗位价值支付"异地阻力"
+    C: [其他]                      # 兜底档：需明显高薪/强匹配/远程/接受异地
+    # 珠三角卫星城（东莞/佛山等）如需升级改这一行即可，代码零改动
+  plan2_salary_floor:              # Plan2 入场薪资线随地区档上浮（异地阻力用薪资支付）
+    S: 10000
+    A: 10000
+    B: 12000
+    C: 14000
+  relocation: {acceptable: true, preferred: false}
+  local_preference:
+    exact_local: true              # "仅限本地" → 极高异地风险，评分归零
+    local_prefer_penalty: true     # "本地优先" → 仅减分，不拦截
+  remote_signals:                  # JD 明示接受异地/远程 → 风险下调
+    accept: [接受异地, 异地候选人, 优秀的异地, 接受外地, 可远程, 远程办公,
+             居家办公, 提供住宿, 包住异地, 搬迁补贴]
+    local_only: [仅限本地, 只考虑本地, 不考虑异地, 不接受异地, 本地候选人优先勿扰, 需本地到岗]
+    local_prefer: [本地优先]
+  # 兼容旧字段（_resolve_cities 派生用）：
   primary: [深圳, 广州]
   secondary: [杭州, 南京, 佛山, 东莞, 惠州, 珠海, 中山, 成都]
   remote: acceptable            # AI 线岗位可接受长期远程
@@ -39,12 +63,12 @@ career:
       P2-C: 职业相关性一般（软件测试/技术支持/实施顾问）
     rule: 薪资只决定资格不决定相关度；岗位名落进 blocked_roles 的高薪岗照样 BLOCK
 
-blocked_roles:                   # 职业错位硬拦（薪资再高不进池；plan2 不救）
+blocked_roles:                   # 职业错位硬拦（plan_router 只看岗位标题；薪资再高不进池；plan2 不救）
   - 数据标注
   - 内容审核
   - 图片审核
   - 文本审核
-  - 纯销售
+  - 销售
   - 客服
   - 电销
   - 短视频
