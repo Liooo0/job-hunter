@@ -145,4 +145,6 @@ def main(day: str) -> None:
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else date.today().isoformat())
+    import sys as _s
+    _s.path.insert(0, str(ROOT))  # scripts/ 下运行也能 import semantic_parser
+    main(_s.argv[1] if len(_s.argv) > 1 else date.today().isoformat())
