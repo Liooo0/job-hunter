@@ -144,6 +144,25 @@ value_score()  ← 确定性规则，零 LLM
 实现清单：`reply_lock.py`（锁/队列/断点/统计/CLI）；`hr_auto_reply.py`（扫描+起草后只入队，
 `--send`/`--watch` 自动发送后门已拆除）；`boss_apply.py` 主循环任务边界查锁+断点推进。
 
+## 第十三条：外部规则基线（R-EXT 系列，2026-08-31 考古验证后采纳）
+
+> 来源与验证记录见 `docs/external_rules_baseline.md`。核心原则：**模型可以不同，但 Schema 和 Rule Engine 不能不同。**
+> R-EXT-1/2 立即生效；R-EXT-3/4/5/6 随 v5.2 Semantic Parser 阶段落地，落地一条补一条测试。
+
+- **R-EXT-1 状态机保护**（mattohan567）：`applications_v2` 中 SENT/VERIFIED 为终态，
+  禁止批量回退状态或破坏性删除；只允许归档。投递记录是审计资产，不是临时缓存。
+- **R-EXT-2 VERIFY 规则**（mattohan567 + Malik1942 "filler never guesses"）：
+  简历/候选档案之外的事实性陈述（项目、技能、薪资、到岗时间）一律标 `VERIFY`，
+  **never transmit it**——HR 回复草稿含未证实陈述时禁止进入发送通道，必须人工补证或改写。
+- **R-EXT-3 Schema 约束生成**（pseudog0d）：LLM 输出必须匹配 `job_schema.py` 固定 Schema，
+  解析校验通过后才可进 Hard Gate；格式错误 → 重试/切备用供应商，绝不静默接受脏数据。
+- **R-EXT-4 面试可辩护原则**（pseudog0d）：招呼语与回复中的每条陈述必须 interview-defensible；
+  候选人不具备的技能用真实相邻证据表达，禁止虚构直接经验（与第十二条回复质量红线同源）。
+- **R-EXT-5 Coverage Gate**（pseudog0d）：生成的招呼语/回复必须覆盖 JD 强制主题，
+  未覆盖 → 重新生成，不放行（防"通用万能话术"海投）。
+- **R-EXT-6 Provider Failover**（pseudog0d）：LLM 调用走供应商抽象，限流/超时/坏响应自动降级切换
+  （主 deepseek-v4-flash → 备 qwen）；单一供应商故障只降吞吐，不停管线。
+
 ## 修改协议（改规则必须三步同步，禁止只改一处）
 
 1. `job_decision.py`（分层常量/特批词表）或 `guardrails.py`（系统红线）
