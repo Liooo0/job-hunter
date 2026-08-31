@@ -657,6 +657,18 @@ def _send_greeting_via_chat(page, search_tab, company: str, greeting: str) -> tu
 
         search = (company or "")[:8]
         r = "not_found"
+        # ── v5.2 发送链路诊断修复（2026-08-31）：Boss 会话列表显示【HR姓名+公司】，
+        #    公司全称常与岗位表不一致（"中国平安"→"平安人寿"、"华为技术有限公司"→"华为"）。
+        #    旧逻辑 indexOf(整串前8字) 必然 not_found → 全军 UNCERTAIN。
+        #    新逻辑：2字滑窗词干按【频次→位置】排序，逐个在列表找"唯一命中"才点击
+        #    （唯一性要求 = 防误点别人会话发错招呼语）；通用词进黑名单防碰撞。──
+        _GENERIC = {"中国", "中华", "有限", "公司", "集团", "科技", "技术", "网络",
+                    "信息", "电子", "咨询", "服务", "深圳", "广州", "上海", "北京",
+                    "杭州", "南京", "成都", "天津", "数据", "智能", "人工"}
+        from collections import Counter as _C2
+        _grams = _C2(search[i:i+2] for i in range(len(search)-1))
+        _stems = [g for g, _ in sorted(_grams.items(), key=lambda kv: (-kv[1], search.index(kv[0])))
+                  if g not in _GENERIC]
         # 会话可能延迟出现：最多重试 3 次，每次多滚一点
         for attempt in range(3):
             if attempt:
@@ -667,17 +679,35 @@ def _send_greeting_via_chat(page, search_tab, company: str, greeting: str) -> tu
                     pass
                 time.sleep(1)
             r = chat_tab.run_js(f"""
-                var lis = document.querySelectorAll('li');
-                for (var i=0; i<lis.length; i++) {{
-                    var nb = lis[i].querySelector('.name-box');
-                    if (nb && (nb.textContent || '').indexOf({json.dumps(search)}) > -1) {{
-                        nb.click();
-                        return 'clicked';
+                (function() {{
+                    var stems = {json.dumps(_stems)};
+                    var full = {json.dumps(search)};
+                    var lis = document.querySelectorAll('li');
+                    function boxes() {{
+                        var out = [];
+                        for (var i=0; i<lis.length; i++) {{
+                            var nb = lis[i].querySelector('.name-box');
+                            if (nb) out.push(nb);
+                        }}
+                        return out;
                     }}
-                }}
-                return 'not_found';
+                    // 词干逐个尝试：只接受【唯一命中】，多命中说明词太泛 → 换下一个
+                    for (var s = 0; s < stems.length; s++) {{
+                        var hits = boxes().filter(function(nb) {{
+                            return (nb.textContent || '').indexOf(stems[s]) > -1;
+                        }});
+                        if (hits.length === 1) {{ hits[0].click(); return 'clicked:stem:' + stems[s]; }}
+                    }}
+                    // 兜底：整名前8字与列表互 contain，同样要求唯一
+                    var hf = boxes().filter(function(nb) {{
+                        var t = (nb.textContent || '').trim();
+                        return t.length >= 2 && (t.indexOf(full) > -1 || full.indexOf(t) > -1);
+                    }});
+                    if (hf.length === 1) {{ hf[0].click(); return 'clicked:full'; }}
+                    return 'not_found';
+                }})();
             """)
-            if r == "clicked":
+            if str(r).startswith("clicked"):
                 break
         time.sleep(2 + random.uniform(0, 1))
         ok = _fill_and_send(chat_tab, greeting)
@@ -686,9 +716,9 @@ def _send_greeting_via_chat(page, search_tab, company: str, greeting: str) -> tu
                 chat_tab.close()
             except Exception:
                 pass
-        if r == "clicked" and ok:
+        if str(r).startswith("clicked") and ok:
             return True, "聊天页补发成功"
-        if r == "clicked":
+        if str(r).startswith("clicked"):
             return False, "已找到会话但发送未验证"
         return False, "聊天页未找到会话(可能已用默认招呼语)"
     except Exception as e:
