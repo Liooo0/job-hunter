@@ -31,9 +31,10 @@ if (ROOT / "config.json").exists():
 
 def run_all() -> dict:
     data = json.loads(BENCH.read_text())
+    bkey = f"v{data.get('baseline_version', '1.0')}_scores"
     profile = load_candidate_profile(_CONFIG)
-    out = {"version": VSCORE_VERSION, "baseline": data.get("v1.0_scores", {}),
-           "results": []}
+    out = {"version": VSCORE_VERSION, "baseline": data.get(bkey, {}),
+           "baseline_key": bkey, "results": []}
     for r in data["roles"]:
         dec = evaluate_job(r["company"], r["title"], r["desc"], r["salary"],
                            city=r["city"], cfg=_CONFIG)
@@ -46,7 +47,7 @@ def run_all() -> dict:
         vs = value_score(r["company"], r["title"], r["desc"], r["salary"],
                          city=r["city"], decision=dec, match_result=mr,
                          salary_band=dec.salary_band)
-        base = data.get("v1.0_scores", {}).get(r["id"])
+        base = data.get(bkey, {}).get(r["id"])
         out["results"].append({
             "id": r["id"], "note": r.get("note", ""),
             "action": dec.action, "priority": dec.priority,

@@ -103,6 +103,7 @@ class QuotaScheduler:
     # ── 状态 ──
     def state(self) -> QuotaState:
         day = _today()
+        self._reconcile(day)
         q, cap = _load_limits()
         rows = self.con.execute(
             "SELECT status, COUNT(*) FROM quota_ledger WHERE day=? GROUP BY status", (day,)).fetchall()
@@ -152,6 +153,28 @@ class QuotaScheduler:
         """按剩余额度裁剪排序后的候选：能装多少装多少，装不下即止。"""
         remaining = self.state().remaining
         return self.rank(candidates)[:remaining]
+
+    # ── 对账（诚实记账）：quota_ledger 只是预留账，真实扣额以 applications_v2 为准。
+    #    每次 state() 前把今日 verified=1 的真实投递幂等补进账本；
+    #    已存在（SENT/UNCERTAIN/VERIFIED）的不覆盖。防止接线前的投递漏记，
+    #    也防止任何路径绕过账本虚增剩余额度。──
+    def _reconcile(self, day: str):
+        try:
+            rows = self.con.execute(
+                """SELECT city, company, title, status FROM applications_v2
+                   WHERE date(applied_at)=? AND status IN ('APPLIED','UNCERTAIN')""",
+                (day,)).fetchall()
+        except sqlite3.OperationalError:
+            return   # 同库才有该表；注入独立测试库时跳过
+        for city, company, title, status in rows:
+            key = f"{city}|{company}|{title}"
+            cur = self._get(key)
+            if cur is None:
+                st = "SENT" if status == "APPLIED" else "UNCERTAIN"
+                self.con.execute(
+                    "INSERT OR IGNORE INTO quota_ledger(day,job_key,plan,status,ts) VALUES(?,?,?,?,?)",
+                    (day, key, "", st, time.time()))
+        self.con.commit()
 
     # ── 内部 ──
     def _get(self, job_key: str):

@@ -1,96 +1,34 @@
 {
-  "_comment": "VSCORE 权重演进的基准岗位集（2026-08-31 定稿，不可删除）。每次改 WEIGHTS 必须跑 scripts/vscore_benchmark.py 对比基线；变化需人话可解释，否则回退。v1.0_scores 为 2026-08-31 实测基线（由脚本首次运行记录）。",
-  "baseline_version": "1.0",
-  "v1.0_scores": {
-    "ai_12k": 92,
-    "ai_8k": 84,
-    "agent_unknown_sal": 70,
-    "south_grid_5k": 63,
-    "outsourcing_12k": 63,
-    "customer_service_9k": 56,
-    "south_grid_vs_ai_startup": 63,
-    "ai_startup_10k": 81
+  "说明": "VSCORE 基准岗位集（不可删除）。每次权重变更须跑 scripts/vscore_benchmark.py 对比上一版基线，漂移必须人话可解释。v1.1=地区可达性升级定稿（城市5→地区15；薪资细分20/23/25；强度并入制度15；稳定/成长/福利压缩）。基线数值由 scripts/gen_vscore_baseline.py 从最终代码实测生成（2026-08-31）。异地三例为定稿示例锚点：深圳10K > 杭州15K > 杭州10K。",
+  "baseline_version": "1.1",
+  "v1.1_scores": {
+    "ai_12k": 82,
+    "ai_8k": 73,
+    "agent_unknown_salary": 72,
+    "south_grid_5k": 59,
+    "outsourcing_12k_no_schedule": 78,
+    "customer_service_9k": null,
+    "south_grid_vs_ai_startup": 57,
+    "ai_startup_10k": 80,
+    "sz_ai_10k": 83,
+    "hz_ai_15k": 79,
+    "hz_ai_10k": 76,
+    "hz_ai_10k_remote_ok": 79,
+    "hz_ai_10k_local_only": 68
   },
   "roles": [
-    {
-      "id": "ai_12k",
-      "company": "某科技",
-      "title": "AI应用工程师",
-      "desc": "负责RAG知识库,Agent工作流,双休,五险一金",
-      "salary": "12-20K",
-      "city": "深圳",
-      "expect_band": ">=10K",
-      "note": "主航道锚点：12K AI 应稳居顶端"
-    },
-    {
-      "id": "ai_8k",
-      "company": "某科技",
-      "title": "AI应用工程师",
-      "desc": "RAG知识库开发,双休,五险一金",
-      "salary": "8.5-12K",
-      "city": "深圳",
-      "expect_band": "8-10K",
-      "note": "次锚点：8.5K AI 应高于外包12K"
-    },
-    {
-      "id": "agent_unknown_sal",
-      "company": "某Agent科技",
-      "title": "Agent应用工程师",
-      "desc": "Agent工作流开发,双休",
-      "salary": "面议",
-      "city": "成都",
-      "expect_band": "unknown",
-      "note": "薪资未知不拒，且评分≥60"
-    },
-    {
-      "id": "south_grid_5k",
-      "company": "南方电网",
-      "title": "数据运维值班员",
-      "desc": "正式编制,五险一金齐全,稳定,双休,工作轻松",
-      "salary": "5-7K",
-      "city": "广州",
-      "expect_band": "5-8K",
-      "note": "低薪但高稳定：必须 ALLOW(LOW) 特批，但不排最前"
-    },
-    {
-      "id": "outsourcing_12k",
-      "company": "某外包",
-      "title": "测试驻场",
-      "desc": "华为驻场",
-      "salary": "12-16K",
-      "city": "深圳",
-      "expect_band": ">=10K",
-      "note": "同薪外包：AI匹配度低 → 应低于 8.5K AI"
-    },
-    {
-      "id": "customer_service_9k",
-      "company": "某公司",
-      "title": "客服专员",
-      "desc": "客户服务",
-      "salary": "8-10K",
-      "city": "北京",
-      "expect_band": "8-10K",
-      "note": "低价值岗：ALLOW但 LOW"
-    },
-    {
-      "id": "south_grid_vs_ai_startup",
-      "company": "南方电网",
-      "title": "数据运维值班员",
-      "desc": "正式编制,五险一金齐全,稳定,双休,工作非常轻松",
-      "salary": "5-7K",
-      "city": "广州",
-      "expect_band": "5-8K",
-      "note": "边界案例A：极稳极轻松正式岗（低薪）→ v1.0:63"
-    },
-    {
-      "id": "ai_startup_10k",
-      "company": "某AI创业公司",
-      "title": "AI应用工程师",
-      "desc": "Agent开发,工作强度高,公司不到20人,项目不稳定",
-      "salary": "10-15K",
-      "city": "深圳",
-      "expect_band": ">=10K",
-      "note": "边界案例B：高薪AI初创（不稳）→ v1.0:81，当前权重偏好高薪AI"
-    }
+    {"id": "ai_12k", "company": "某AI科技公司", "title": "AI应用工程师", "desc": "负责大模型RAG应用开发，五险一金，正常上班时间", "salary": "12-15K", "city": "深圳", "expect_tier": "HIGH"},
+    {"id": "ai_8k", "company": "某软件公司", "title": "AI应用开发工程师", "desc": "LLM应用开发，双休，五险一金", "salary": "8-9K", "city": "深圳", "expect_tier": "NORMAL"},
+    {"id": "agent_unknown_salary", "company": "某创业公司", "title": "Agent开发工程师", "desc": "智能体开发，周末双休，五险一金", "salary": "面议", "city": "深圳", "expect_tier": "NORMAL"},
+    {"id": "south_grid_5k", "company": "南方电网深圳供电局", "title": "数字化项目专员", "desc": "电网正式编制，五险一金全额，轻松，正常工作时间", "salary": "5-7K", "city": "深圳", "expect_tier": "LOW"},
+    {"id": "outsourcing_12k_no_schedule", "company": "某外包公司", "title": "AI实施工程师（驻场）", "desc": "驻场甲方实施，五险一金", "salary": "12-14K", "city": "深圳", "expect_tier": "NORMAL"},
+    {"id": "customer_service_9k", "company": "某电商服务公司", "title": "客服专员", "desc": "售前售后客服，月休四天", "salary": "8-10K", "city": "深圳", "expect_tier": "REJECT", "note": "v1.1 起该描述含月休四天，L2 制度红线直接拦（无分值）"},
+    {"id": "south_grid_vs_ai_startup", "company": "南方电网广东能源", "title": "数字化项目专员", "desc": "电网正式编制，五险一金全额，轻松，正常工作时间", "salary": "5-7K", "city": "广州", "expect_tier": "LOW"},
+    {"id": "ai_startup_10k", "company": "某AI创业公司", "title": "AI应用工程师", "desc": "创业团队大模型应用开发，五险一金", "salary": "10-12K", "city": "深圳", "expect_tier": "HIGH"},
+    {"id": "sz_ai_10k", "company": "某科技公司", "title": "AI应用工程师", "desc": "RAG知识库开发，五险一金", "salary": "10-12K", "city": "深圳", "expect_tier": "HIGH", "note": "地区锚点：S档15分（用户示例最高）"},
+    {"id": "hz_ai_15k", "company": "某科技公司", "title": "AI应用工程师", "desc": "RAG知识库开发，五险一金", "salary": "15-18K", "city": "杭州", "expect_tier": "NORMAL", "note": "地区锚点：B档8分+高薪细分，低于深圳同岗（用户示例：异地要更高价值才值得额度）"},
+    {"id": "hz_ai_10k", "company": "某科技公司", "title": "AI应用工程师", "desc": "RAG知识库开发，五险一金", "salary": "10-12K", "city": "杭州", "expect_tier": "NORMAL", "note": "地区锚点：同薪异地必须低于深圳"},
+    {"id": "hz_ai_10k_remote_ok", "company": "某科技公司", "title": "AI应用工程师", "desc": "RAG知识库开发，五险一金，接受优秀的异地候选人", "salary": "10-12K", "city": "杭州", "expect_tier": "NORMAL", "note": "明示接受异地 +3（追平杭州15K）"},
+    {"id": "hz_ai_10k_local_only", "company": "某科技公司", "title": "AI应用工程师", "desc": "RAG知识库开发，五险一金，仅限杭州本地候选人", "salary": "10-12K", "city": "杭州", "expect_tier": "NORMAL", "note": "明示仅限本地 -10（评分层降权，不做硬拦——用户定稿：地区不是绝对门槛）"}
   ]
 }

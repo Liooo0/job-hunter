@@ -120,7 +120,7 @@ class TestVersioning(unittest.TestCase):
         data = json.loads(p.read_text())
         self.assertGreaterEqual(len(data["roles"]), 8)
         self.assertIn("baseline_version", data)
-        self.assertIn("v1.0_scores", data)
+        self.assertIn(f"v{data['baseline_version']}_scores", data)
 
     def test_weights_sum_100(self):
         total = sum(value_score.WEIGHTS.values())
