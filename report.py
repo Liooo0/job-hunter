@@ -245,33 +245,57 @@ def generate_html(
     return output_path
 
 
-def print_terminal_summary(skill_dir: Optional[Path] = None):
-    """在终端打印一次运行的汇总结果。"""
+def print_terminal_summary(skill_dir: Optional[Path] = None, since_iso: Optional[str] = None):
+    """在终端打印一次运行的汇总结果。
+
+    v5.2 口径修复（2026-08-31）：merge_logs 是全库历史，旧版把它当"本轮"打印，
+    导致"失败45/未验证89"这种假战报（实际是 6-8 月累计）。现在：
+      - since_iso（本轮起始时刻）给了就只统计本轮，并明确标注窗口；
+      - 四态强制分离：VERIFIED（验证送达）/ UNCERTAIN（未验证）/ FAILED（失败）/ SKIPPED；
+      - 额度口径拆开：quota_consumed = 尝试发送(VERIFIED+UNCERTAIN)，
+        successful_applications = 仅 VERIFIED —— 用户定稿："用了150额度"≠"成功投了150份"。
+    """
     skill_dir = skill_dir or SKILL_DIR
     cfg = load_config(skill_dir)
     merged = merge_logs(skill_dir)
 
-    applied = merged["applied"]
-    skipped = merged["skipped"]
-    failed = merged["failed"]
+    def _in_round(e):
+        return since_iso is None or str(e.get("time", "")) >= since_iso
+
+    applied = [e for e in merged["applied"] if _in_round(e)]
+    skipped = [e for e in merged["skipped"] if _in_round(e)]
+    failed = [e for e in merged["failed"] if _in_round(e)]
+    verified = [e for e in applied if e.get("status") != "UNCERTAIN" and e.get("verified", 1)]
+    uncertain = [e for e in applied if e.get("status") == "UNCERTAIN"]
+    scope = f"本轮({since_iso[:16]})" if since_iso else "全库累计"
 
     print(f"""
 ╔══════════════════════════════════════╗
 ║  🤖 Job Hunter — {datetime.now().strftime('%Y-%m-%d %H:%M')}  ║
 ╠══════════════════════════════════════╣
-║  平台: Boss直聘                         ║
-║  城市: {', '.join(cfg.get('target_cities', [])[:5])}      ║
-║  搜索词: {', '.join(cfg.get('search_keywords', [])[:3])}  ║
-║  浏览: {len(applied) + len(skipped)} 岗 | 投递: {len(applied)} 岗 | 跳过: {len(skipped)} 岗 ║
+║  统计口径: {scope:26s}║
+║  浏览: {len(applied) + len(skipped) + len(failed):5d} 岗                  ║
+║  ✅ 验证送达 VERIFIED:   {len(verified):4d}               ║
+║  ⚠️  未验证 UNCERTAIN:   {len(uncertain):4d}（需人工复核）    ║
+║  ❌ 失败 FAILED:         {len(failed):4d}               ║
+║  ⏭️  跳过 SKIPPED:        {len(skipped):4d}               ║
+║  ────────────────────────────────    ║
+║  额度消耗 attempted: {len(verified) + len(uncertain):4d}              ║
+║  有效投递 verified:  {len(verified):4d}  ← 只有这个算成功  ║
 ╚══════════════════════════════════════╝
 """)
+    if since_iso and (merged["applied"] or merged["failed"]):
+        hist_v = sum(1 for e in merged["applied"] if e.get("status") != "UNCERTAIN")
+        hist_u = sum(1 for e in merged["applied"] if e.get("status") == "UNCERTAIN")
+        print(f"  📚 全库历史参考: 验证送达 {hist_v} | 未验证 {hist_u} | 失败 {len(merged['failed'])}")
 
     if applied:
-        print("  ✅ 所有投递记录（按评分降序）:")
+        print("  ✅ 投递记录（按评分降序）:")
         for e in sorted(applied, key=lambda e: e.get("score", 0), reverse=True):
             salary = format_salary(e.get("salary", ""))
+            flag = "⚠️" if e.get("status") == "UNCERTAIN" else "✅"
             print(
-                f"  [{e.get('score', 0):3d}分] {e.get('company', '?'):15s} | {e.get('job', '')[:25]:25s} | {salary}"
+                f"  {flag}[{e.get('score', 0):3d}分] {e.get('company', '?'):15s} | {e.get('job', '')[:25]:25s} | {salary}"
             )
 
     if failed:
@@ -279,9 +303,10 @@ def print_terminal_summary(skill_dir: Optional[Path] = None):
         for e in failed[-5:]:
             print(f"  - {e.get('job', '')[:30]} → {e.get('error', '')[:60]}")
 
-    uncertain = sum(1 for e in applied if e.get("status") == "UNCERTAIN")
     if uncertain:
-        print(f"\n  ⚠️  未验证投递 {uncertain} 个（会话已打开但发送未确认，需人工复核）")
+        print(f"\n  ⚠️  未验证投递 {len(uncertain)} 个（会话已打开但发送未确认，需人工复核）：")
+        for e in uncertain[-10:]:
+            print(f"     - {e.get('city','')} {e.get('company','')[:14]} {e.get('job','')[:22]}")
 
 
 if __name__ == "__main__":
