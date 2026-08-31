@@ -800,9 +800,9 @@ def _fill_and_send(tab, greeting: str) -> bool:
 # 使 except 处理器读到的变量状态与拆分前局部变量完全一致。
 
 # ── v5 额度账本挂钩（2026-08-31）：预算 = min(profile 150, 风控硬顶)。
-#    发送前 acquire 预留（UNCERTAIN 占额度不扣完成数）；SENT→confirm 扣额；
-#    明确失败/异常→release 回血。账本不可用时放行——真实日上限另有
-#    count_applied_today 硬顶双保险，记账失败绝不能误杀投递。──
+#    发送前 acquire 预留（UNCERTAIN 占额度不扣完成数）；SENT→confirm；FAILED→release。
+#    账本不可用时放行——真实日上限另有 count_applied_today 硬顶双保险，记账失败绝不能误杀投递。──
+ROUND_START_ISO = ""  # 本轮起始 ISO（main 里刷新）；战报按此窗口过滤，全库历史不进本轮统计
 _QUOTA_SCHED = {"s": None}  # type: ignore
 
 
@@ -1421,6 +1421,11 @@ def main():
     cfg = load_config()
     args = parse_args(cfg)
 
+    # ── v5.2 本轮时间窗（战报口径）：所有落库记录带 applied_at ISO，
+    #    汇总/HTML 用这个时刻过滤，杜绝"把全库历史当本轮战报"的假警报 ──
+    global ROUND_START_ISO
+    ROUND_START_ISO = datetime.now().isoformat(timespec="seconds")
+
     # ── 旧 JSON → SQLite 迁移（P0：单一事实源）──
     if args.migrate_logs:
         migrate_legacy_logs()
@@ -1717,8 +1722,8 @@ def main():
         print(f"║  原因: {STOP_REASON[:32]:32s}║")
     print("╚══════════════════════════════════════╝")
 
-    # 生成报告
-    print_terminal_summary()
+    # 生成报告（v5.2：只统计本轮时间窗，全库历史另列参考行）
+    print_terminal_summary(since_iso=ROUND_START_ISO or None)
     report_path = generate_html()
     print(f"\n📄 报告已生成: {report_path}")
 
