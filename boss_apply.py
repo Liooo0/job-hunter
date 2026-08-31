@@ -882,6 +882,23 @@ def _prepare_job_context(search_tab, city, keyword, title, company, salary,
         jd = None
         print(f"  [⚠️决策器异常(不拦截)] {str(jde)[:60]}")
 
+    # ── L3 Semantic Parser（v5.2，2026-08-31）：标题 ≠ 实际岗位类型 ──
+    # 确定性信号抽取，零 LLM：识别"AI+客户服务顾问=金融销售"、"AI影视视频评测=标注"
+    # 这类关键词漏网伪装。HARD_BLOCK → 拦；UNKNOWN → 放行（语义层不越权判资格）。
+    # 黄金回归案例在 tests/test_semantic_parser.py，永不复漏。
+    try:
+        import semantic_parser as _SP
+        _sp_reason = _SP.gate(title, desc or "", company)
+        if _sp_reason:
+            decision_trace.gate(tr, "semantic_parser", f"rejected:{_sp_reason}")
+            print(f"  [🎭语义] {company[:15]} | {title[:25]} → HARD_BLOCK: {_sp_reason}")
+            _record_outcome(city, company, title, salary, keyword, score,
+                            _sp_reason, event="semantic_block", trace=tr)
+            ctx["reason"] = _sp_reason
+            return "skip"
+    except Exception as _spe:
+        print(f"  [⚠️语义层异常(不拦截)] {str(_spe)[:60]}")
+
     # ── v5 Plan 路由（2026-08-31）：L2 ALLOW 后判定 P1-A~D / P2-A~C / NO_PLAN ──
     # NO_PLAN=不进池（岗位错位/未达该城市档Plan2线），消耗额度前的确定性闸。
     # 异常降级：路由失败不拦截，视作无计划继续（宁可多投不误杀）。

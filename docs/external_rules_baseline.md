@@ -26,11 +26,11 @@
 
 ### 采纳（写进 GUARDRAILS 第十三条，R-EXT-1 ~ R-EXT-6）
 1. **R-EXT-1 状态机保护**（mattohan567）：终态记录（applied/interviewing/rejected）禁止批量回退或破坏性清理，只允许归档。→ 映射：applications_v2 中 SENT/VERIFIED 记录不可批量删除或状态回退。
-2. **R-EXT-2 VERIFY 标记**（mattohan567 + Malik1942）：未经证据支持的事实一律标 `VERIFY`，"never transmit it"。→ 映射：HR 回复草稿中出现简历/档案之外的事实性陈述，必须标注或拦截，不得直接进发送队列。
-3. **R-EXT-3 Schema 约束生成**（pseudog0d）：LLM 输出必须匹配固定 Schema，解析校验后才可用；格式错误 → 重试或降级，绝不静默接受。→ 映射：v5.2 Semantic Parser 的输出必须过 `job_schema.py` 校验才能进 Hard Gate。
-4. **R-EXT-4 面试可辩护原则**（pseudog0d）：生成的每条陈述必须"interview-defensible"；候选人不具备的技能用真实相邻证据表达，禁止虚构直接经验。→ 映射：招呼语与 HR 回复生成规则。
-5. **R-EXT-5 Coverage Gate**（pseudog0d）：生成物必须覆盖 JD 强制主题，未覆盖 → 重新生成而非放行。→ 映射：招呼语生成后校验是否命中岗位关键词，未命中不发送。
-6. **R-EXT-6 Provider Failover**（pseudog0d）：LLM 调用走 provider 抽象，限流/超时/坏响应自动降级切换；单一供应商故障只降吞吐不停管线。→ 映射：Semantic Parser 与回复草稿的模型通道（主 deepseek，备 qwen）。
+2. **R-EXT-2 VERIFY 标记**（mattohan567 + Malik1942）：未经证据支持的事实一律标 `VERIFY`，"never transmit it"。→ 映射：HR 回复草稿中出现简历/档案之外的事实性陈述，必须标注或拦截，不得直接进发送队列。**P0 级（用户 2026-08-31 定序）。**
+3. **R-EXT-3 Schema 约束生成**（pseudog0d）：LLM 输出必须匹配固定 Schema，解析校验后才可用；格式错误 → 重试或降级，绝不静默接受。→ 映射：`semantic_parser.validate_parse_output()` 已落地（v5.2，坏数据 → UNKNOWN 不放行）。**P1 级。**
+4. **R-EXT-4 面试可辩护原则**（pseudog0d）：生成的每条陈述必须"interview-defensible"；候选人不具备的技能用真实相邻证据表达，禁止虚构直接经验。→ 映射：招呼语与 HR 回复生成规则；semantic_parser 拦截必须附 evidence。
+5. **R-EXT-5 Coverage Gate（2026-08-31 用户修正）**：只用于生成内容，**不用于投递资格**；VERIFY Gate 拥有最终否决权，禁止为凑覆盖率逼模型虚构。顺序：Coverage → VERIFY → Human Approval。
+6. **R-EXT-6 Provider Failover（2026-08-31 用户修正）**：只允许传输层故障切换（超时/限流/网络/服务不可用/Schema 无法生成）；**禁止**因结果不满意而换模型重试（防多模型投票作弊）。
 
 ### 不做（现在不动）
 - **目录重构**（rules/decision/scheduler/apply/reporting 五段式）：方向认可，但当前 P0 是发送链路验证，重构属于大手术，等 Semantic Parser 落地后随 v5.2 收口一起做，避免中途改结构打断测试基线。

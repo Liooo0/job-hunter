@@ -158,10 +158,41 @@ value_score()  ← 确定性规则，零 LLM
   解析校验通过后才可进 Hard Gate；格式错误 → 重试/切备用供应商，绝不静默接受脏数据。
 - **R-EXT-4 面试可辩护原则**（pseudog0d）：招呼语与回复中的每条陈述必须 interview-defensible；
   候选人不具备的技能用真实相邻证据表达，禁止虚构直接经验（与第十二条回复质量红线同源）。
-- **R-EXT-5 Coverage Gate**（pseudog0d）：生成的招呼语/回复必须覆盖 JD 强制主题，
-  未覆盖 → 重新生成，不放行（防"通用万能话术"海投）。
-- **R-EXT-6 Provider Failover**（pseudog0d）：LLM 调用走供应商抽象，限流/超时/坏响应自动降级切换
-  （主 deepseek-v4-flash → 备 qwen）；单一供应商故障只降吞吐，不停管线。
+- **R-EXT-5 Coverage Gate（修正版，用户定稿）**：只用于**生成内容**（招呼语/回复），
+  **绝不用于投递资格**。检查"是否覆盖 JD 重要信息"，但 **VERIFY Gate（R-EXT-2）拥有最终否决权**：
+  覆盖率不足 → 只用候选人真实存在的证据重新生成；**禁止为凑覆盖率逼模型虚构**
+  （"我具备 Agent 项目经验"这类补句 = 幻觉制造器，一律拦截）。
+  顺序：Coverage Gate → VERIFY Gate → Human Approval。
+- **R-EXT-6 Provider Failover（修正版，用户定稿）**：只允许发生在**传输层**——
+  超时 / 限流 / 网络错误 / 服务不可用 / Schema 无法生成。**禁止**因"模型给了不喜欢的结果"而切换重试；
+  否则多模型容错会退化成多模型投票作弊（找到 PASS 为止 = 决策漂移）。
+  备用通道（deepseek → qwen）只换传输，不换裁判：Schema 和 Rule Engine 永远不变。
+
+## 第十四条：L0-L9 决策管线层级（用户定稿，2026-08-31，架构不可变梯度）
+
+```text
+L0  Candidate Profile   用户长期偏好（不可变层）
+L1  Normalize           JD → Schema（job_schema.py，坏数据→UNKNOWN）
+L2  Hard Gates          一票否决（guardrails + job_decision，确定性）
+L3  Semantic Parser     识别隐藏语义（semantic_parser.py，标题≠实际岗位类型）
+L4  Evidence / VERIFY   事实是否可证明（R-EXT-2，未证实不进发送通道）
+L5  Value Score         只负责排序（value_score.py，权重可 A/B）
+L6  Plan Router         Plan1 / Plan2（确定性路由）
+L7  Quota Scheduler     每日额度（quota_scheduler.py）
+L8  Action              投递 / 回复（回复走第十二条人工确认锁）
+L9  Verification        SENT / VERIFIED / UNCERTAIN / FAILED
+```
+
+**架构原则：越靠前越"不可变"，越靠后越"可调整"。**
+- 不可变（换模型不许变）：L0 画像、L2 一票否决、L1 Schema 结构、L4 VERIFY 否决权
+- 可调整（按节奏迭代）：L5 权重（A/B）、L6 关键词优先级（可学习）、地区档位
+
+**新旧层级映射**（旧文档的 L0-L3 以此为准翻译）：
+旧 L0 数据采集 → 新 L1；旧 L1 Hard Guardrails + 旧 L2 Job Decision → 新 L2（一票否决合并）；
+旧 L3 Value Score → 新 L5；L3 Semantic Parser 为 v5.2 新增，插在资格层与排序层之间。
+
+**开发方式（用户定稿）**：新增规则 = 正例 + 反例 + 边界案例 → 全量回归 → 全过 → 提交。
+不再"改代码跑一下感觉没问题"。黄金回归集 `tests/test_semantic_parser.py` 中的漏网案例永不复漏。
 
 ## 修改协议（改规则必须三步同步，禁止只改一处）
 
