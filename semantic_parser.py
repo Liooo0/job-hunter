@@ -57,11 +57,15 @@ SALES_JD_SIGNS = [
 # 客服伪装：注意"顾问"单独出现不触发（AI解决方案顾问是合法目标岗）
 SERVICE_TITLE_SIGNS = ["客户服务", "客服", "热线", "售后支持", "投诉处理", "呼叫中心"]
 
-# 标注伪装：评测/标注/清洗类，含影视大模型数据厂
-ANNOTATION_TITLE_SIGNS = [
+# 标注伪装·强信号：命中即可否决（override 词可取消，交 L2）
+ANNOTATION_STRONG_SIGNS = [
     "标注", "数据标注", "打标", "RLHF标注", "数据清洗", "语料",
-    "视频评测", "影视视频评测", "评测与标注", "评测标注", "训练师",
+    "视频评测", "影视视频评测", "评测与标注", "评测标注",
 ]
+# 弱信号：单独命中永不通否决（BOUNDARY 词，去留交 L2/排序层）。
+# "AI训练师"可能合法（模型调优）也可能是标厂，确定性层没能力区分——
+# 区分不了就不杀，这正是防误杀的边界（用户 2026-08-31 定稿三类分类法）。
+ANNOTATION_WEAK_SIGNS = ["训练师"]
 
 # AI 核心岗正向信号（对抗"全是 AI 字样"的噪音）
 AI_CORE_SIGNS = [
@@ -70,8 +74,10 @@ AI_CORE_SIGNS = [
     "实施", "部署", "交付", "推理优化", "微调", "aigc应用",
 ]
 
-# 合法豁免：命中伪装词但同时命中以下词时降级为 OTHER 不 BLOCK
-# （防误杀：如"大模型评测工程师"属测试序列，走 L2 资格层裁决而非语义层秒杀）
+# 合法豁免（语义层的"防误杀"机制，2026-08-31 用户定稿语义）：
+# 命中伪装词但同时命中以下词时，仅"取消语义层直接否决"，继续进 L2 资格层裁决——
+# 不是直接 PASS！防"AI评测工程师实际还是数据标注"被豁免词放过（用户点名的风险）。
+# 这类案例的最终去留由 L2/后续 LLM 语义层决定，golden test 里锁死此行为。
 LEGITIMATE_OVERRIDE = ["评测工程师", "测试工程师", "算法", "开发", "架构"]
 
 
@@ -90,13 +96,14 @@ def parse(title: str, jd_text: str = "", company: str = "") -> Dict[str, Any]:
     sales_title = _has(title, SALES_TITLE_SIGNS)
     sales_jd = _has(jd, SALES_JD_SIGNS)
     service = _has(title, SERVICE_TITLE_SIGNS)
-    annotation = _has(title, ANNOTATION_TITLE_SIGNS)
+    annotation = _has(title, ANNOTATION_STRONG_SIGNS)
+    annotation_weak = _has(title, ANNOTATION_WEAK_SIGNS)
     ai_core = _has(combined, AI_CORE_SIGNS)
     override = _has(title, LEGITIMATE_OVERRIDE)
 
     is_sales = bool(sales_title) or len(sales_jd) >= 2
     is_service = bool(service)
-    is_annotation = bool(annotation) and not override
+    is_annotation = bool(annotation) and not override  # 弱信号永不触发
 
     if sales_title:
         evidence.append(f"标题含销售伪装词: {','.join(sales_title)}")

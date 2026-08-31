@@ -1,0 +1,32 @@
+{
+  "说明": "Job Hunter 黄金回归集三类分类法（2026-08-31 用户定稿）。规则怎么改都必须：NEGATIVE 不漏、POSITIVE 不杀、BOUNDARY 不乱（BOUNDARY 的正确行为=语义层不直接否决，交 L2 裁决）。新案例进集必须有真实轮次依据，禁止为堵单个案例临时加词。",
+  "GOLDEN_POSITIVE": {
+    "语义层行为": "PASS 或 UNKNOWN（不得 HARD_BLOCK）",
+    "cases": [
+      {"title": "AI应用工程师", "jd": "负责RAG知识库与工作流落地，Dify/LangChain"},
+      {"title": "AI实施工程师", "jd": "大模型应用部署交付，客户现场实施"},
+      {"title": "RAG应用开发工程师", "jd": "检索增强生成，向量库，Agent工作流"},
+      {"title": "AI解决方案顾问", "jd": "需求分析，方案设计，POC交付"},
+      {"title": "自动化流程工程师", "jd": "RPA+LLM工作流落地，Python"}
+    ]
+  },
+  "GOLDEN_NEGATIVE": {
+    "语义层行为": "必须 HARD_BLOCK",
+    "cases": [
+      {"title": "AI+客户服务顾问｜平安康养财富｜金融顾问", "jd": "", "note": "真实漏网 0831，销售伪装"},
+      {"title": "AI 影视视频评测", "jd": "", "note": "真实漏网 0831，标注伪装"},
+      {"title": "AI数据标注专员", "jd": "按规则打标，日量化考核"},
+      {"title": "AI客服专员", "jd": "在线回复客户咨询，排班制"},
+      {"title": "金融AI客户经理", "jd": "客户开发，业绩指标，产品推广"}
+    ]
+  },
+  "GOLDEN_BOUNDARY": {
+    "语义层行为": "语义层不得直接否决（取消 BLOCK），去留由 L2 资格层裁决；绝不等于 PASS",
+    "cases": [
+      {"title": "大模型评测工程师", "jd": "设计评测集，跑benchmark，模型质量分析", "note": "测试序列合法方向"},
+      {"title": "AI测试工程师", "jd": "自动化测试，模型回归验证"},
+      {"title": "AI训练师", "jd": "模型调优，数据策略", "note": "若JD全是打标则L2/LLM层裁决"},
+      {"title": "AI内容运营", "jd": "AIGC内容生产流程", "note": "边缘方向，L2/排序层决定"}
+    ]
+  }
+}

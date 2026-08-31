@@ -104,5 +104,38 @@ class TestSchemaGuard(unittest.TestCase):
             self.assertTrue(out["evidence"], f"拦截必须给出证据: {title}")
 
 
+class TestGoldenThreeClassFile(unittest.TestCase):
+    """黄金集三类文件 tests/golden_cases.json 驱动 — 分类库不是死文档。
+
+    规则：NEGATIVE 不漏 / POSITIVE 不杀 / BOUNDARY 不乱（=语义层不直接否决，非 PASS）。
+    """
+    import json as _json
+    from pathlib import Path as _P
+
+    def setUp(self):
+        p = self._P(__file__).parent / "golden_cases.json"
+        data = self._json.loads(p.read_text(encoding="utf-8"))
+        self.pos = data["GOLDEN_POSITIVE"]["cases"]
+        self.neg = data["GOLDEN_NEGATIVE"]["cases"]
+        self.bnd = data["GOLDEN_BOUNDARY"]["cases"]
+
+    def test_negative_never_escapes(self):
+        for c in self.neg:
+            out = SP.parse(c["title"], c.get("jd", ""))
+            self.assertEqual(out["verdict"], "HARD_BLOCK",
+                             f"NEGATIVE 漏网: {c['title']}")
+
+    def test_positive_never_killed_by_semantic(self):
+        for c in self.pos:
+            self.assertIsNone(SP.gate(c["title"], c.get("jd", "")),
+                              f"POSITIVE 被语义层误杀: {c['title']}")
+
+    def test_boundary_not_directly_vetoed(self):
+        for c in self.bnd:
+            out = SP.parse(c["title"], c.get("jd", ""))
+            self.assertNotEqual(out["verdict"], "HARD_BLOCK",
+                                f"BOUNDARY 被语义层秒杀(应交给L2): {c['title']}")
+
+
 if __name__ == "__main__":
     unittest.main()
