@@ -94,6 +94,55 @@ def main(day: str) -> None:
     if not leaks:
         print("    ✅ 无已知伪装模式漏网")
 
+    # ── 用户定稿格式补全：漏斗 / Top拒绝原因 / 黄金集自检 / 自动诊断 ──
+    l2_blocked = [r for r in rows if r.get("status") == "SKIPPED"
+                  and r not in sem and (r.get("reason") or "").strip()]
+    qualified = [r for r in rows if r["status"] != "SKIPPED"]
+    print("\n── Candidates（漏斗） ──")
+    print(f"Discovered: {len(rows)}   L2 Blocked: {len(l2_blocked)}   "
+          f"Semantic Blocked: {len(sem)}   Final Qualified: {len(qualified)}")
+
+    reasons = Counter((r.get("reason") or "?")[:22] for r in l2_blocked + sem)
+    print("\n── Top reject reasons ──")
+    for i, (rr, n) in enumerate(reasons.most_common(3), 1):
+        print(f"{i}. [{n}] {rr}")
+
+    print("\n── Golden Set（冻结版自测） ──")
+    try:
+        import semantic_parser as SP
+        g = json.loads((ROOT / "tests" / "golden_cases.json").read_text(encoding="utf-8"))
+        neg_ok = sum(1 for c in g["GOLDEN_NEGATIVE"]["cases"]
+                     if SP.parse(c["title"], c.get("jd", ""))["verdict"] == "HARD_BLOCK")
+        pos_ok = sum(1 for c in g["GOLDEN_POSITIVE"]["cases"]
+                     if SP.gate(c["title"], c.get("jd", "")) is None)
+        bnd_ok = sum(1 for c in g["GOLDEN_BOUNDARY"]["cases"]
+                     if SP.parse(c["title"], c.get("jd", ""))["verdict"] != "HARD_BLOCK")
+        print(f"POSITIVE {pos_ok}/{len(g['GOLDEN_POSITIVE']['cases'])} 不杀   "
+              f"NEGATIVE {neg_ok}/{len(g['GOLDEN_NEGATIVE']['cases'])} 不漏   "
+              f"BOUNDARY {bnd_ok}/{len(g['GOLDEN_BOUNDARY']['cases'])} 不乱")
+    except Exception as ge:
+        print(f"（黄金集自检异常: {ge}）")
+
+    print("\n── Final Diagnosis（自动初判，人复核） ──")
+    diag = []
+    if len(sem_only) > 0 and len(suspects) == 0:
+        diag.append("[x] Semantic layer有效（semantic-only>0 且零疑似误杀）")
+    elif len(sem_only) == 0 and len(sem) == 0:
+        diag.append("[ ] Semantic层本轮无拦截样本 → 不定论")
+    if suspects:
+        diag.append(f"[ ] Semantic层疑似误杀 {len(suspects)} → 人工判，误杀进BOUNDARY")
+    if att > 0 and st.get("SENT", 0) == 0:
+        diag.append("[x] Apply链路异常（attempted>0 且 VERIFIED=0）→ 修链路，勿碰筛选")
+    elif att > 0 and st.get("SENT", 0) / att >= 0.6:
+        diag.append("[ ] Apply链路正常（VERIFIED/attempted≥60%）")
+    p_all = [r for r in sent_pool if re.search(r"P2|PLAN2", r.get("reason") or "")]
+    if sent_pool and len(p_all) / len(sent_pool) > 0.6:
+        diag.append("[ ] Plan Router异常（发送池Plan2占比>60%）")
+    if not diag:
+        diag.append("[ ] 正常")
+    for d in diag:
+        print("  " + d)
+
 
 if __name__ == "__main__":
     main(sys.argv[1] if len(sys.argv) > 1 else date.today().isoformat())
