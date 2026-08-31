@@ -266,6 +266,8 @@ def _extract_company(name_box: str) -> str:
 def main():
     send = "--send" in sys.argv
     all_mode = "--all" in sys.argv
+    if send:
+        print("⛔ --send 已按 v5 第十二条拆除：回复必须经 reply_lock 人工确认后发送，本脚本只入审核队列。")
     sys.path.insert(0, str(SKILL_DIR))
 
     if all_mode:
@@ -300,51 +302,41 @@ def main():
     rejects = [r for r in results if r["kind"] == "reject"]
     print(f"📊 有兴趣: {len(interests)} | 拒绝礼貌回: {len(rejects)}")
 
-    if not send:
-        print("\nℹ️  预览模式，未发送。加 --send 自动发送。")
-        return
-
-    # ── 发送模式 ──
-    send_safely(results)
-
-    # ── 值守模式：--watch 持续盯新消息 ──
-    if "--watch" in sys.argv:
-        rounds = SCAN_ROUNDS
-        try:
-            idx = sys.argv.index("--watch")
-            if idx + 1 < len(sys.argv):
-                rounds = max(1, int(sys.argv[idx + 1]))
-        except (ValueError, IndexError):
-            pass
-        print(f"\n👁️  值守模式: 每 {SCAN_INTERVAL//60} 分钟扫一次，共 {rounds} 轮")
-        for rnd in range(1, rounds + 1):
-            print(f"\n⏸️  第 {rnd}/{rounds} 轮前休息 {SCAN_INTERVAL//60} 分钟...")
-            time.sleep(SCAN_INTERVAL)
-            print(f"\n🔄 第 {rnd} 轮扫描...")
-            try:
-                msgs = scan_unread_messages()
-            except Exception as e:
-                print(f"❌ 扫描失败: {e}")
+    # ── v5 第十二条（2026-08-31 用户定稿）：回复消息 ≠ 自动投递。
+    #    本脚本只做【扫描 + 起草 + 入审核队列】，任何情况下都不直接发送。
+    #    旧 --send 后门已拆除；发送唯一通道 = reply_lock 人工确认后 send。
+    #    入队即上 REPLY_REVIEW_LOCK → 自动投递 worker 在任务边界暂停。──
+    if interests or rejects:
+        import reply_lock as _RL
+        sessions = []
+        for r in results:
+            if not r.get("reply"):
                 continue
-            if not msgs:
-                print("📭 无新消息")
-                continue
-            new_results = []
-            for m in msgs:
-                kind, reply = build_reply(
-                    m.get("message", ""),
-                    m.get("job_context", {}).get("job_title", ""),
-                    m.get("company", ""),
-                )
-                new_results.append({"msg": m, "kind": kind, "reply": reply})
-                print(f"{'💬' if kind=='interest' else '⏭️'} {m.get('company','')[:14]} | 回复: {reply[:60]}")
-            send_safely(new_results, batch=WATCH_BATCH)
-        print("\n🏁 值守结束")
-SEND_BATCH = 999        # 单次运行发完全部（间隔 75-105s 已足够保守）
+            m = r["msg"]
+            sessions.append({
+                "id": f"R{int(datetime.now().timestamp())}-{len(sessions)}",
+                "company": m.get("company", ""), "hr_name": m.get("name", ""),
+                "name_box": m.get("nameBox", ""),
+                "job": (m.get("job_context") or {}).get("job_title", ""),
+                "hr_message": m.get("message", "")[:200],
+                "draft": r["reply"], "kind": r["kind"],
+                "purpose": "回应HR兴趣信号" if r["kind"] == "interest" else "礼貌收尾",
+                "status": "pending", "drafted_at": datetime.now().isoformat(timespec="seconds"),
+            })
+        _RL.acquire(sessions)
+        print(f"\n🔒 {len(sessions)} 条拟回复已进入审核队列（REPLY_REVIEW_LOCK 已上锁，自动投递暂停）")
+        print(_RL.review_text())
+    else:
+        print("📭 没有需要回复的消息。")
+    return
+
+# ── v5.2：值守自动发送模式已随 --send 一并拆除（回复必须人工确认，v5 第十二条）。
+#    值守扫描如需要，只入 reply_lock 审核队列，永不自动发送。
+SEND_BATCH = 999        # （遗留常量，仅 send_safely 兼容保留）
 SEND_GAP = (75, 105)    # 条间等待 75-105 秒
 SCAN_INTERVAL = 15 * 60  # 扫描间隔 15 分钟
 SCAN_ROUNDS = 4          # 默认盯 1 小时（4 轮）
-WATCH_BATCH = 3          # 值守模式每轮最多 3 条
+WATCH_BATCH = 3          # （遗留常量）
 
 def send_one(page, name_box: str, reply: str):
     """

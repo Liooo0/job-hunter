@@ -108,6 +108,42 @@ value_score()  ← 确定性规则，零 LLM
 
 **边界**：L3 只排序不拦截；REJECT 永远归 L2（job_decision）。L3 异常降级为跳过评分，绝不阻断投递。
 
+## 第十二条：HR 回复优先级规则（v5 最高优先级交互规则，2026-08-31 用户定稿）
+
+**回复消息 ≠ 自动投递。所有"回复 Boss/HR"的行为优先级高于"投递简历"。**
+本条是 **Scheduler/Orchestrator 层的任务调度规则**（`reply_lock.py` 文件锁实现），
+不是 LLM prompt 规则——模型抽风也绕不过代码锁。
+
+```text
+检测到需回复会话（HR主动发消息/问经历薪资到岗/邀请继续沟通）
+  → acquire() 上 REPLY_REVIEW_LOCK + 拟回复入队
+  → 投递 worker 在 (城市×关键词) 任务边界检测到锁 → 保存断点退出
+  → 人工审核：展示 HR原消息/上下文/拟发送/目的
+  → 明确确认才发送；未确认/拒绝 → 不发送
+  → 队列清空 → 释放锁 → 从断点恢复投递（不重新初始化整轮、不重复消耗额度）
+```
+
+**确认语义（代码级白名单，`reply_lock.is_confirmation`）**：
+- ✅ 发送 / 确认发送 / 可以发 / 发吧 / 确认 / 同意发送 / 发出去
+- ❌ 嗯 / 看看 / 可以 / 还行 / 行 / 没问题吧 / 应该可以 —— 语义不明确一律等待
+- 禁止默认同意、禁止超时自动发送、禁止"自动修改后发送"；改草稿后重新进待审核
+
+**回复质量红线（生成侧）**：不虚构经历/项目/技术/薪资/离职原因/到岗时间；
+不承诺用户未确认的事项；准确回答 HR 问题优先于讨好。
+
+**投递任务处理**：APPLY → REPLY_REVIEW →（完成）→ NONE → 恢复 APPLY。
+断点 `data/queue_checkpoint.json` 记录已完成的 城市×关键词；HR 回复永不计入投递数量。
+
+**双轨统计（相互独立，`reply_lock.stats()`）**：
+- 投递侧：applications_attempted / verified / uncertain / failed（额度=attempted，成功=verified）
+- 回复侧：hr_messages_detected / drafted / confirmed / sent（不占投递额度）
+
+**核心原则：生成回复可以自动化，发送回复必须人工确认。**
+系统可以替使用者思考，不能替使用者向 HR 做未经确认的承诺。
+
+实现清单：`reply_lock.py`（锁/队列/断点/统计/CLI）；`hr_auto_reply.py`（扫描+起草后只入队，
+`--send`/`--watch` 自动发送后门已拆除）；`boss_apply.py` 主循环任务边界查锁+断点推进。
+
 ## 修改协议（改规则必须三步同步，禁止只改一处）
 
 1. `job_decision.py`（分层常量/特批词表）或 `guardrails.py`（系统红线）
