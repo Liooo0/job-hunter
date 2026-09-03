@@ -201,10 +201,13 @@ def generate_html(
     merged = merge_logs(skill_dir)
     trend = recent_activity(skill_dir, days=7)
 
-    # 投递记录按评分降序
-    applied = sorted(merged["applied"], key=lambda e: e.get("score", 0), reverse=True)
+    # 投递记录按评分降序（score 可能为 None —— L3 拦截/未评分岗，按 0 处理防排序崩）
+    applied = sorted(merged["applied"],
+                     key=lambda e: e.get("score") if isinstance(e.get("score"), (int, float)) else 0,
+                     reverse=True)
     for e in applied:
-        e["score_class"] = score_class(e.get("score", 0))
+        _sc = e.get("score") if isinstance(e.get("score"), (int, float)) else 0
+        e["score_class"] = score_class(_sc)
         salary_raw = e.get("salary", "")
         if salary_raw:
             e["salary"] = format_salary(salary_raw)
