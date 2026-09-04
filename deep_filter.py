@@ -280,6 +280,15 @@ def profile_company(jobs: list) -> dict:
 # 组合入口
 # ═══════════════════════════════════════════════════════════════
 
+# 决策优先级（从高到低，一旦命中立即截断返回，不可被后续规则覆盖）
+# 1. clickbait  2. internship salary trap  3. AI washing  4. AI-wrapped operations
+# 5. role creep  6. company profile  7. company-name risk  8. preserve incoming score
+DECISION_PRIORITY = [
+    "clickbait", "internship_salary_trap", "ai_washing", "ai_wrapped_operations",
+    "role_creep", "company_profile", "company_name_risk", "preserve",
+]
+
+
 def deep_filter(company: str, title: str, desc: str, salary: str,
                 score: int, profile: Optional[dict] = None) -> tuple[int, str]:
     """深度筛选总入口。
@@ -287,32 +296,32 @@ def deep_filter(company: str, title: str, desc: str, salary: str,
     profile: 公司画像（来自背调），None = 未背调（跳过公司规则）
     返回 (adjusted_score, reason)。score 归零 = 过滤。
     """
-    # 1. 标题党检测（本地）
+    # Priority 1: 标题党检测（本地）
     clickbait, reason = detect_clickbait(title, desc)
     if clickbait:
         return 0, reason
 
-    # 2. 实习薪资陷阱（本地）
+    # Priority 2: 实习薪资陷阱（本地）
     trap, reason = detect_salary_trap(title, desc, salary)
     if trap:
         return 0, reason
 
-    # 2.5 AI 包装检测（本地）：赋能/生态废话多但无技术词
+    # Priority 3: AI 包装检测（本地）：赋能/生态废话多但无技术词
     wash, reason = detect_ai_washing(title, desc)
     if wash:
         return 0, reason
 
-    # 2.6 AI 包装运营检测（v4.0 AI-1）：标题AI运营+正文纯运营执行+无技术动作
+    # Priority 4: AI 包装运营检测（v4.0 AI-1）：标题AI运营+正文纯运营执行+无技术动作
     wrap_ops, reason = detect_ai_wrapped_ops(title, desc)
     if wrap_ops:
         return 0, reason
 
-    # 2.7 职责过宽检测（v4.0 Role Creep）：一人多岗=公司风险信号
+    # Priority 5: 职责过宽检测（v4.0 Role Creep）：一人多岗=公司风险信号
     creep, reason = detect_role_creep(desc)
     if creep:
         return 0, reason
 
-    # 3. 公司性质（需背调结果）
+    # Priority 6: 公司性质（需背调结果）
     if profile:
         kind = profile.get("kind")
         if kind == "sales":
@@ -320,12 +329,13 @@ def deep_filter(company: str, title: str, desc: str, salary: str,
         if kind == "annotation":
             return 0, f"公司背调:标注外包({profile.get('annot_n')}/{profile.get('total')}标注岗)"
 
-    # 4. 公司名风险词（本地，无需背调）：人力/劳务/派遣/代招 → 直接弃
+    # Priority 7: 公司名风险词（本地，无需背调）：人力/劳务/派遣/代招 → 直接弃
     comp_lower = (company or "").lower()
     for kw in RISK_COMPANY_STRONG:
         if kw in comp_lower:
             return 0, f"公司名含「{kw}」→人力中介/代招风险"
 
+    # Priority 8: 无命中风险项 → 保持原始分数
     return score, ""
 
 
