@@ -317,6 +317,47 @@ def score_jd(title: str, desc: str, config: Optional[dict] = None) -> tuple[int,
     return min(score, 100), "、".join(hits) if hits else "无匹配"
 
 
+def parse_salary_lower_bound(salary_str: str) -> Optional[int]:
+    """解析薪资下限（K/月）。纯函数，零副作用。
+
+    返回 int = 解析到的月薪下限（K/月）；
+    返回 None = 未知/面议/格式异常（调用方应作「薪资未知」处理，不因薪资拒绝）。
+
+    支持格式：
+    - "12-20K"、"12-20k/月"、"15-25K·13薪"、"15 - 25 K" → 12 / 12 / 15 / 15
+    - "1.2-2万"、"1.2-2万/月"、"3.5-4万" → 12 / 12 / 35
+    - "8000-12000元/月"、"12,000-20,000元/月" → 8 / 12
+    - "200-300元/天" → 4（200*22/1000 = 4.4，取整）
+    - "面议"、"薪资不限"、空字符串 → None
+    """
+    if not salary_str or not salary_str.strip():
+        return None
+    s = salary_str.strip()
+    if s in ("面议", "薪资不限"):
+        return None
+    try:
+        s_clean = s.replace(" ", "").replace(",", "").lower()
+        # 1. 万格式：1.2-2万、1.2-2万/月
+        if "万" in s_clean:
+            num_part = s_clean.split("-")[0].replace("万", "")
+            return int(float(num_part) * 10)
+        # 2. K格式：12-20k、12-20k/月、15-25K·13薪
+        if "k" in s_clean:
+            num_part = s_clean.split("-")[0].split("k")[0]
+            return int(float(num_part))
+        # 3. 元/天：200-300元/天
+        if "元/天" in s_clean or "元/日" in s_clean:
+            num_part = s_clean.split("-")[0].split("元")[0]
+            return int(float(num_part) * 22 / 1000)
+        # 4. 元/月：8000-12000元/月、12,000-20,000元/月
+        if "元/月" in s_clean:
+            num_part = s_clean.split("-")[0].split("元")[0]
+            return int(float(num_part) / 1000)
+    except (ValueError, IndexError, AttributeError):
+        pass
+    return None
+
+
 def smart_filter(company: str, title: str, desc: str, salary: str, score: int, config: Optional[dict] = None, city: str = "深圳") -> tuple[int, str]:
     """基于公司规模/性质/薪资/技术含量的智能过滤。
 
@@ -345,22 +386,7 @@ def smart_filter(company: str, title: str, desc: str, salary: str, score: int, c
 
     # ── 解析薪资下限（K/月） ──
     # 兼容: "12-20K"、"1.2-2万"、"15-25K·13薪"、"3.5-4万"
-    salary_low = 0
-    try:
-        s = salary.replace(" ", "").replace(",", "")
-        if "万" in s:
-            # 51job/智联格式: "1.2-2万"
-            raw = s.split("-")[0].replace("万", "")
-            salary_low = float(raw) * 10  # 转K
-        elif "k" in s.lower():
-            raw = s.lower().split("-")[0].split("k")[0]
-            salary_low = float(raw)
-        elif "元/天" in s or "元/日" in s:
-            # 日薪格式: "200-300元/天"
-            raw = s.split("-")[0].split("元")[0]
-            salary_low = float(raw) * 22 / 1000  # 月薪≈日薪*22天/1000
-    except Exception:
-        pass
+    salary_low = parse_salary_lower_bound(salary) or 0
 
     # ── 实习岗直接过滤（2026-08-28 策略转向：全职1w+现金流，实习不再放行）──
     # 旧「高薪实习放行」会+60硬拉回可投区，与日薪折算薪资线冲突，已废除
