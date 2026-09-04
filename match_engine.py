@@ -105,8 +105,8 @@ def _kw_pattern(kw_lower: str) -> "re.Pattern":
     pat = _PATTERN_CACHE.get(kw_lower)
     if pat is None:
         body = re.escape(kw_lower)
-        left = r"(?<![A-Za-z0-9])" if re.match(r"[a-z0-9]", kw_lower[:1]) else ""
-        right = r"(?![A-Za-z0-9])" if re.match(r"[a-z0-9]", kw_lower[-1:]) else ""
+        left = r"(?<![A-Za-z0-9_])" if re.match(r"[a-z0-9]", kw_lower[:1]) else ""
+        right = r"(?![A-Za-z0-9_])" if re.match(r"[a-z0-9]", kw_lower[-1:]) else ""
         pat = re.compile(left + body + right, re.IGNORECASE)
         _PATTERN_CACHE[kw_lower] = pat
     return pat
