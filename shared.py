@@ -204,8 +204,8 @@ def contains_kw(haystack: str, kw: str) -> bool:
     key = kw.lower()
     pat = _KW_PATTERN_CACHE.get(key)
     if pat is None:
-        left = r"(?<![A-Za-z0-9])" if re.match(r"[a-z0-9]", key[:1]) else ""
-        right = r"(?![A-Za-z0-9])" if re.match(r"[a-z0-9]", key[-1:]) else ""
+        left = r"(?<![A-Za-z0-9_])" if re.match(r"[a-z0-9]", key[:1]) else ""
+        right = r"(?![A-Za-z0-9_])" if re.match(r"[a-z0-9]", key[-1:]) else ""
         pat = re.compile(left + re.escape(key) + right, re.IGNORECASE)
         _KW_PATTERN_CACHE[key] = pat
     return bool(pat.search(haystack))
