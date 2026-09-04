@@ -217,6 +217,10 @@ def detect_role_creep(desc: str) -> tuple[bool, str]:
 
 CACHE_FILE = Path(__file__).parent / "data" / "company_profiles.json"
 
+# 内存缓存：避免重复调用 callback。key = f"{company}|{city}"，value = profile dict。
+# 失败结果也缓存（kind="unknown"），避免对同一公司反复触发失败重试。
+_memory_cache: dict[str, dict] = {}
+
 # 公司性质判定关键词
 SALES_JOB_WORDS = ["销售", "推销", "电话销售", "客户顾问", "业务员", "市场专员",
                    "推广", "地推", "招商", "渠道", "商务拓展", "bd", "导购",
@@ -340,28 +344,36 @@ def deep_filter(company: str, title: str, desc: str, salary: str,
 
 
 def run_company_background_check(company: str, city: str, eval_js_fn) -> dict:
-    """执行公司背调：查缓存 → 未缓存则调 API → 保存缓存。
+    """执行公司背调：查内存缓存 → 调 callback → 解析 JSON → 生成 profile → 写入缓存。
 
-    eval_js_fn: 在浏览器 tab 上下文执行 JS 的函数（页面 fetch 需要 cookie）
-    返回公司画像 dict。API 失败 → 缓存 'unknown' 短时结果，避免反复请求。
+    严禁发起实际网络调用；测试通过传入的 mock/fake callback 注入。
+    正常流程：调用 callback → 解析 JSON → 生成 profile → 写入内存缓存。
+    缓存命中时不得重复调用 callback。
+    容错降级：遇到畸形 JSON、callback 异常、或 ERR: 字符串响应时：
+      - 降级为 kind = "unknown"
+      - 对 unknown 状态实行保护，不得误杀岗位，维持原始分数
+      - 将失败记录同样写入缓存（标记为 unknown），避免对同一公司反复触发失败重试
+      - 严禁在异常情况下凭空推断生成 sales/annotation/risk 等虚假画像
     """
-    cache = _load_cache()
     key = f"{company}|{city}"
-    if key in cache:
-        return cache[key]["profile"]
+    # 内存缓存命中 → 直接返回，不调用 callback
+    if key in _memory_cache:
+        return _memory_cache[key]
 
+    profile: dict = {}
     try:
         jobs_raw = eval_js_fn(company, city)
-        jobs = []
-        if jobs_raw and not jobs_raw.startswith("ERR:"):
+        # ERR: 字符串响应 → 降级为 unknown
+        if not jobs_raw or (isinstance(jobs_raw, str) and jobs_raw.startswith("ERR:")):
+            profile = {"kind": "unknown", "total": 0, "jobs": []}
+        else:
             data = json.loads(jobs_raw)
-            jobs = [j for j in data if j.get("brand") == company or not j.get("brand")]
-            # 搜索可能返回多家公司，只保留目标公司
             jobs = [j for j in data if company[:4] in j.get("brand", "")] or data
-        profile = profile_company(jobs)
+            profile = profile_company(jobs)
     except Exception:
+        # 畸形 JSON / callback 异常 → 降级为 unknown，不凭空推断
         profile = {"kind": "unknown", "total": 0, "jobs": []}
 
-    cache[key] = {"profile": profile, "time": datetime.now().isoformat()}
-    _save_cache(cache)
+    # 缓存结果（含 unknown 状态，避免重复触发失败重试）
+    _memory_cache[key] = profile
     return profile
