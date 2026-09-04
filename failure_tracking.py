@@ -95,6 +95,18 @@ CREATE INDEX IF NOT EXISTS idx_fr_stage ON failure_reasons(failure_stage);
 """
 
 
+def initialize(db_path: Optional[Path] = None) -> None:
+    """幂等初始化：创建 failure_reasons 表（若不存在）。
+
+    连续执行多次无副作用、不抛异常。
+    测试时传入临时 DB 路径，避免污染用户的 ab_experiment.db。
+    """
+    target = db_path or DB
+    conn = sqlite3.connect(target)
+    conn.executescript(SCHEMA)
+    conn.close()
+
+
 def _get_conn() -> sqlite3.Connection:
     conn = sqlite3.connect(DB)
     conn.executescript(SCHEMA)
@@ -145,6 +157,13 @@ def record_failure(
     """记录一条失败原因。幂等：同 job_id+stage+reason 不重复写入（更新 updated_at）。"""
     _validate_stage(failure_stage)
     _validate_reason(failure_reason)
+
+    # 校验 stage→reason 组合合法性（依据 STAGE_REASON_MAP 拦截非法组合）
+    allowed_reasons = STAGE_REASON_MAP.get(failure_stage)
+    if allowed_reasons is not None and failure_reason not in allowed_reasons:
+        raise ValueError(
+            f"非法 failure_stage→failure_reason 组合: {failure_stage}→{failure_reason}"
+        )
 
     # 解析 job 上下文（job_id 可能是 id / job_title / company）
     job_ctx = _resolve_job(job_id)
