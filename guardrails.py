@@ -15,7 +15,7 @@ GUARDRAILS_VER = "2.0"
 # 红线下限（用户定稿 RULES_v2.0，勿松）：
 NIGHT_BAN_START_MAX = 22          # 夜间禁投开始不得晚于 22:00
 NIGHT_BAN_END_MAX = 8             # 结束不得晚于 08:00
-DAILY_CAP_MAX = 100               # 正常期日上限不得 >100
+DAILY_CAP_MAX = 150               # 正常期日上限不得 >150（2026-09-05 冲刺模式：用户确认150目标）
 HOURLY_CAP_MAX = 15               # 单小时上限不得 >15
 
 # 分层薪资参数下限（可更严，不可更松；单位 K/月）：
