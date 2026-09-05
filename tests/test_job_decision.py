@@ -109,3 +109,22 @@ class TestHardRedlines(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class TestPuaSalary(unittest.TestCase):
+    """2026-09-05 回归：Boss 图标字体 PUA 薪资字符必须能解码，否则 12K 大小周特批失效。"""
+
+    def test_pua_digits_decoded(self):
+        from job_decision import parse_salary_low
+        # \ue032\ue039 = "29"（0xe030=0, 0xe039=9）
+        self.assertEqual(parse_salary_low("\ue032\ue039-\ue034\ue031K"), 29.0)
+        self.assertEqual(parse_salary_low("\ue035\ue030-\ue031\ue030\ue030K"), 50.0)
+
+    def test_pua_salary_triggers_daxiaozhou_waiver(self):
+        # 50-100K 大小周 → PUA 解码后 ≥12K → 特批放行
+        d = evaluate_job("优必选", "AI专家", "大小周", "\ue035\ue030-\ue031\ue030\ue030K", city="深圳")
+        self.assertEqual(d.action, "ALLOW")
+
+    def test_pua_low_salary_daxiaozhou_still_reject(self):
+        # 4-6K 大小周 → 仍拒（特批只覆盖 ≥12K）
+        d = evaluate_job("某司", "AI漫剧", "大小周", "\ue034-\ue036K", city="广州")
+        self.assertEqual(d.action, "REJECT")

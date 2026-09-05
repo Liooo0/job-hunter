@@ -65,6 +65,12 @@ def parse_salary_low(salary: str) -> float:
     if not salary:
         return 0.0
     s = salary.replace(" ", "").replace(",", "").lower()
+    # 2026-09-05: Boss 用图标字体渲染数字，textContent 拿到的是 Unicode 私有区
+    # (PUA) 字符 0xe030-0xe039 = '0'-'9'。不解码则薪资全解析失败 →
+    # 大小周 12K 特批失效、低薪误拦。实测: '\\ue032\\ue039' = "29"。
+    if any(0xE030 <= ord(ch) <= 0xE039 for ch in s):
+        s = "".join(chr(ord(ch) - 0xE030 + ord("0"))
+                    if 0xE030 <= ord(ch) <= 0xE039 else ch for ch in s)
     try:
         if "万" in s and "-" in s:
             return float(s.split("-")[0].replace("万", "")) * 10

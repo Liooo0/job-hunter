@@ -465,26 +465,28 @@ def _looks_disconnected(e) -> bool:
 
 
 def _pick_boss_tab(page, url):
-    """按 Boss 页面特征选择唯一投递 tab。找不到唯一 → 返回 None（调用方 STOP，不猜）。
+    """按 Boss 页面特征选择唯一投递工作 tab。找不到唯一 → 返回 None（调用方 STOP，不猜）。
 
     2026-09-03：投递 Chrome 里混着小红书/抖音/闲鱼等其它项目 tab，旧代码
-    `page.get_tab(page.tab_ids[0])` 会连到非 Boss tab 导致误操作。改为：
-      0 个 zhipin tab  → None（调用方 STOP，或可考虑新建）
-      1 个 zhipin tab  → 导航到 url 后返回
-      >1 个 zhipin tab → None（不猜哪个是对的，人工处理）
-    匹配特征：URL 含 zhipin.com 即可（jobs/chat/user 都算，避免误判）。
+    `page.get_tab(page.tab_ids[0])` 会连到非 Boss tab 导致误操作。改为按 URL 特征匹配。
+    2026-09-05：排除 chat 页（web/geek/chat 是 HR 回复专用 tab，被投递导航走会丢聊天
+    上下文）；只匹配工作 tab（job_detail / web/geek/jobs / user 等）。
+      0 个匹配  → None（调用方 STOP）
+      1 个匹配  → 导航到 url 后返回
+      >1 个匹配 → None（不猜哪个是对的，人工处理）
     """
     try:
         matches = []
         for tid in list(page.tab_ids):
             try:
                 t = page.get_tab(tid)
-                if "zhipin.com" in (t.url or ""):
+                u = t.url or ""
+                if "zhipin.com" in u and "/web/geek/chat" not in u:
                     matches.append(t)
             except Exception:
                 continue
         if len(matches) != 1:
-            print(f"  ⚠️ Boss tab 匹配数 = {len(matches)}（需恰好 1 个）")
+            print(f"  ⚠️ Boss 工作 tab 匹配数 = {len(matches)}（需恰好 1 个，chat 页已排除）")
             return None
         tab = matches[0]
         try:
