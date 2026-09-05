@@ -24,7 +24,9 @@ SALARY_NORMAL_FLOOR_MIN = 8.0     # 8-10K 正常档 —— 不得低于 8
 SALARY_PRIORITY_MIN = 10.0        # >=10K 优先档 —— 不得低于 10
 
 # 双休红线：这些词一旦从正文排除词消失 → 拒绝启动
-WEEKEND_MANDATORY_WORDS = ["单休", "大小周", "996", "夜班"]
+# 2026-09-05 冲刺模式：大小周移出（改由 job_decision 薪资感知处理：≥12K 特批/<12K 拒，
+# 见 check_decisioner 对 DXZ_WAIVER 的校验）。单休/996/夜班仍是硬排除词。
+WEEKEND_MANDATORY_WORDS = ["单休", "996", "夜班"]
 # 实习硬过滤：标题排除词必须含
 INTERN_MANDATORY_WORDS = ["实习", "实习生"]
 
@@ -112,6 +114,14 @@ def check_decisioner(cfg: dict) -> list:
             v.append("WORKDAY_REDLINES 过短（<6词）—— 制度红线被抽空")
         elif len(jd.SPECIAL_APPROVAL_SIGNALS) < 6:
             v.append("SPECIAL_APPROVAL_SIGNALS 过短（<6词）—— 特批通道被抽空")
+        # 2026-09-05 冲刺模式：大小周移出 body_exclude 后，必须确认 job_decision
+        # 仍有薪资感知豁免分支（≥12K 放行），否则双休红线被彻底绕过
+        try:
+            _src = Path(jd.__file__).read_text(encoding="utf-8")
+            if 'hit == "大小周"' not in _src:
+                v.append("job_decision 缺失大小周薪资豁免分支（DXZ_WAIVER）—— 双休红线被绕过")
+        except Exception:
+            v.append("无法读取 job_decision.py 源码校验大小周豁免分支")
     except Exception as e:
         v.append(f"job_decision.py 不可用: {str(e)[:60]}")
     return v
