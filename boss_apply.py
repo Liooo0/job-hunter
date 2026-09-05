@@ -485,6 +485,18 @@ def _pick_boss_tab(page, url):
                     matches.append(t)
             except Exception:
                 continue
+        if len(matches) == 0:
+            # 没有现成工作 tab（常见：只剩 chat tab 或全关）→ 新建一个导航到 url
+            # 2026-09-05：投递工作 tab 用完即弃，正常态可能只剩 chat tab；
+            # 0 匹配不该 STOP，新建即可（登录态是 profile 级，新 tab 不掉登录）。
+            try:
+                tab = page.new_tab(url)
+                time.sleep(5 + random.uniform(0, 2))
+                print("  ℹ️ 无现成工作 tab，已新建")
+                return tab
+            except Exception as e:
+                print(f"  ⚠️ 新建工作 tab 失败: {str(e)[:60]}")
+                return None
         if len(matches) != 1:
             print(f"  ⚠️ Boss 工作 tab 匹配数 = {len(matches)}（需恰好 1 个，chat 页已排除）")
             return None
