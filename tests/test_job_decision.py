@@ -37,10 +37,9 @@ class TestSalaryBands(unittest.TestCase):
         self.assertEqual((d.action, d.priority), ("ALLOW", "NORMAL"))
 
     def test_5_8k_no_special_reject(self):
-        # 2026-09-05 冲刺模式：8K 也干（用户确认），5-8K 直接 ALLOW-LOW 不再要特批
+        # 2026-09-05 定稿：底薪≥8K才投。区间5-8K无底薪声明/底薪<8K → 拒
         d = evaluate_job("某外包", "采购专员", "跟单", "6-8K")
-        self.assertEqual(d.action, "ALLOW")
-        self.assertEqual(d.priority, "LOW")
+        self.assertEqual(d.action, "REJECT")
 
     def test_under_5k_reject(self):
         d = evaluate_job("某公司", "数据标注员", "标注", "4-6K")
@@ -128,3 +127,27 @@ class TestPuaSalary(unittest.TestCase):
         # 4-6K 大小周 → 仍拒（特批只覆盖 ≥12K）
         d = evaluate_job("某司", "AI漫剧", "大小周", "\ue034-\ue036K", city="广州")
         self.assertEqual(d.action, "REJECT")
+
+
+class TestBaseSalaryPolicy(unittest.TestCase):
+    """2026-09-05 用户定稿：底薪≥8K才投 + 狼性文化排除。"""
+
+    def test_low_interval_with_low_base_reject(self):
+        # 聚客案：标7-22K实底薪5K → 拒
+        d = evaluate_job("聚客科技", "AI大模型训练", "底薪5000+高提成", "7-22K", city="深圳")
+        self.assertEqual(d.action, "REJECT")
+
+    def test_4k_base_reject(self):
+        # 征川案：标4-9K底薪4K → 拒
+        d = evaluate_job("征川文化", "AIGC剪辑", "底薪4K", "4-9K", city="杭州")
+        self.assertEqual(d.action, "REJECT")
+
+    def test_high_base_in_low_interval_allow(self):
+        # 标6-10K但写明底薪8K+提成 → 放行（底薪达标）
+        d = evaluate_job("某公司", "AI销售", "底薪8K+高提成,双休", "6-10K", city="深圳")
+        self.assertEqual(d.action, "ALLOW")
+
+    def test_wolf_culture_reject(self):
+        d = evaluate_job("某公司", "AI实施", "狼性文化,多劳多得", "10-15K", city="深圳")
+        self.assertEqual(d.action, "REJECT")
+        self.assertIn("狼性", d.reason)

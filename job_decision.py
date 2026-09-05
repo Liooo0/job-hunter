@@ -47,6 +47,43 @@ COMPANY_REDLINES = ["人力资源", "劳务派遣", "劳务外包", "代招", "�
 
 # ── 高价值外包（O1/O2 可入，O3/O4 拒）：职业跳板 —— 不在此处判，留给 deep_filter ──
 
+# ── 2026-09-05 用户定稿：底薪口径 + 文化红线 ──
+# 用户：底薪(无责底薪) ≥8K 才投，绩效/提成不算；狼性文化/多劳多得公司排除。
+CULTURE_REDLINES = ["狼性", "多劳多得", "结果导向", "能者多劳", "扁平化管理",
+                    "奋斗者", "拼搏精神", "996是福报", "业绩为王"]
+# 底薪声明（正则）：底薪5K / 无责底薪4500元 / 底薪5000+提成
+# 数字后带 K/k/千 = K 单位；不带 = 元（5000元=5K）
+BASE_SALARY_RE = r"(?:无责)?底薪[约]?(\d+(?:\.\d+)?)\s*([kK千])?"
+BASE_SALARY_RE_CN = r"(?:无责)?底薪[约]?([一二三四五六七八九十百]+)"
+
+
+def parse_base_salary(text: str):
+    """从 JD 文本解析明确声明的无责底薪（K/月）。没有声明返回 None。"""
+    if not text:
+        return None
+    import re
+    m = re.search(BASE_SALARY_RE, text)
+    if m:
+        try:
+            val = float(m.group(1))
+            unit = m.group(2) or ""
+            if unit in ("k", "K", "千"):
+                return val
+            return val / 1000.0  # 无单位 = 元（5000 → 5K）
+        except (ValueError, IndexError):
+            return None
+    # 中文"底薪八千"类
+    m2 = re.search(BASE_SALARY_RE_CN, text)
+    if m2:
+        cn = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6,
+              "七": 7, "八": 8, "九": 9, "十": 10}
+        s = m2.group(1)
+        if len(s) == 1 and s in cn:
+            return float(cn[s])
+        if "十" in s:
+            return float(cn.get(s[0], 1) * 10)
+    return None
+
 
 @dataclass
 class Decision:
@@ -132,6 +169,12 @@ def evaluate_job(company: str, title: str, desc: str, salary: str,
     if sig.get("workday") == "unknown" and _has_any(title, ["轮班", "夜班", "倒班"]):
         return Decision("REJECT", reason="制度红线:标题轮班/夜班")
 
+    # ── 1.5 文化红线（2026-09-05 用户定稿）：狼性/多劳多得公司直接排除 ──
+    _culture_hit = _has_any(combined, CULTURE_REDLINES)
+    if _culture_hit:
+        hit = next(w for w in CULTURE_REDLINES if w in combined)
+        return Decision("REJECT", reason=f"文化红线:{hit}")
+
     # ── 2. 实习兜底 ──
     if "实习" in title:
         return Decision("REJECT", reason="实习岗→过滤(全职策略)")
@@ -167,10 +210,19 @@ def evaluate_job(company: str, title: str, desc: str, salary: str,
                             reason=f"{band}特批:正式工/编制/高稳定信号")
         return Decision("REJECT", priority="", salary_band=band, reason=f"{band}→默认拒绝")
     if band == "5-8K":
-        # 2026-09-05 冲刺模式：8K 也干（用户确认）。5-8K 不再要求特批信号，直接 LOW 可投。
-        # <5K 仍需特批（真红线，养不活深圳生活）。
-        return Decision("ALLOW", priority="LOW", salary_band=band,
-                        reason=f"{band}→冲刺模式可投(LOW)")
+        # 2026-09-05 用户定稿：底薪(无责底薪) ≥8K 才投，绩效/提成不算。
+        # 区间下限 5-8K 的岗：若 JD 明确声明底薪≥8K（如"底薪8K+高提成"）→ 放行；
+        # 否则默认拒（标注区间都不到8K，底薪大概率更低，聚客7K底薪5K是反面案例）。
+        _base = parse_base_salary(combined)
+        if _base is not None and _base >= 8.0:
+            return Decision("ALLOW", priority="LOW", salary_band=band,
+                            reason=f"{band}但底薪{_base:g}K达标→可投(LOW)")
+        if _has_any(combined, SPECIAL_APPROVAL_SIGNALS):
+            return Decision("ALLOW", priority="LOW", salary_band=band,
+                            special_approval=True,
+                            reason=f"{band}特批:正式工/编制/高稳定信号")
+        return Decision("REJECT", priority="", salary_band=band,
+                        reason=f"{band}→底薪口径不达标,拒绝")
     if band == "8-10K":
         return Decision("ALLOW", priority="NORMAL", salary_band=band, reason=f"{band}→正常可接受")
     return Decision("ALLOW", priority="HIGH", salary_band=band, reason=f"{band}→高优先级")
