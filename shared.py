@@ -415,8 +415,14 @@ def smart_filter(company: str, title: str, desc: str, salary: str, score: int, c
         return 0, "公司名排除→过滤"
 
     # Rule 0.5: 身体条件/高级Python框架 在JD正文中 → 直接过滤
+    # 2026-09-05 误杀修复：排除词分两级。
+    #   内容身份词（短视频/短剧/AI视频/漫剧/剪辑）= 岗位身份，只查标题 ——
+    #   JD 提"短视频平台业务"≠这岗是短视频制作（阿里AI Agent研发被误杀案）。
+    #   JD 行为词（销售/教培/夜班等）= 真信号，查全文。
+    _content_ident = ["短视频", "短剧", "AI视频", "漫剧", "文生视频", "剪辑"]
     for kw in cfg.get("body_exclude_keywords", []):
-        if contains_kw(combined, kw):
+        _target = title_lower if any(_id in kw for _id in _content_ident) else combined
+        if contains_kw(_target, kw):
             return 0, f"JD含排除词'{kw}'→过滤"
 
     # Rule 1: 薪资分层裁决 — RULES_v2.0 (2026-08-31) 由 job_decision.evaluate_job 统一负责
