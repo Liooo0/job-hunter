@@ -1663,7 +1663,7 @@ def main():
     from DrissionPage.errors import BrowserConnectError
     opts = ChromiumOptions(read_file=False)
     opts.set_user_data_path(str(Path("~/job-hunter-chrome").expanduser()))
-    opts.set_local_port(9222)
+    opts.set_local_port(9223)
     try:
         page = ChromiumPage(addr_or_opts=opts)
     except BrowserConnectError:

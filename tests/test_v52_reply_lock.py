@@ -147,3 +147,38 @@ class TestReplyLock(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestDuplicateAcquireBug(unittest.TestCase):
+    """2026-09-05 回归：同公司同HR的第二条消息不能被 sent 旧记录挡住。"""
+
+    def setUp(self):
+        import tempfile, shutil
+        self.tmp = Path(tempfile.mkdtemp(prefix="rlbug_"))
+        import reply_lock
+        import importlib
+        self.rl = importlib.reload(reply_lock)
+        self.rl.DATA_DIR = self.tmp
+        self.rl.LOCK_FILE = self.tmp / "reply_review.lock"
+        self.rl.PENDING_FILE = self.tmp / "reply_pending.json"
+        self.rl.STATS_FILE = self.tmp / "reply_stats.json"
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_second_message_same_hr_not_blocked_by_sent(self):
+        os.environ["REPLY_LOCK_FAKE_SEND"] = "1"
+        s1 = {"id": "R1", "company": "卓越", "hr_name": "张女士", "status": "pending",
+              "hr_message": "第一问", "draft": "答1", "purpose": "x"}
+        self.rl.acquire([s1])
+        self.rl.approve("R1", "确认")
+        ok, _ = self.rl.send_approved("R1")
+        self.assertTrue(ok)
+        # 第二条同人消息
+        s2 = {"id": "R2", "company": "卓越", "hr_name": "张女士", "status": "pending",
+              "hr_message": "第二问", "draft": "答2", "purpose": "x"}
+        self.rl.acquire([s2])
+        ids = [s["id"] for s in self.rl.pending()]
+        self.assertIn("R2", ids, "同HR第二条必须能入队（不被sent旧记录挡）")
+        os.environ.pop("REPLY_LOCK_FAKE_SEND", None)

@@ -179,7 +179,7 @@ def _scan_chat_page(unread_only: bool = False) -> list:
     from DrissionPage import ChromiumPage
     import time as _t
     try:
-        page = ChromiumPage(9222)
+        page = ChromiumPage(9223)
     except Exception as e:
         print(f"❌ Chrome连接失败: {e}")
         return []
@@ -349,7 +349,7 @@ def send_one(page, name_box: str, reply: str):
     import random as _r
     from DrissionPage import ChromiumPage
     try:
-        page = ChromiumPage(9222)
+        page = ChromiumPage(9223)
     except Exception as e:
         print(f"❌ Chrome 连接失败: {e}")
         return False

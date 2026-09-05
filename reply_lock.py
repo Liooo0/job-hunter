@@ -63,9 +63,18 @@ def acquire(sessions: list, reason: str = "HR会话待人工审核") -> bool:
     """上锁 + 写入待审核队列。返回是否真的新上了锁（已有锁时合并队列不覆盖）。"""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     existing = _load_json(PENDING_FILE, [])
-    known = {(s.get("company", ""), s.get("hr_name", "")) for s in existing}
+    # 去重只看未完结条目（pending/edited/approved）——sent/rejected 是历史，
+    # 同公司同 HR 的新消息不能被旧记录挡住（2026-09-05: 张女士第二条被吞的 bug）
+    active = [s for s in existing if s.get("status") in ("pending", "edited", "approved")]
+    known = {(s.get("company", ""), s.get("hr_name", "")) for s in active}
     merged = existing + [s for s in sessions
                          if (s.get("company", ""), s.get("hr_name", "")) not in known]
+    # 若锁已无 active 条目却仍存在（历史残留），先释放再上
+    if not active and LOCK_FILE.exists():
+        try:
+            LOCK_FILE.unlink()
+        except Exception:
+            pass
     _dump(PENDING_FILE, merged)
     lock = _load_json(LOCK_FILE, None) or {
         "locked_at": _now(), "reason": reason, "source": "reply_lock",
