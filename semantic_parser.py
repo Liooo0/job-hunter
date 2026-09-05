@@ -57,6 +57,13 @@ SALES_JD_SIGNS = [
 # 客服伪装：注意"顾问"单独出现不触发（AI解决方案顾问是合法目标岗）
 SERVICE_TITLE_SIGNS = ["客户服务", "客服", "热线", "售后支持", "投诉处理", "呼叫中心"]
 
+# 技术岗豁免：标题是纯技术岗（工程师/开发/技术/研发/架构/运维）时，JD 里的
+# 销售信号（客户开发/产品推广/电话沟通等）多为"需求对接"，不是销售岗。
+# 2026-09-05 误杀复盘：华为AI软件工程师/庭宇AI产品技术经理/海博拓天AI产品运营
+# 被 JD 销售词≥2 误拦。技术岗豁免后，仅标题销售词仍可触发（真销售标题）。
+TECH_ROLE_SIGNS = ["工程师", "开发", "技术", "研发", "架构", "运维",
+                   "算法", "程序员", "专家"]  # 注意不含"经理"（客户经理/销售经理不豁免）
+
 # 标注伪装·强信号：命中即可否决（override 词可取消，交 L2）
 ANNOTATION_STRONG_SIGNS = [
     "标注", "数据标注", "打标", "RLHF标注", "数据清洗", "语料",
@@ -101,7 +108,11 @@ def parse(title: str, jd_text: str = "", company: str = "") -> Dict[str, Any]:
     ai_core = _has(combined, AI_CORE_SIGNS)
     override = _has(title, LEGITIMATE_OVERRIDE)
 
-    is_sales = bool(sales_title) or len(sales_jd) >= 2
+    is_sales = bool(sales_title)
+    # 2026-09-05：技术岗豁免——标题含 工程师/开发/技术 等词时，JD 销售信号
+    # 不算数（需求对接≠销售岗）。仅当标题本身无技术属性且 JD 销售词≥2 才判销售。
+    if not is_sales and len(sales_jd) >= 2 and not _has(title, TECH_ROLE_SIGNS):
+        is_sales = True
     is_service = bool(service)
     is_annotation = bool(annotation) and not override  # 弱信号永不触发
 

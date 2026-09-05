@@ -139,3 +139,19 @@ class TestGoldenThreeClassFile(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTechRoleNoKill(unittest.TestCase):
+    """2026-09-05 误杀回归：技术岗 JD 含客户/推广词不得被当销售拦。"""
+
+    def test_huawei_ai_engineer_not_sales(self):
+        out = SP.parse("AI软件工程师", "负责AI软件开发，与客户沟通需求，推动产品推广", "华为")
+        self.assertNotEqual(out["verdict"], "HARD_BLOCK")
+
+    def test_ai_product_tech_manager_not_sales(self):
+        out = SP.parse("AI产品技术经理", "负责技术方案，对接客户需求，电话沟通", "庭宇")
+        self.assertNotEqual(out["verdict"], "HARD_BLOCK")
+
+    def test_real_sales_title_still_blocked(self):
+        out = SP.parse("客户经理", "负责客户开发，产品推广，电话沟通，陌拜")
+        self.assertEqual(out["verdict"], "HARD_BLOCK")
