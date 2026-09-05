@@ -37,8 +37,19 @@ salary:                          # 单位：元/月。三档与 job_decision 代
   target: 10000                  # ≥10K 高优先（= SALARY_PRIORITY * 1000）
   preferred: 12000
   acceptable: 8000               # 8-10K 正常可投（= SALARY_NORMAL_FLOOR * 1000）
+  # 2026-09-05 定稿：底薪(无责底薪) ≥8K 才投，绩效/提成不算。
+  # 区间5-8K默认拒，除非JD明确"底薪8K+"或编制特批（聚客7K底薪5K=反面案例）。
+  base_salary_policy: base_ge_8k  # 底薪口径：标注区间达标不够，须底薪≥8K
   exceptional_floor: 5000        # 5-8K 仅特批通道（= SALARY_HARD_FLOOR * 1000）
   unknown_policy: not_reject     # 未知/面议 不因薪资拒
+
+culture_redlines:                # 2026-09-05：狼性/多劳多得公司直接排除（用户定稿）
+  - 狼性
+  - 多劳多得
+  - 结果导向
+  - 能者多劳
+  - 奋斗者
+  - 996是福报
 
 work:
   required: [双休]
