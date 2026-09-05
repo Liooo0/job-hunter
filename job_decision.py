@@ -49,8 +49,9 @@ COMPANY_REDLINES = ["人力资源", "劳务派遣", "劳务外包", "代招", "�
 
 # ── 2026-09-05 用户定稿：底薪口径 + 文化红线 ──
 # 用户：底薪(无责底薪) ≥8K 才投，绩效/提成不算；狼性文化/多劳多得公司排除。
-CULTURE_REDLINES = ["狼性", "多劳多得", "结果导向", "能者多劳", "扁平化管理",
+CULTURE_REDLINES = ["狼性", "多劳多得", "结果导向", "能者多劳",
                     "奋斗者", "拼搏精神", "996是福报", "业绩为王"]
+# 注意：不含"扁平化管理"（中性甚至正面描述，2026-09-05 极近AI音乐制作误杀案）
 # 底薪声明（正则）：底薪5K / 无责底薪4500元 / 底薪5000+提成
 # 数字后带 K/k/千 = K 单位；不带 = 元（5000元=5K）
 BASE_SALARY_RE = r"(?:无责)?底薪[约]?(\d+(?:\.\d+)?)\s*([kK千])?"
@@ -97,33 +98,69 @@ class Decision:
         return f"[{self.action}] {self.priority} | {self.reason}"
 
 
-def parse_salary_low(salary: str) -> float:
-    """解析薪资下限(K/月)。0 = 未知(不因未知拒绝)。"""
+def _decode_salary_text(salary: str) -> str:
+    """薪资文本预处理：去空格逗号小写 + Boss PUA 图标数字解码(0xe030-0xe039=0-9)。"""
     if not salary:
-        return 0.0
+        return ""
     s = salary.replace(" ", "").replace(",", "").lower()
-    # 2026-09-05: Boss 用图标字体渲染数字，textContent 拿到的是 Unicode 私有区
-    # (PUA) 字符 0xe030-0xe039 = '0'-'9'。不解码则薪资全解析失败 →
-    # 大小周 12K 特批失效、低薪误拦。实测: '\\ue032\\ue039' = "29"。
     if any(0xE030 <= ord(ch) <= 0xE039 for ch in s):
         s = "".join(chr(ord(ch) - 0xE030 + ord("0"))
                     if 0xE030 <= ord(ch) <= 0xE039 else ch for ch in s)
+    return s
+
+
+def _parse_salary_value(s: str) -> float:
+    """单段薪资文本 → K/月 数值。s 已解码且无区间。"""
     try:
-        if "万" in s and "-" in s:
-            return float(s.split("-")[0].replace("万", "")) * 10
-        if "万" in s and "-" not in s:
+        if "万" in s:
             return float(s.replace("万", "")) * 10
-        if "k" in s and "-" in s:
-            return float(s.split("-")[0].split("k")[0])
-        if "k" in s and "-" not in s:
+        if "k" in s:
             return float(s.split("k")[0])
         if "元/天" in s or "元/日" in s:
-            return float(s.split("-")[0].split("元")[0]) * 22 / 1000
+            return float(s.split("元")[0]) * 22 / 1000
         if "元/月" in s:
-            return float(s.split("-")[0].split("元")[0]) / 1000
+            return float(s.split("元")[0]) / 1000
+        if "元" in s:
+            return float(s.replace("元", "")) / 1000
+        # 裸数字（Boss 区间 "4-7K" 前半段是 "4"）= 默认 K
+        return float(s)
     except (ValueError, IndexError):
         return 0.0
     return 0.0
+
+
+def parse_salary_low(salary: str) -> float:
+    """解析薪资下限(K/月)。0 = 未知(不因未知拒绝)。"""
+    s = _decode_salary_text(salary)
+    if not s:
+        return 0.0
+    try:
+        if "-" in s:
+            # 区间："4-7K" / "411-511元/天" — 单位在尾部，两段都带同一单位
+            parts = s.split("-")
+            unit = ""
+            for u in ("元/天", "元/日", "元/月", "元", "k", "万"):
+                if u in parts[1]:
+                    unit = u
+                    break
+            return _parse_salary_value(parts[0] + unit)
+        return _parse_salary_value(s)
+    except (ValueError, IndexError):
+        return 0.0
+
+
+def parse_salary_high(salary: str) -> float:
+    """解析薪资上限(K/月)。0 = 未知。用于超高价线判断(>30K 不投, 用户2026-09-05定稿)。"""
+    s = _decode_salary_text(salary)
+    if not s:
+        return 0.0
+    try:
+        if "-" in s:
+            return _parse_salary_value(s.split("-")[1])
+        # 单值(如"50K"或"面议")：上限=下限=该值（50K单值也会被>30K拦）
+        return _parse_salary_value(s)
+    except (ValueError, IndexError):
+        return 0.0
 
 
 def _has_any(text: str, words) -> bool:
@@ -188,6 +225,11 @@ def evaluate_job(company: str, title: str, desc: str, salary: str,
 
     # ── 4. 薪资分层 ──
     low = parse_salary_low(salary)
+    high = parse_salary_high(salary)
+    # 2026-09-05 用户定稿：超过 30K 不投，不真实（虚高画饼）。上限或单值 >30K 直接拒。
+    if high > 30.0 or (high <= 0 and low > 30.0):
+        return Decision("REJECT", priority="", salary_band=">30K",
+                        reason=f"薪资超30K红线({salary[:16]}→high={high:g}K)→不投,不真实")
     if low <= 0:
         band = "unknown"
     elif low < SALARY_HARD_FLOOR:

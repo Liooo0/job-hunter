@@ -119,8 +119,8 @@ class TestPuaSalary(unittest.TestCase):
         self.assertEqual(parse_salary_low("\ue035\ue030-\ue031\ue030\ue030K"), 50.0)
 
     def test_pua_salary_triggers_daxiaozhou_waiver(self):
-        # 50-100K 大小周 → PUA 解码后 ≥12K → 特批放行
-        d = evaluate_job("优必选", "AI专家", "大小周", "\ue035\ue030-\ue031\ue030\ue030K", city="深圳")
+        # 18-26K 大小周 → PUA 解码后 ≥12K → 特批放行（不超30K红线）
+        d = evaluate_job("优必选", "AI专家", "大小周", "\ue031\ue038-\ue032\ue036K", city="深圳")
         self.assertEqual(d.action, "ALLOW")
 
     def test_pua_low_salary_daxiaozhou_still_reject(self):
@@ -151,3 +151,26 @@ class TestBaseSalaryPolicy(unittest.TestCase):
         d = evaluate_job("某公司", "AI实施", "狼性文化,多劳多得", "10-15K", city="深圳")
         self.assertEqual(d.action, "REJECT")
         self.assertIn("狼性", d.reason)
+
+
+class TestSalaryCap30K(unittest.TestCase):
+    """2026-09-05 用户定稿：超过 30K 不投，不真实（虚高画饼）。"""
+
+    def test_over_30k_reject(self):
+        d = evaluate_job("快手", "AI Agent研发", "双休", "\ue035\ue031-\ue038\ue031K", city="杭州")  # 51-81K
+        self.assertEqual(d.action, "REJECT")
+        self.assertIn("30K", d.reason)
+
+    def test_29_41k_reject(self):
+        d = evaluate_job("某司", "AI应用", "双休", "\ue032\ue039-\ue034\ue031K", city="深圳")  # 29-41K
+        self.assertEqual(d.action, "REJECT")
+
+    def test_under_30k_allow(self):
+        d = evaluate_job("某司", "AI应用", "双休", "\ue032\ue035-\ue032\ue039K", city="深圳")  # 25-29K
+        self.assertEqual(d.action, "ALLOW")
+
+    def test_daily_salary_parsed_correctly(self):
+        # 411-511元/天 → 9-11K/月（不是 411K！日薪区间解析回归）
+        from job_decision import parse_salary_low, parse_salary_high
+        self.assertAlmostEqual(parse_salary_low("\ue034\ue031\ue031-\ue035\ue031\ue031元/天"), 9.042, places=2)
+        self.assertAlmostEqual(parse_salary_high("\ue034\ue031\ue031-\ue035\ue031\ue031元/天"), 11.242, places=2)
