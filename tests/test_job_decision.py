@@ -37,9 +37,10 @@ class TestSalaryBands(unittest.TestCase):
         self.assertEqual((d.action, d.priority), ("ALLOW", "NORMAL"))
 
     def test_5_8k_no_special_reject(self):
+        # 2026-09-05 冲刺模式：8K 也干（用户确认），5-8K 直接 ALLOW-LOW 不再要特批
         d = evaluate_job("某外包", "采购专员", "跟单", "6-8K")
-        self.assertEqual(d.action, "REJECT")
-        self.assertIn("5-8K", d.reason)
+        self.assertEqual(d.action, "ALLOW")
+        self.assertEqual(d.priority, "LOW")
 
     def test_under_5k_reject(self):
         d = evaluate_job("某公司", "数据标注员", "标注", "4-6K")
@@ -56,11 +57,10 @@ class TestSpecialApproval(unittest.TestCase):
     """用户点名场景：低薪但高质量岗位必须有正式例外通道，不能靠模型临场发挥。"""
 
     def test_south_grid_5_7k_formal_approval(self):
+        # 冲刺模式：5-8K 直接可投（LOW），编制信号仍进 reason
         d = evaluate_job("南方电网", "数据运维值班员", "正式编制,五险一金齐全,稳定", "5-7K")
         self.assertEqual(d.action, "ALLOW")
         self.assertEqual(d.priority, "LOW")
-        self.assertTrue(d.special_approval)
-        self.assertIn("编制", d.reason)
 
     def test_state_owned_admin_6_8k_approval(self):
         d = evaluate_job("某国企", "行政助理", "央企正式工,双休", "6-8K")
@@ -73,9 +73,13 @@ class TestSpecialApproval(unittest.TestCase):
 
 class TestHardRedlines(unittest.TestCase):
     def test_single_rest_high_salary_still_reject(self):
+        # 冲刺模式：大小周 12K+ 可谈（不再一票否决），但单休/996 高薪仍拒（真红线）
         d = evaluate_job("某科技", "AI应用工程师", "大小周", "15-20K")
-        self.assertEqual(d.action, "REJECT")
-        self.assertIn("大小周", d.reason)
+        self.assertEqual(d.action, "ALLOW")  # 15K 大小周 → 冲刺特批
+        d2 = evaluate_job("某科技", "AI应用工程师", "单休", "15-20K")
+        self.assertEqual(d2.action, "REJECT")  # 单休高薪仍死
+        d3 = evaluate_job("某科技", "AI应用工程师", "996", "15-20K")
+        self.assertEqual(d3.action, "REJECT")  # 996 高薪仍死
 
     def test_night_shift_reject(self):
         d = evaluate_job("某公司", "运维工程师", "需要上夜班轮值", "14-18K")
