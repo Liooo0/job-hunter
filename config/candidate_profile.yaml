@@ -51,9 +51,10 @@ work:
 
 career:
   plan1:                         # 职业主线：发现即优先消耗额度，永远排在 plan2 前
-    P1-A: [AI应用工程师, 大模型应用, Agent, RAG, 知识库, AI应用开发, 智能体开发]
+    P1-A: [AI应用工程师, 大模型应用, Agent, RAG, 知识库, AI应用开发, 智能体开发,
+           智能座舱AI, 座舱大模型, 车载AI, 车载语音, 车机AI, 游戏AI, AIGC游戏]
     P1-B: [AI实施, AI交付, AI解决方案, AI自动化, RPA, 工作流, 流程自动化]
-    P1-C: [AI产品, AI产品运营, AI训练师, AI评测, AI大模型运营]
+    P1-C: [AI产品, AI产品运营, AI训练师, AI评测, AI大模型运营, AI内容运营]
     P1-D: [Python+AI, 自动化开发, 业务自动化, AI工具链, 低代码实施]
   plan2:                         # 收入扩展池：只填 plan1 用剩的容量，不是垃圾岗位池
     salary_min: 10000            # plan2 入场资格 = ≥10K 且过硬规则

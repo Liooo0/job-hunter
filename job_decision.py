@@ -111,10 +111,18 @@ def evaluate_job(company: str, title: str, desc: str, salary: str,
     if sig.get("intern"):
         return Decision("REJECT", reason="解析信号:实习岗→过滤")
 
-    # ── 1. 关键词兜底：制度红线（命中即死，不看薪资） ──
-    if _has_any(combined, WORKDAY_REDLINES):
+    # ── 1. 关键词兜底：制度红线 ──
+    # 2026-09-05 冲刺模式：单休/996/007/夜班/轮班 仍命中即死（真坑，26天也耗不起）；
+    # 大小周 = 降级为"薪资≥12K 可谈"（SPECIAL_APPROVAL_SIGNALS 含 salary 12K 判定见下），
+    # <12K 的大小周仍 REJECT。双休仍是最优，但不再一票否决大小周。
+    _hit = _has_any(combined, WORKDAY_REDLINES)
+    if _hit:
         hit = next(w for w in WORKDAY_REDLINES if w in combined)
-        return Decision("REJECT", reason=f"制度红线:{hit}")
+        # 仅"大小周"可被 12K+ 薪资特批覆盖（parse_salary_low 返回 K 单位，故 ≥12）
+        if hit == "大小周" and parse_salary_low(salary) >= 12:
+            pass  # 允许，进入薪资分层（reason 由薪资档位给出）
+        else:
+            return Decision("REJECT", reason=f"制度红线:{hit}")
     if sig.get("workday") == "unknown" and _has_any(title, ["轮班", "夜班", "倒班"]):
         return Decision("REJECT", reason="制度红线:标题轮班/夜班")
 
@@ -153,12 +161,10 @@ def evaluate_job(company: str, title: str, desc: str, salary: str,
                             reason=f"{band}特批:正式工/编制/高稳定信号")
         return Decision("REJECT", priority="", salary_band=band, reason=f"{band}→默认拒绝")
     if band == "5-8K":
-        if _has_any(combined, SPECIAL_APPROVAL_SIGNALS):
-            return Decision("ALLOW", priority="LOW", salary_band=band,
-                            special_approval=True,
-                            reason=f"{band}特批:{next(w for w in SPECIAL_APPROVAL_SIGNALS if w in combined)}")
-        return Decision("REJECT", priority="", salary_band=band,
-                        reason=f"{band}→无特批信号,拒绝")
+        # 2026-09-05 冲刺模式：8K 也干（用户确认）。5-8K 不再要求特批信号，直接 LOW 可投。
+        # <5K 仍需特批（真红线，养不活深圳生活）。
+        return Decision("ALLOW", priority="LOW", salary_band=band,
+                        reason=f"{band}→冲刺模式可投(LOW)")
     if band == "8-10K":
         return Decision("ALLOW", priority="NORMAL", salary_band=band, reason=f"{band}→正常可接受")
     return Decision("ALLOW", priority="HIGH", salary_band=band, reason=f"{band}→高优先级")

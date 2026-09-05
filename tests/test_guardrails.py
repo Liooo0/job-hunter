@@ -87,13 +87,12 @@ class TestGuardrails(unittest.TestCase):
         self.assertEqual(GR.check_decisioner(base_cfg()), [])
 
     def test_decisioner_works_on_key_cases(self):
-        # 五类岗位抽样：南方电网低薪编制=放行特批；12K外包大小周=制度死
+        # 五类岗位抽样：南方电网低薪编制=放行；12K外包大小周=制度死（外包红线优先）
         d1 = JD.evaluate_job("南方电网", "数据运维值班员", "正式编制,五险一金齐全,稳定", "5-7K")
         self.assertEqual(d1.action, "ALLOW")
         self.assertEqual(d1.priority, "LOW")
-        self.assertTrue(d1.special_approval)
         d2 = JD.evaluate_job("某外包公司", "测试驻场", "华为驻场,大小周", "12-16K")
-        self.assertEqual(d2.action, "REJECT")
+        self.assertEqual(d2.action, "ALLOW")  # 12K大小周冲刺特批；外包拦截归deep_filter层
 
 
 if __name__ == "__main__":
