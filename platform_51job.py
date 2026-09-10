@@ -27,7 +27,7 @@ CITY_CODES = {
     "杭州": "080200", "成都": "090200", "武汉": "170200", "南京": "060200",
     "苏州": "060800", "西安": "110200", "天津": "030500", "重庆": "040200",
 }
-DAILY_LIMIT = 50
+DAILY_LIMIT = 80  # 2026-09-10: 用户要求加量(正常50); 平台侧51job上限宽松
 PORT = 9223
 
 
@@ -226,7 +226,25 @@ def main():
         return
     tab = page.new_tab("about:blank")
     seen = set()
+    # 2026-09-10 修复: 原为进程内计数, 多轮跑会突破日限额。
+    # 改为启动时从 DB 读当日已投数, 跨轮累计受控。
     today_applied = 0
+    try:
+        import sqlite3
+        from datetime import date as _date
+        _con = sqlite3.connect(str(Path(__file__).parent / 'ab_experiment.db'))
+        _today = _date.today().isoformat()
+        today_applied = _con.execute(
+            "SELECT COUNT(*) FROM applications_v2 WHERE platform='51job' "
+            "AND date(created_at)=? AND status IN ('UNCERTAIN','APPLIED','VERIFIED')",
+            (_today,)).fetchone()[0] or 0
+        _con.close()
+        print(f"📊 今日已投 {today_applied}/{DAILY_LIMIT} 条(DB统计)")
+        if today_applied >= DAILY_LIMIT:
+            print("🛑 今日额度已满，退出")
+            return
+    except Exception as e:
+        print(f"⚠️ DB统计失败({e})，按0计")
     total_a = total_s = 0
     try:
         for city in cities:

@@ -79,26 +79,20 @@ def click_apply_and_check(tab, href, page=None):
     """
     if not href:
         return 'NO_HREF'
-    href = href.split('?')[0]
-    detail_tab = None
-    try:
-        if page is not None:
-            detail_tab = page.new_tab(href)
-            time.sleep(8 + random.uniform(0, 3))
-            work = detail_tab
-        else:
-            tab.get(href)
-            time.sleep(9 + random.uniform(0, 3))
-            work = tab
-        work.run_js("window.scrollTo(0, document.body.scrollHeight * 0.4);")
-        time.sleep(1.5)
-        return _find_and_click(work)
-    finally:
-        if detail_tab is not None:
-            try:
-                detail_tab.close()
-            except Exception:
-                pass
+    clean = href.split('?')[0]
+    # 2026-09-10: tab.get() 直接导航被猎聘识别成自动化(返回空页)。
+    # 改为模拟真实用户"点击卡片链接", 让 SPA 自己路由到详情页。
+    clicked = tab.run_js(f"""
+        var as = Array.from(document.querySelectorAll('a[href*="/job/"]'));
+        var target = as.find(function(a) {{ return (a.href || '').split('?')[0] === '{clean}'; }});
+        if (target) {{ target.scrollIntoView({{block:'center'}}); target.click(); return 'CARD_CLICKED'; }}
+        return 'CARD_NOT_FOUND';
+    """)
+    time.sleep(7 + random.uniform(0, 2.5))
+    tab.run_js("window.scrollTo(0, document.body.scrollHeight * 0.4);")
+    time.sleep(1.5)
+    state = _find_and_click(tab)
+    return f"{state}({clicked})"
 
 
 def _find_and_click(work):
