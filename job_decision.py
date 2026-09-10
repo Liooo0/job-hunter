@@ -113,6 +113,10 @@ def _parse_salary_value(s: str) -> float:
     """单段薪资文本 → K/月 数值。s 已解码且无区间。"""
     try:
         if "万" in s:
+            # 2026-09-10 修复: 年薪格式(15-22万/年)曾被当"15万月薪"=150K误拦30K线。
+            # 年薪 ÷12 折月薪: 15万/年 → 12.5K/月
+            if "/年" in s or "年" in s:
+                return float(s.split("万")[0]) * 10 / 12
             return float(s.replace("万", "")) * 10
         if "k" in s:
             return float(s.split("k")[0])
@@ -139,7 +143,7 @@ def parse_salary_low(salary: str) -> float:
             # 区间："4-7K" / "411-511元/天" — 单位在尾部，两段都带同一单位
             parts = s.split("-")
             unit = ""
-            for u in ("元/天", "元/日", "元/月", "元", "k", "万"):
+            for u in ("万/年", "万/月", "元/天", "元/日", "元/月", "元", "k", "万"):
                 if u in parts[1]:
                     unit = u
                     break

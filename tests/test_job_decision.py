@@ -174,3 +174,43 @@ class TestSalaryCap30K(unittest.TestCase):
         from job_decision import parse_salary_low, parse_salary_high
         self.assertAlmostEqual(parse_salary_low("\ue034\ue031\ue031-\ue035\ue031\ue031元/天"), 9.042, places=2)
         self.assertAlmostEqual(parse_salary_high("\ue034\ue031\ue031-\ue035\ue031\ue031元/天"), 11.242, places=2)
+
+
+class TestAnnualSalaryParsing(unittest.TestCase):
+    """2026-09-10 修复: 年薪格式(万/年)曾被当月薪万误判为150K→误拦30K线。
+
+    51job 上"15-22万/年"很常见,误拦会漏掉大量可投岗(AI解决方案经理类)。
+    """
+
+    def test_annual_salary_converted_to_monthly(self):
+        from job_decision import parse_salary_low, parse_salary_high
+        # 15万/年 = 12.5K/月
+        self.assertAlmostEqual(parse_salary_low("15-22万/年"), 12.5, places=1)
+        self.assertAlmostEqual(parse_salary_high("15-22万/年"), 18.3, places=1)
+
+    def test_annual_salary_within_30k_allowed(self):
+        from job_decision import evaluate_job
+        d = evaluate_job("某公司", "AI解决方案经理", "", "15-30万/年", city="深圳")
+        self.assertEqual(d.action, "ALLOW")
+
+    def test_high_annual_salary_still_rejected(self):
+        from job_decision import evaluate_job
+        # 80-100万/年 = 66.7-83.3K/月 → 超30K线,应拦
+        d = evaluate_job("某公司", "AI智能化专家", "", "80-100万/年", city="深圳")
+        self.assertEqual(d.action, "REJECT")
+
+    def test_monthly_wan_unaffected(self):
+        from job_decision import parse_salary_low
+        # "15-22万"(无/年) = 月薪万单位 → 150K,保持原行为
+        self.assertAlmostEqual(parse_salary_low("15-22万"), 150.0, places=1)
+
+
+class TestDisabilityJobRejection(unittest.TestCase):
+    """2026-09-10: 助残岗(残疾人专项)误投案例,加入排除词。"""
+
+    def test_disability_keywords_in_config(self):
+        import json
+        cfg = json.load(open('/Users/REPLACED/projects/job-hunter/config.json'))
+        excl = cfg["exclude_keywords"]
+        for w in ["助残", "残疾人"]:
+            self.assertIn(w, excl)
