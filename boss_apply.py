@@ -1681,7 +1681,7 @@ def main():
     try:
         page = ChromiumPage(addr_or_opts=opts)
     except BrowserConnectError:
-        print("❌ Chrome 浏览器未启动或调试端口 (9222) 不可用")
+        print("❌ Chrome 浏览器未启动或调试端口 (9223) 不可用")
         if not INTERACTIVE:
             pause("Chrome未启动(launchd定时触发)")
         # 记录一次登录失败（Chrome不在=无法登录）

@@ -15,10 +15,11 @@ from DrissionPage import ChromiumPage
 from job_decision import evaluate_job
 from store import record_application
 
+# 猎聘 dqs 城市码(2026-09-10 实测: URL 用 &dqs= 而非 &city=, 否则返回全国异地岗)
 CITY_CODES = {
-    "深圳": "050090000", "广州": "050020000", "北京": "010000000", "上海": "020000000",
-    "东莞": "050180000", "佛山": "050040000", "杭州": "070020000", "成都": "280020000",
-    "武汉": "170020000", "南京": "060020000", "苏州": "060100000", "西安": "110100000",
+    "深圳": "050090", "广州": "050020", "北京": "010000", "上海": "020000",
+    "东莞": "050180", "佛山": "050040", "杭州": "070020", "成都": "280020",
+    "武汉": "170020", "南京": "060020", "苏州": "060100", "西安": "110100",
 }
 DAILY_LIMIT = 50
 PORT = 9223
@@ -70,38 +71,57 @@ def get_cards(tab):
 
 
 
-def click_apply_and_check(tab, idx, cards_sel):
-    """猎聘：点卡片 <a> 导航到岗位详情页 → 详情页点 立即沟通/投递"""
-    # 1. 卡片是一个 <a href=job/xxx.shtml>，直接取 href 导航
-    href = tab.run_js(f"""
-        var cards = document.querySelectorAll('{cards_sel}');
-        if (!cards[{idx}]) return '';
-        var a = cards[{idx}].querySelector('a[href*="job"]') || cards[{idx}].querySelector('a');
-        return a ? a.href : '';
-    """)
+def click_apply_and_check(tab, href, page=None):
+    """猎聘：新 tab 打开岗位详情页 → 点 投递简历
+
+    2026-09-10: 同一 tab 从搜索页连续 get 详情页会被猎聘识别成自动化(返回空页),
+    改用新 tab 打开(模拟真实"新开页签看岗位"行为),用完关闭。
+    """
     if not href:
         return 'NO_HREF'
-    tab.get(href)
-    time.sleep(3 + random.uniform(0, 1))
-    # 2. 详情页找 立即沟通/投递 按钮
-    state = tab.run_js("""
-        var btns = document.querySelectorAll('button, a, div[class*="btn"]');
-        var targets = ['立即沟通', '立即投递', '投递简历', '投递', '申请职位', '沟通'];
+    href = href.split('?')[0]
+    detail_tab = None
+    try:
+        if page is not None:
+            detail_tab = page.new_tab(href)
+            time.sleep(8 + random.uniform(0, 3))
+            work = detail_tab
+        else:
+            tab.get(href)
+            time.sleep(9 + random.uniform(0, 3))
+            work = tab
+        work.run_js("window.scrollTo(0, document.body.scrollHeight * 0.4);")
+        time.sleep(1.5)
+        return _find_and_click(work)
+    finally:
+        if detail_tab is not None:
+            try:
+                detail_tab.close()
+            except Exception:
+                pass
+
+
+def _find_and_click(work):
+    """在详情页找投递按钮点击。猎聘真按钮文案='投简历'(A.btn-minor)"""
+    state = work.run_js("""
+        var sels = 'button, a, div[class*="btn"], span[class*="btn"]';
+        var targets = ['投简历', '投递简历', '立即投递', '申请职位', '立即沟通'];
+        var btns = document.querySelectorAll(sels);
         for (var b of btns) {
             var txt = (b.innerText || '').trim().replace(/\\s+/g, '');
             for (var tg of targets) {
                 if (txt.indexOf(tg) > -1 && !b.disabled && b.offsetParent !== null) {
                     b.click();
-                    return txt;
+                    return 'CLICKED:' + txt;
                 }
             }
         }
-        // 兜底：看页面是否已显示"已投递/已沟通"
         var body = document.body.innerText;
-        if (body.indexOf('已投递') > -1 || body.indexOf('已沟通') > -1) return '已投递/已沟通';
-        return 'NO_BTN:' + body.slice(0, 80);
+        if (body.indexOf('已投递') > -1 || body.indexOf('已沟通') > -1) return 'ALREADY';
+        var isDetail = /职位描述|岗位职责|任职要求|工作职责/.test(body);
+        return 'NO_BTN:' + (isDetail ? 'detail_page' : 'not_detail') + '|' + document.title.slice(0, 40);
     """)
-    time.sleep(2)
+    time.sleep(4)
     return state
 
 
@@ -110,7 +130,7 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
     city_code = CITY_CODES.get(city)
     if not city_code:
         return 0, 0
-    url = f"https://www.liepin.com/zhaopin/?key={quote(keyword)}&city={city_code}"
+    url = f"https://www.liepin.com/zhaopin/?key={quote(keyword)}&dqs={city_code}"
     applied, skipped = 0, 0
     page_num = 1
     empty_streak = 0
@@ -194,7 +214,7 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
                 continue
 
             print(f"  [✅{c['title'][:30]}] | {c['salary']} | {c['company'][:15]}")
-            state = click_apply_and_check(tab, idx, sel_used)
+            state = click_apply_and_check(tab, c.get('href', ''), page)
             if "已申请" in state or "已投递" in state:
                 applied += 1
                 today_applied += 1
