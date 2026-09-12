@@ -18,6 +18,7 @@
   - 纯劳务/人力代招主体
   - 外包 + 低技术 + 低价（<6K）
 """
+import re
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -109,25 +110,41 @@ def _decode_salary_text(salary: str) -> str:
     return s
 
 
+def _strip_pay_suffix(s: str) -> str:
+    """去掉「·13薪 / -14薪 / 13薪」等薪数后缀。
+
+    2026-09-12 修复: 51job/Boss 常见 "2.5-5万·13薪"。原 _parse_salary_value 用
+    float(s.replace("万","")) 解析，得到 "2.5·13薪" → ValueError → 返回 0.0，
+    于是 high=0 → `high > 30` 永不成立 → 30K 红线对该类岗位完全失效（漏投）。
+    """
+    return re.sub(r"[·\-]?\s*\d+\s*薪", "", s)
+
+
 def _parse_salary_value(s: str) -> float:
     """单段薪资文本 → K/月 数值。s 已解码且无区间。"""
     try:
+        s = _strip_pay_suffix(s)
+        # 只取前导数字，忽略残余后缀（如残留的 "/月"、单位外的杂字符）
+        m = re.match(r"^(\d+(?:\.\d+)?)", s)
+        if not m:
+            return 0.0
+        num = float(m.group(1))
         if "万" in s:
             # 2026-09-10 修复: 年薪格式(15-22万/年)曾被当"15万月薪"=150K误拦30K线。
             # 年薪 ÷12 折月薪: 15万/年 → 12.5K/月
-            if "/年" in s or "年" in s:
-                return float(s.split("万")[0]) * 10 / 12
-            return float(s.replace("万", "")) * 10
+            if "年" in s:
+                return num * 10 / 12
+            return num * 10
         if "k" in s:
-            return float(s.split("k")[0])
+            return num
         if "元/天" in s or "元/日" in s:
-            return float(s.split("元")[0]) * 22 / 1000
+            return num * 22 / 1000
         if "元/月" in s:
-            return float(s.split("元")[0]) / 1000
+            return num / 1000
         if "元" in s:
-            return float(s.replace("元", "")) / 1000
+            return num / 1000
         # 裸数字（Boss 区间 "4-7K" 前半段是 "4"）= 默认 K
-        return float(s)
+        return num
     except (ValueError, IndexError):
         return 0.0
     return 0.0

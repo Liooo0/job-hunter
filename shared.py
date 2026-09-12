@@ -337,6 +337,10 @@ def parse_salary_lower_bound(salary_str: str) -> Optional[int]:
         return None
     try:
         s_clean = s.replace(" ", "").replace(",", "").lower()
+        # 2026-09-12 修复: 去「·13薪/·14薪」薪数后缀。原实现在单值场景
+        # ("2.5万·13薪")会因 replace("万","") 得到 "2.5·13薪" → ValueError
+        # → 返回 None(被当"薪资未知")。区间场景因只取前半段而侥幸正常。
+        s_clean = re.sub(r"[·\-]?\s*\d+\s*薪", "", s_clean)
         # 1. 万格式：1.2-2万、1.2-2万/月
         if "万" in s_clean:
             num_part = s_clean.split("-")[0].replace("万", "")

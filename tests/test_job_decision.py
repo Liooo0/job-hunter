@@ -214,3 +214,79 @@ class TestDisabilityJobRejection(unittest.TestCase):
         excl = cfg["exclude_keywords"]
         for w in ["助残", "残疾人"]:
             self.assertIn(w, excl)
+
+
+class TestPaySuffixSalaryParsing(unittest.TestCase):
+    """2026-09-12 修复: 「·13薪/·14薪」后缀致薪资解析失败 → 30K 红线永久失效。
+
+    根因: _parse_salary_value 用 float(s.replace("万","")) 解析,
+    "5万·13薪" → "5·13薪" → ValueError → 返回 0.0 → high=0 →
+    `high > 30` 永不成立。51job/Boss 上「·13薪」极常见,属系统性漏投。
+    实测漏投: 安帝爱科技 2.5-5万·13薪(50K)、广州美聚优选 2-4万·13薪(40K)。
+    """
+
+    # ── 正例: 带薪后缀且上界 >30K,必须触发红线 ──
+    def test_suffix_high_range_rejected(self):
+        from job_decision import evaluate_job
+        d = evaluate_job("安帝爱科技（深圳）有限公司", "软件工程师", "", "2.5-5万·13薪", city="深圳")
+        self.assertEqual(d.action, "REJECT")
+        self.assertIn("30K", d.reason)
+
+    def test_suffix_high_range_rejected_2(self):
+        from job_decision import evaluate_job
+        d = evaluate_job("广州美聚优选影视传媒有限公司", "AI应用工程师", "", "2-4万·13薪", city="广州")
+        self.assertEqual(d.action, "REJECT")
+
+    # ── 反例: 带同样后缀但上界 ≤30K,必须放行(不能因后缀一律拦) ──
+    def test_suffix_within_cap_allowed(self):
+        from job_decision import evaluate_job
+        d = evaluate_job("深圳市米尔电子有限公司", "AI Agent应用工程师", "", "1.6-2.4万·13薪", city="深圳")
+        self.assertEqual(d.action, "ALLOW")
+
+    # ── 边界: 上界正好等于 30K → 不拦(红线是 >30K) ──
+    def test_suffix_boundary_exactly_30k_allowed(self):
+        from job_decision import evaluate_job, parse_salary_high
+        self.assertAlmostEqual(parse_salary_high("1.5-3万·14薪"), 30.0, places=1)
+        d = evaluate_job("某公司", "AI应用工程师", "", "1.5-3万·14薪", city="深圳")
+        self.assertEqual(d.action, "ALLOW")
+
+    # ── 单值 + 后缀: 原实现 low/high 双双为 0,现必须都能解析 ──
+    def test_single_value_with_suffix(self):
+        from job_decision import parse_salary_low, parse_salary_high
+        self.assertAlmostEqual(parse_salary_low("2.5万·13薪"), 25.0, places=1)
+        self.assertAlmostEqual(parse_salary_high("2.5万·13薪"), 25.0, places=1)
+
+    def test_single_value_with_suffix_over_30k_rejected(self):
+        from job_decision import evaluate_job
+        d = evaluate_job("某公司", "AI专家", "", "40万·13薪", city="深圳")
+        self.assertEqual(d.action, "REJECT")
+
+    # ── 回归: 无后缀 / 其他单位格式不受影响 ──
+    def test_no_suffix_regression(self):
+        from job_decision import parse_salary_low, parse_salary_high
+        self.assertAlmostEqual(parse_salary_low("2.5-4万"), 25.0, places=1)
+        self.assertAlmostEqual(parse_salary_high("2.5-4万"), 40.0, places=1)
+
+    def test_k_format_regression(self):
+        from job_decision import parse_salary_high
+        self.assertAlmostEqual(parse_salary_high("30-50K"), 50.0, places=1)
+
+    def test_annual_and_daily_regression(self):
+        from job_decision import parse_salary_low, parse_salary_high
+        self.assertAlmostEqual(parse_salary_low("15-22万/年"), 12.5, places=1)
+        self.assertAlmostEqual(parse_salary_low("411-511元/天"), 9.04, places=2)
+        self.assertAlmostEqual(parse_salary_high("411-511元/天"), 11.24, places=2)
+
+    def test_unknown_salary_unaffected(self):
+        from job_decision import parse_salary_high
+        self.assertEqual(parse_salary_high("面议"), 0.0)
+
+    def test_shared_lower_bound_with_suffix(self):
+        """shared.parse_salary_lower_bound 也是同款 replace("万","") 写法，
+        单值+后缀场景原返回 None（被当「薪资未知」）。"""
+        from shared import parse_salary_lower_bound as f
+        self.assertEqual(f("2.5万·13薪"), 25)
+        self.assertEqual(f("5万·13薪"), 50)
+        self.assertEqual(f("2.5-5万·13薪"), 25)
+        self.assertEqual(f("15-25K·13薪"), 15)
+        self.assertIsNone(f("面议"))
