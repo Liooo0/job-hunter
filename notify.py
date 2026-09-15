@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import time
 import urllib.error
 import urllib.request
@@ -44,6 +45,8 @@ WXPUSHER_SEND = "https://wxpusher.zjiecode.com/api/send/message"
 #   ① 环境变量 → ② 本项目的 .env.local（gitignored）→ ③ 本机其它项目已有的 .env
 LOCAL_ENV = Path(__file__).resolve().parent / ".env.local"
 FALLBACK_ENV = Path.home() / "weather-api-backend" / ".env"
+# 微信（iLink）通道凭据：Hermes 网关自己的 .env，仓库之外
+HERMES_ENV = Path.home() / ".hermes" / ".env"
 
 DEFAULT_THROTTLE_SEC = 1800  # 30 分钟
 
@@ -119,9 +122,61 @@ def _should_send(key: str, throttle: int) -> bool:
     return True
 
 
+def _weixin_target() -> str:
+    """微信投递目标，形如 weixin:o9cq...@im.wechat。
+
+    优先级：环境变量 JOBHUNTER_WEIXIN_TARGET → Hermes 网关的 WEIXIN_ALLOWED_USERS。
+    **只认显式配置的 uid**，绝不群发（与 wxpusher 那条同样的红线）。
+    """
+    t = os.environ.get("JOBHUNTER_WEIXIN_TARGET", "").strip()
+    if t:
+        return t if t.startswith("weixin:") else f"weixin:{t}"
+    try:
+        if HERMES_ENV.exists():
+            for raw in HERMES_ENV.read_text(encoding="utf-8", errors="ignore").splitlines():
+                k, _, v = raw.strip().partition("=")
+                if k.strip() == "WEIXIN_ALLOWED_USERS" and v.strip():
+                    uid = v.strip().split(",")[0].strip()
+                    if uid:
+                        return f"weixin:{uid}"
+    except Exception:
+        pass
+    return ""
+
+
+def _send_weixin(title: str, content: str) -> bool:
+    """走微信（iLink）实时推送 —— 复用 Hermes 网关的通道，不用另配一套凭据。
+
+    注意 iLink 侧的限流熔断阈值是 1（限流一次即冷却 30s），所以告警是
+    低频率事件才适合走这条路；失败就降级到 wxpusher，绝不重试轰炸。
+    """
+    target = _weixin_target()
+    if not target:
+        _log("[weixin-skip] 没读到微信 uid（JOBHUNTER_WEIXIN_TARGET / WEIXIN_ALLOWED_USERS 都空）")
+        return False
+    exe = os.environ.get("JOBHUNTER_HERMES_BIN", "hermes")
+    try:
+        proc = subprocess.run(
+            [exe, "send", "--to", target, "--subject", title, "--quiet", content],
+            capture_output=True, text=True, timeout=45,
+        )
+        if proc.returncode == 0:
+            _log(f"[weixin-sent] {title}")
+            return True
+        err = (proc.stderr or proc.stdout or "").strip()[:200]
+        _log(f"[weixin-failed] {title} | rc={proc.returncode} | {err}")
+        return False
+    except Exception as e:
+        _log(f"[weixin-exception] {title} | {e}")
+        return False
+
+
 def alert(key: str, title: str, content: str = "", level: str = "warn",
           throttle: int = DEFAULT_THROTTLE_SEC) -> bool:
-    """推一条告警到微信。返回是否发送成功（调用方可以不看）。
+    """推一条告警。返回是否发送成功（调用方可以不看）。
+
+    通道顺序：**微信（真实时推送）→ wxpusher 备用**。任一成功即算成功；
+    全失败只写日志，绝不抛异常（告警不能反过来搞挂投递）。
 
     key      : 告警类型标识，用于节流（如 'captcha' / 'kill_switch' / 'login'）
     title    : 标题（推送到微信的摘要行）
@@ -140,17 +195,30 @@ def alert(key: str, title: str, content: str = "", level: str = "warn",
         _log(f"[throttled] {key} | {title}")
         return False
 
-    token, uid = _load_credentials()
-    if not token or not uid:
-        _log(f"[no-credential] {key} | {title}（未找到 WXPUSHER_APP_TOKEN/UID，跳过推送）")
-        return False
-
     icon = LEVEL_ICON.get(level, "⚠️")
     full_title = f"{icon} job-hunter · {title}"
     body = content.strip()
     if body:
         body += "\n\n"
     body += f"⏰ {datetime.now().strftime('%m-%d %H:%M')}"
+
+    channel = os.environ.get("JOBHUNTER_ALERT_CHANNEL", "weixin").strip().lower()
+
+    if channel in ("weixin", "both") and _send_weixin(full_title, body):
+        return True
+    if channel == "weixin":
+        # 微信挂了就自动降级到 wxpusher，不要把告警丢进黑洞
+        _log(f"[fallback] {key} | 微信通道失败，改走 wxpusher")
+
+    return _send_wxpusher(key, full_title, body)
+
+
+def _send_wxpusher(key: str, full_title: str, body: str) -> bool:
+    """备用通道：WxPusher（推给显式配置的 uid，禁止群发）。"""
+    token, uid = _load_credentials()
+    if not token or not uid:
+        _log(f"[no-credential] {key} | {full_title}（无 wxpusher 凭据，跳过）")
+        return False
 
     payload = json.dumps({
         "appToken": token,
@@ -168,15 +236,15 @@ def alert(key: str, title: str, content: str = "", level: str = "warn",
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         if data.get("code") == 1000:
-            _log(f"[sent] {key} | {title}")
+            _log(f"[sent] {key} | {full_title}")
             return True
-        _log(f"[failed] {key} | {title} | {data.get('msg', data)}")
+        _log(f"[failed] {key} | {full_title} | {data.get('msg', data)}")
         return False
     except urllib.error.URLError as e:
-        _log(f"[network] {key} | {title} | {e}")
+        _log(f"[network] {key} | {full_title} | {e}")
         return False
     except Exception as e:
-        _log(f"[exception] {key} | {title} | {e}")
+        _log(f"[exception] {key} | {full_title} | {e}")
         return False
 
 

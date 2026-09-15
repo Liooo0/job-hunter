@@ -40,6 +40,9 @@ class TestNotifySafety(unittest.TestCase):
         # 环境变量在每个用例里单独设置，避免互相污染
         self.addCleanup(os.environ.pop, "JOBHUNTER_ALERT_DISABLED", None)
         self.addCleanup(os.environ.pop, "JOBHUNTER_ALERT_MIN_INTERVAL", None)
+        # 这些用例验证的是 wxpusher 备用通道的降级路径，所以显式指定通道
+        os.environ["JOBHUNTER_ALERT_CHANNEL"] = "wxpusher"
+        self.addCleanup(os.environ.pop, "JOBHUNTER_ALERT_CHANNEL", None)
 
     def test_disabled_switch_is_silent(self):
         os.environ["JOBHUNTER_ALERT_DISABLED"] = "1"
@@ -183,6 +186,71 @@ class TestGuardsWiring(unittest.TestCase):
         for name in ("boss_apply.py", "platform_51job.py"):
             self.assertIn("9223", self._source(name),
                           f"{name} 的调试端口应与 run_daily.sh 一致（9223）")
+
+
+class TestWeixinChannel(unittest.TestCase):
+    """微信（iLink）通道：默认走它，失败自动降级到 wxpusher。"""
+
+    def setUp(self):
+        for k in ("JOBHUNTER_ALERT_CHANNEL", "JOBHUNTER_WEIXIN_TARGET",
+                  "JOBHUNTER_ALERT_DISABLED", "JOBHUNTER_HERMES_BIN"):
+            os.environ.pop(k, None)
+        self.addCleanup(lambda: [os.environ.pop(k, None) for k in (
+            "JOBHUNTER_ALERT_CHANNEL", "JOBHUNTER_WEIXIN_TARGET",
+            "JOBHUNTER_ALERT_DISABLED", "JOBHUNTER_HERMES_BIN")])
+        import tempfile
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        for name, attr in (("STATE_FILE", "state.json"), ("LOG_FILE", "alerts.log")):
+            p = mock.patch.object(notify, name, Path(self._tmp.name) / attr)
+            p.start()
+            self.addCleanup(p.stop)
+
+    def test_target_prefers_env_then_hermes_env(self):
+        os.environ["JOBHUNTER_WEIXIN_TARGET"] = "o9cq123@im.wechat"
+        self.assertEqual(notify._weixin_target(), "weixin:o9cq123@im.wechat")
+        os.environ.pop("JOBHUNTER_WEIXIN_TARGET")
+        # 没配环境变量时回落 Hermes 网关自己的 .env（本机已配好，应当读得到）
+        self.assertTrue(notify._weixin_target().startswith("weixin:o9cq"),
+                        "应能从 ~/.hermes/.env 的 WEIXIN_ALLOWED_USERS 读到 uid")
+
+    def test_weixin_success_short_circuits(self):
+        os.environ["JOBHUNTER_WEIXIN_TARGET"] = "weixin:aaaa@im.wechat"
+        with mock.patch.object(notify, "_send_weixin", return_value=True) as w, \
+                mock.patch.object(notify, "_send_wxpusher") as x:
+            self.assertTrue(notify.alert("k", "标题", "正文", throttle=0))
+        w.assert_called_once()
+        x.assert_not_called()
+
+    def test_weixin_failure_falls_back_to_wxpusher(self):
+        os.environ["JOBHUNTER_WEIXIN_TARGET"] = "weixin:aaaa@im.wechat"
+        with mock.patch.object(notify, "_send_weixin", return_value=False), \
+                mock.patch.object(notify, "_send_wxpusher", return_value=True) as x:
+            self.assertTrue(notify.alert("k", "标题", "正文", throttle=0),
+                            "微信通道失败时不能把告警丢进黑洞")
+        x.assert_called_once()
+
+    def test_send_weixin_builds_hermes_send_command(self):
+        os.environ["JOBHUNTER_WEIXIN_TARGET"] = "weixin:aaaa@im.wechat"
+        os.environ["JOBHUNTER_HERMES_BIN"] = "/usr/local/bin/hermes"
+        captured = {}
+
+        class _P:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+
+        def _fake_run(cmd, **kw):
+            captured["cmd"] = cmd
+            return _P()
+
+        with mock.patch("subprocess.run", side_effect=_fake_run):
+            self.assertTrue(notify._send_weixin("标题", "正文"))
+
+        cmd = captured["cmd"]
+        self.assertEqual(cmd[:3], ["/usr/local/bin/hermes", "send", "--to"])
+        self.assertIn("weixin:aaaa@im.wechat", cmd)
+        self.assertIn("--subject", cmd)
 
 
 if __name__ == "__main__":
