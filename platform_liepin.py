@@ -247,9 +247,13 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
                         platform="liepin", city=city, company=c["company"] or "未知",
                         title=c["title"], salary=c["salary"], keyword=keyword,
                         score=0, resume_version="E", decision="ALLOW",
-                        status="UNCERTAIN", reason=str(reason)[:80],
-                        verified=0, event_type="apply", event_error=None,
-                        extra_payload={"jobId": c["jobId"], "area": c["area"]},
+                        # 2026-09-15 修正：与 51job 同一处 bug —— 这是「按钮回执已确认」
+                        # 的成功分支，原来却写死 UNCERTAIN/verified=0。
+                        status="APPLIED", reason=str(reason)[:60],
+                        verified=1, event_type="apply", event_error=None,
+                        extra_payload={"jobId": c["jobId"], "area": c["area"],
+                                       "button_state": state,
+                                       "evidence": "liepin按钮回执"},
                         gates=None, greeting_template_id=None,
                     )
                 except Exception as e:
@@ -257,6 +261,20 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
                 print(f"    ✅ 已投递 ({applied}/{count}, 今日{today_applied}/{DAILY_LIMIT})")
             else:
                 skipped += 1
+                # 2026-09-15：与 51job 一致，失败也落库（此前只 print，库里看不见）
+                try:
+                    record_application(
+                        platform="liepin", city=city, company=c["company"] or "未知",
+                        title=c["title"], salary=c["salary"], keyword=keyword,
+                        score=0, resume_version="E", decision="failed",
+                        status="FAILED", reason=f"按钮未确认:{state or '无回执'}"[:80],
+                        verified=0, event_type="apply",
+                        event_error=f"按钮状态未确认: {state or '空回执'}",
+                        extra_payload={"jobId": c["jobId"], "area": c["area"]},
+                        gates=None, greeting_template_id=None,
+                    )
+                except Exception as e:
+                    print(f"    ⚠️ 落库失败: {e}")
                 print(f"    ❌ 按钮状态: {state}")
             time.sleep(2 + random.uniform(0, 2))
         page_num += 1

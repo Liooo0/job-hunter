@@ -61,3 +61,10 @@ HANDOFF_CLAUDE.md
 
 # ===== 任务书(含敏感信息示例,永不入库)=====
 BRIEF_*.md
+
+# 告警凭据（不进公开仓库）
+.env.local
+
+# SQLite WAL 模式产生的临时文件
+*.db-wal
+*.db-shm
