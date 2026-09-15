@@ -69,7 +69,10 @@ FILE_CLASSES = [
      "备份/历史副本（业务数据）", False),
     ("log",        r"(^|/)logs?/|\.(log|out|err)$", "deny",
      "日志（含房号/姓名/金额/HR对话）", False),
-    ("export",     r"(^|/)(exports?|导出|receipts?|票据)/", "deny",
+    # 只拦**数据文件**：代码模块也可能叫 export/（实测 lio-erp 的
+    # src/rent_expert/export/csv_excel.py 是导出功能代码，被误拦）。
+    ("export",     r"(^|/)(exports?|导出|receipts?|票据)/.*\.(csv|xlsx?|pdf|json|txt|jpe?g|png|zip|db)$"
+                   r"|(^|/)(receipts?|票据)/", "deny",
      "导出物/票据（真实业务数据）", False),
     ("secret",     r"(^|/)\.env(\.|$)|\.(pem|key|p12|pfx)$|(^|/)id_(rsa|ed25519)|credential|secret|token\.json$", "deny",
      "凭据/私钥（不得写入源码或仓库）", False),
@@ -99,9 +102,16 @@ FILE_CLASSES = [
 ]
 FILE_CLASSES = [(name, re.compile(pat), verdict, why, scan) for name, pat, verdict, why, scan in FILE_CLASSES]
 
+# 第三方代码/压缩产物：**跳过内容扫描**（里面的数字串会被误判成手机号/身份证，
+# 实测 pdf.worker.min.js、three.module.js 大量误报——闸门噪音一多就会被无视）。
+# 路径分类仍然生效（放错目录照样拦）。
+VENDOR_PATH = re.compile(r"(^|/)(vendor|node_modules|third_party|dist|build)/|\.min\.(js|css|mjs)$")
+SKIPPED_VENDOR = []
+
 # 显式放行路径（优先于分类）：这些文件即使落在私有类别目录里也允许（且说明原因）
 ALLOW_PATH = [
     (r"\.example$|\.example\.|\.template$|\.sample$", "模板/示例文件"),
+    (r"(^|/)\.gitkeep$", "空目录占位标记（无内容）"),
     (r"^docs/", "文档目录"),
     (r"(^|/)anon-rules\.example\.txt$", "脱敏规则模板（纯假例子）"),
 ]
@@ -165,7 +175,9 @@ ALLOW_CONTENT = [
     r"[A-Za-z0-9]{1,8}\.\.\.@",                       # 文档里的占位省略号
     r"[A-Za-z0-9]{1,10}@im\.wechat",                  # 短串微信 openid（真值 28 位）
     r"cli_x{6,}", r"ou_x{6,}",                        # 模板里的假 app_id / open_id
-    r"(?i)(sk|ghp|gho)_(x{6,}|your|test|fake|example)",
+    r"(?i)(sk|ghp|gho)[-_](x{3,}[\.]*x*|your|test|fake|example|placeholder|abc|123)",
+    r"(?i)sk-?tes?t?[\.-]",                     # 测试夹具里的 sk-tes...cdef
+    r"/home/(Photos|photos|user|users|app|data|workspace|shared|docker|admin|pi|vscode|runner)",
 ]
 ALLOW_CONTENT = [re.compile(p) for p in ALLOW_CONTENT]
 DENY_CONTENT = [(re.compile(p), why) for p, why in DENY_CONTENT]
@@ -259,6 +271,11 @@ def evaluate(mode, path, text, real_names):
     """
     out = []
     cls, verdict, why, do_scan = classify(path)
+
+    # 第三方代码/压缩产物：只判路径，不判内容
+    if do_scan and path and VENDOR_PATH.search(path):
+        do_scan = False
+        SKIPPED_VENDOR.append(path)
 
     if verdict == "deny":
         out.append(Violation(mode, path, f"L1 路径类别违规：{why}", "", "L1"))
