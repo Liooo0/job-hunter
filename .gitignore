@@ -12,6 +12,24 @@ __pycache__/
 pending_replies/
 archived_replies/
 sent_replies/
+# ★ 2026-09-15 修复：上一版只挡了目录，漏了实际在用的 json 文件，
+#   结果 data/reply_pending.json（含 HR 姓名/公司/对话原文/拟发内容）
+#   被追踪并推到了公开仓库。凡含真实对话的 json 一律挡。
+data/reply_pending.json
+data/reply_pending*.json
+data/reply_stats.json
+
+# ===== 本机运行时状态（含本机路径/时间戳，非代码）=====
+data/mail_scan_state.json
+data/queue_checkpoint.json
+data/queue_checkpoint.json.*
+data/github_repos.json
+
+# ===== 备份与产物（不入库）=====
+backup-*/
+ab_experiment_backup_*.db
+*.bak
+*.bak.*
 
 # ===== 投递日志 + 运行日志 + HTML 报告（含真实公司名/投递流水）=====
 boss-*-log.json

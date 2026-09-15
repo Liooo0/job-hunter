@@ -1715,6 +1715,17 @@ def main():
     #    这是 Scheduler 层的确定性文件锁，不依赖模型自觉。──
     _ck = reply_lock.load_checkpoint()
     _done_combos = set(tuple(str(x).split("×")) for x in _ck.get("done_combos", []))
+    # ── 组合轮次 TTL（2026-09-11 修复静默死锁）──
+    #    done_combos 语义是"本轮已跑过的 城市×关键词"。跑完所有组合后 total_applied_this_round
+    #    归 0，Boss 端从此每天只 SKIPPED 不投递，而 cron 依旧报 ok。
+    #    超时即视为新一轮：清空组合集合重开，否则队列耗尽后永远投 0 条。
+    if reply_lock.should_reset_combo_round(_done_combos, _ck.get("saved_at")):
+        _age_h = reply_lock.combo_round_age_hours(_ck.get("saved_at"))
+        print(f"\n  ♻️ [组合轮次重置] 上次投递轮已过去 {_age_h:.1f} 小时"
+              f"（≥{reply_lock.COMBO_TTL_HOURS}h），清空 {len(_done_combos)} 个已完成组合，重新开轮")
+        _done_combos = set()
+        _ck = {"done_combos": [], "last_done": "TTL_RESET", "total_applied_this_round": 0}
+        reply_lock.save_checkpoint(dict(_ck))
     _lock_halt = False  # 锁触发后跳出城市外层，整轮收工
 
     for city in cities:

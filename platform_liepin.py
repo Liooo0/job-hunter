@@ -21,7 +21,7 @@ CITY_CODES = {
     "东莞": "050180", "佛山": "050040", "杭州": "070020", "成都": "280020",
     "武汉": "170020", "南京": "060020", "苏州": "060100", "西安": "110100",
 }
-DAILY_LIMIT = 50
+DAILY_LIMIT = 20  # 2026-09-11: 猎聘风控敏感(详情页有强限速),宁少勿封
 PORT = 9223
 
 
@@ -82,17 +82,43 @@ def click_apply_and_check(tab, href, page=None):
     clean = href.split('?')[0]
     # 2026-09-10: tab.get() 直接导航被猎聘识别成自动化(返回空页)。
     # 改为模拟真实用户"点击卡片链接", 让 SPA 自己路由到详情页。
-    clicked = tab.run_js(f"""
-        var as = Array.from(document.querySelectorAll('a[href*="/job/"]'));
-        var target = as.find(function(a) {{ return (a.href || '').split('?')[0] === '{clean}'; }});
-        if (target) {{ target.scrollIntoView({{block:'center'}}); target.click(); return 'CARD_CLICKED'; }}
-        return 'CARD_NOT_FOUND';
-    """)
-    time.sleep(7 + random.uniform(0, 2.5))
-    tab.run_js("window.scrollTo(0, document.body.scrollHeight * 0.4);")
-    time.sleep(1.5)
-    state = _find_and_click(tab)
-    return f"{state}({clicked})"
+    # 2026-09-11 实测: 猎聘详情页有强限速——间隔 <60s 会被重置回列表页(not_detail),
+    # 间隔 >=65s 才能正常打开并读到"投简历"按钮。故此处必须慢。
+    wait = 60 + random.uniform(0, 15)
+    print(f"    ⏳ 猎聘限速等待 {wait:.0f}s ...")
+    time.sleep(wait)
+    detail_tab = page.new_tab(clean) if page is not None else None
+    if detail_tab is not None:
+        work = detail_tab
+    else:
+        tab.get(clean)
+        work = tab
+    try:
+        # 2026-09-11: 猎聘详情页加载慢且不稳定(有时 title 还只显示"猎聘"就返回),
+        # 改为轮询等待: 每 2s 检查页面是否出现岗位内容, 最多等 25s。
+        loaded = False
+        for _ in range(13):
+            time.sleep(2)
+            try:
+                ok = work.run_js(
+                    "return /职位描述|岗位职责|任职要求|工作职责|岗位要求|职位信息|工作内容/.test(document.body.innerText)")
+            except Exception:
+                ok = False
+            if ok:
+                loaded = True
+                break
+        if not loaded:
+            time.sleep(3)
+        work.run_js("window.scrollTo(0, document.body.scrollHeight * 0.4);")
+        time.sleep(1.5)
+        state = _find_and_click(work)
+    finally:
+        if detail_tab is not None:
+            try:
+                detail_tab.close()
+            except Exception:
+                pass
+    return state
 
 
 def _find_and_click(work):
@@ -112,7 +138,7 @@ def _find_and_click(work):
         }
         var body = document.body.innerText;
         if (body.indexOf('已投递') > -1 || body.indexOf('已沟通') > -1) return 'ALREADY';
-        var isDetail = /职位描述|岗位职责|任职要求|工作职责/.test(body);
+        var isDetail = /职位描述|岗位职责|任职要求|工作职责|岗位要求|职位信息|工作内容|薪资|经验要求/.test(body);
         return 'NO_BTN:' + (isDetail ? 'detail_page' : 'not_detail') + '|' + document.title.slice(0, 40);
     """)
     time.sleep(4)
@@ -146,7 +172,11 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
             empty_streak += 1; page_num += 1; continue
 
         sel_used = '.job-list-item' if tab.run_js("return !!document.querySelector('.job-list-item')") else '[class*="job-list"] > div'
-        pending = [c for c in cards if c["jobId"] not in seen and "已申请" not in c["btnText"] and "已投递" not in c["btnText"]]
+        # 2026-09-11: 跳过 /a/ 开头的猎头岗(无"投简历"按钮, 且猎头只接中高端岗,
+        # 对初级求职者价值低); 只投 /job/ 开头的公司直招岗(有"投简历"按钮)。
+        pending = [c for c in cards if c["jobId"] not in seen
+                   and "已申请" not in c["btnText"] and "已投递" not in c["btnText"]
+                   and "/job/" in (c.get("href") or "")]
         if not pending:
             page_num += 1; empty_streak += 1; continue
         empty_streak = 0
