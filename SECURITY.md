@@ -43,7 +43,28 @@
 **为什么物理分离比 .gitignore 可靠**：`git add -A` 根本扫不到仓库外的目录。
 `.gitignore` 靠人记得维护，物理分离不靠人。
 
-## 三、三道闸门（缺一不可）
+## 三、四层防线（L1→L4）
+
+```
+L1 文件级  路径类别直接判违规（数据库/备份/日志/导出/凭据/运行数据目录/本机服务定义）
+L2 内容级  PII / 密钥 / 本机绝对路径（staged diff 的新增行）
+L3 历史级  全 refs / 全历史 blob（HEAD 干净 ≠ 历史干净）
+L4 流程级  pre-commit(UX) → CI(边界) → branch protection(强制) → 发布审计
+```
+
+**架构约束：任何调用方不得自写正则。** 所有模式（staged / worktree / tree / refs /
+history）只调用 `scripts/public_repo_guard.py` 里同一个 `evaluate()`。
+（实测教训：上一版 `--history` 分支自带一套正则，导致合成值白名单在其中失效，
+历史审计永远失败——判定逻辑一旦分叉，两边会各自漂移。）
+
+**检测规则可以公开，检测目标必须私有。** 真实姓名/称呼等具体词存在仓库外的
+`~/.hermes/pii-denylist.txt`；本仓库的脚本本身可安全公开。
+（反例：为了检测真名而把真名写进检测脚本 → 检测脚本自己成为泄露源。）
+
+**`.guardrc.json`：仓库级声明。** 例外（declared_public / extra_deny_paths /
+extra_allow_content）必须显式写在声明文件里并说明理由，可被 review——不要改引擎。
+
+### 三道闸门（缺一不可）
 
 ### 闸门 1：`.githooks/pre-commit`（提交前，本地）
 随仓库走（`git config core.hooksPath .githooks`），克隆即获得。
