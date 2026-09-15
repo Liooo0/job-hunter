@@ -97,6 +97,8 @@ SYNTHETIC_OK = [
     r"(?i)(test|demo|sample|dummy|fake|user|admin|zhangsan|lisi|wangwu)[A-Za-z0-9._%+-]*@",
     r"(?i)@(test|example)\.(com|org|net)",
     r"000-0000-0000",
+    # 合成身份证号：合法 18 位但尾号是占位式连号（1234/5678/0000…），真实证件绝不会长这样
+    r"\d{14}(1234|5678|0000|1111|9999|4321|8765)(?![\dXx])",
     r"TEST_USER",
     r"XXXXXXXX",
     # 文档里的占位写法（如 weixin:o9cq...@im.wechat）——省略号说明是示例，不是真值
