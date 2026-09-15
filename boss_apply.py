@@ -20,6 +20,7 @@ from typing import Optional
 
 import decision_trace
 import risk_slowdown
+from notify import alert
 from shared import load_config, score_jd, smart_filter, get_chrome_opts, kill_switch_check, kill_switch_off, kill_switch_on, kill_switch_status, CITY_CODES
 from store import (
     ensure_migrated, migrate_legacy_logs, list_city_titles, company_applied_recently,
@@ -180,6 +181,11 @@ def record_login_fail() -> bool:
 
     if data["fail_count"] >= MAX_LOGIN_FAILS:
         pause(f"连续{MAX_LOGIN_FAILS}次登录失败，进入睡眠模式")
+        alert("boss_login", f"Boss 连续 {MAX_LOGIN_FAILS} 次登录失败，已进入睡眠模式",
+              "投递已自动暂停（写了 .paused）。重新登录 Boss 后跑：\n"
+              "python3 boss_apply.py --resume\n"
+              "在此之前 launchd 的定时任务都会跳过。",
+              level="error", throttle=0)
         return True
     print(f"  ⚠️  登录失败 {data['fail_count']}/{MAX_LOGIN_FAILS}（连续{MAX_LOGIN_FAILS}次将进入睡眠）")
     return False
@@ -1233,6 +1239,11 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
         if st["stop"]:
             print(f"\n🛑 风控阶梯降速触发，本轮提前收工：{st['reason']}")
             pause(f"风控阶梯降速提前收工（未动 kill switch）：{st['reason']}")
+            alert("slowdown_stop", "风控阶梯降速提前收工",
+                  f"{st['reason']}\n本轮尝试中连续出现未验证/失败，为避免撞风控已收工，"
+                  "并写了 .paused（kill switch 未动）。\n"
+                  "确认浏览器状态正常后：python3 boss_apply.py --resume",
+                  level="warn", throttle=3600)
         return st["stop"], st["next_interval_multiplier"]
 
     search_url = (
@@ -1276,6 +1287,10 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
     for sig in BLOCK_SIGNALS:
         if sig in current_url or (page_text and sig in page_text):
             print(f"🚫 Boss 风控触发 ({sig})！停止投递，等待几小时后再试")
+            alert("boss_risk", f"Boss 风控触发（{sig}）",
+                  f"命中信号：{sig}\n页面：{current_url[:120]}\n"
+                  "本轮已停止投递 —— 这是封号前兆，别硬跑，隔几小时再试。",
+                  level="error", throttle=0)
             return 0, 0, 0
 
     # 滚动加载更多，直到投满或没有新卡片
@@ -1800,6 +1815,11 @@ def main():
                 print(f"\n  🛑 [risk_triggered] {reason} — 停止投递，写入 kill switch + 暂停锁")
                 kill_switch_off(reason)
                 pause(reason)
+                alert("kill_switch", f"已熔断：{reason}",
+                      "kill switch 已打开 + 写了 .paused，后续所有写操作（投递/回复/归档）"
+                      "都会被拦住。\n先确认浏览器/账号状态，再手动恢复：\n"
+                      "python3 boss_apply.py --kill-off && python3 boss_apply.py --resume",
+                      level="error", throttle=0)
                 break
 
             # ── 跨进程每日硬熔断 → daily_limit_reached 层级（正常结束，不改 kill switch）──

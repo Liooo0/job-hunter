@@ -34,6 +34,11 @@ if ! curl -s http://127.0.0.1:9222/json/version > /dev/null 2>&1; then
     echo '   /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \' | tee -a "$RUN_LOG"
     echo '     --remote-debugging-port=9222 \' | tee -a "$RUN_LOG"
     echo '     --user-data-dir=/tmp/chrome-debug' | tee -a "$RUN_LOG"
+    # 2026-09-15：这是「整轮投递全部作废」的静默失败点，必须推送告警
+    PYTHONUTF8=1 python3 "$PROJECT_DIR/scripts/notify_alert.py" chrome_down \
+        "Chrome 未就绪，本轮投递全部作废" \
+        "launchd 触发时 9222 端口连不上，今天这次投递窗口已经浪费。\n日志：$RUN_LOG" \
+        error 2>/dev/null || echo "（告警未发出，见 data/logs/alerts.log）" | tee -a "$RUN_LOG"
     exit 1
 fi
 echo "✅ Chrome 已就绪" | tee -a "$RUN_LOG"
@@ -45,5 +50,9 @@ PYTHONUTF8=1 python3 "$PROJECT_DIR/boss_apply.py" --daily 2>&1 | tee -a "$RUN_LO
 # 3. 生成报告
 echo "📊 生成报告..." | tee -a "$RUN_LOG"
 PYTHONUTF8=1 python3 "$PROJECT_DIR/report.py" 2>&1 | tee -a "$RUN_LOG"
+
+# 4. 收工摘要推微信（2026-09-15 新增：让「跑没跑、投成没投成」不用翻日志）
+echo "📱 推送收工摘要..." | tee -a "$RUN_LOG"
+PYTHONUTF8=1 python3 "$PROJECT_DIR/scripts/daily_summary.py" 2>&1 | tee -a "$RUN_LOG" || true
 
 echo "=== Job Hunter 结束 $(date '+%Y-%m-%d %H:%M:%S') ===" | tee -a "$RUN_LOG"

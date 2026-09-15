@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from DrissionPage import ChromiumPage
 from job_decision import evaluate_job
 from store import record_application
+from notify import alert
 
 
 def in_night_window() -> bool:
@@ -235,7 +236,11 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
         return applied, skipped, tab
 
     if "login" in (tab.url or "").lower():
-        print("⚠️ 未登录 51job"); return applied, skipped, tab
+        print("⚠️ 未登录 51job")
+        alert("login", "51job 未登录，本轮投递作废",
+              "浏览器里的 51job 登录态掉了，需要手动登录后重跑。\n"
+              "在本轮修复前，这种情况是静默的。", level="error", throttle=0)
+        return applied, skipped, tab
 
     while applied < count and empty_streak < 3 and page_num <= 6:
         tab, ok = goto(tab, page_num)
@@ -339,6 +344,13 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
                 print(f"    ⚠️ 点击异常: {e}")
                 state = ""
             if "已申请" in state or "已投递" in state:
+                # 2026-09-15 修正：这里原来硬编码 status="UNCERTAIN"、verified=0，
+                # 但它其实是**成功分支** —— 按钮回执已经变成「已申请/已投递」，
+                # 且上一行已经 applied += 1 计数。后果：384 条真实成功的投递在库里
+                # 全是「不确定」，51job 在复盘里永远是「从未验证」；而真正投失败的
+                # 那条路（下面的 else）只 print 不落库 —— 两个方向刚好记反了。
+                # 现在按 store 的约定写 applied/APPLIED + verified=1，并把按钮回执
+                # 原文留作证据；decision 仍写 ALLOW（L2 判决），闸门计数口径不变。
                 applied += 1
                 today_applied += 1
                 try:
@@ -346,9 +358,11 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
                         platform="51job", city=city, company=c["company"] or "未知",
                         title=c["title"], salary=c["salary"], keyword=keyword,
                         score=0, resume_version="E", decision="ALLOW",
-                        status="UNCERTAIN", reason=str(reason)[:80],
-                        verified=0, event_type="apply", event_error=None,
-                        extra_payload={"jobId": c["jobId"], "area": c["area"]},
+                        status="APPLIED", reason=str(reason)[:60],
+                        verified=1, event_type="apply", event_error=None,
+                        extra_payload={"jobId": c["jobId"], "area": c["area"],
+                                       "button_state": state,
+                                       "evidence": "51job按钮回执"},
                         gates=None, greeting_template_id=None,
                     )
                 except Exception as e:
@@ -363,7 +377,25 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
                 tab_lost = True
                 break
             else:
+                # 2026-09-15 新增：点击后按钮回执没变成「已申请/已投递」（已重试 2 次）
+                # → 记一条 FAILED。以前这条路只 print 不落库，所以「投失败的」在库里
+                # 完全看不见，只能看到一堆 UNCERTAIN。
+                # decision 写 "failed" —— 它不在闸门计数三态（applied/uncertain/ALLOW）
+                # 里，所以不占日/小时额度、也不会被同公司去重拦住，明天可以重投。
                 skipped += 1
+                try:
+                    record_application(
+                        platform="51job", city=city, company=c["company"] or "未知",
+                        title=c["title"], salary=c["salary"], keyword=keyword,
+                        score=0, resume_version="E", decision="failed",
+                        status="FAILED", reason=f"按钮未确认:{state or '无回执'}"[:80],
+                        verified=0, event_type="apply",
+                        event_error=f"按钮状态未确认: {state or '空回执'}",
+                        extra_payload={"jobId": c["jobId"], "area": c["area"]},
+                        gates=None, greeting_template_id=None,
+                    )
+                except Exception as e:
+                    print(f"    ⚠️ 落库失败: {e}")
                 print(f"    ❌ 按钮状态: {state}")
             time.sleep(2 + random.uniform(0, 2))
         if tab_lost:
@@ -394,6 +426,9 @@ def main():
         page = ChromiumPage(PORT)
     except Exception as e:
         print(f"❌ Chrome 未连接(端口{PORT}): {e}")
+        alert("chrome_down", "51job 无法连接 Chrome，本轮没投出去",
+              f"端口 {PORT} 连不上：{e}\n先确认调试端口的 Chrome 起着。",
+              level="error", throttle=1800)
         return
     tab = page.new_tab("about:blank")
     tab = ensure_tab(page, tab)
@@ -417,6 +452,8 @@ def main():
         print(f"📊 今日已投 {today_applied}/{DAILY_LIMIT} 条(DB统计)")
         if today_applied >= DAILY_LIMIT:
             print("🛑 今日额度已满，退出")
+            alert("quota_full", f"51job 今日额度已满（{today_applied}/{DAILY_LIMIT}）",
+                  "这是正常收工，不用处理。", level="info", throttle=43200)
             return
     except Exception as e:
         print(f"⚠️ DB统计失败({e})，按0计")
@@ -434,6 +471,9 @@ def main():
                 tab = ensure_tab(page, tab)
                 if tab is None:
                     print("  🛑 tab 无法恢复，本轮收工")
+                    alert("tab_lost", "51job 页面 tab 反复重建失败，本轮提前收工",
+                          "连续 3 次无法恢复页面，剩下的城市/关键词全部空转作废。",
+                          level="warn", throttle=0)
                     fatal = True
                     break
                 try:

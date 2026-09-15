@@ -147,8 +147,22 @@ def _ensure_v21_columns(conn):
 
 
 def _conn() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB)
+    """打开连接。
+
+    2026-09-15 新增 WAL + busy_timeout：
+    - launchd 定时任务、手动跑、看板读取可能并发访问同一个库；默认的 rollback
+      journal 下一个写事务会挡住所有读，偶发 `database is locked`。
+    - WAL 模式允许多读一写并行，busy_timeout=5s 让偶发争用自动重试而不是直接抛错。
+    这是纯防御性改动：日志里目前还没出现过 locked，改的是「万一」。
+    """
+    conn = sqlite3.connect(DB, timeout=5.0)
     conn.row_factory = sqlite3.Row
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
+        conn.execute("PRAGMA synchronous=NORMAL")
+    except sqlite3.Error:
+        pass          # WAL 不可用（如只读介质）时退回默认模式，不影响功能
     conn.executescript(SCHEMA)
     _ensure_v21_columns(conn)
     return conn
