@@ -161,5 +161,29 @@ class TestPlatformStatusContract(unittest.TestCase):
                 self.assertIn(f'"{k}"', src, f"{name} 缺少 {k} 告警接线")
 
 
+class TestGuardsWiring(unittest.TestCase):
+    """本轮体检发现的两个「说了但没做到」的护栏。"""
+
+    def _source(self, name):
+        return (BASE / name).read_text(encoding="utf-8")
+
+    def test_platform_scripts_check_kill_switch(self):
+        """shared.py 顶部明写「任何脚本写操作前必须调 kill_switch_check()」，
+        但 51job / 猎聘 此前一行都没调 —— 翻急停时它们照投不误。"""
+        for name in ("platform_51job.py", "platform_liepin.py"):
+            self.assertIn("kill_switch_check", self._source(name),
+                          f"{name} 必须在写操作前检查 kill switch")
+
+    def test_run_daily_port_matches_actual_port(self):
+        """run_daily.sh 原来查 9222，而脚本实际用 9223 → 就绪检查永远失败、
+        直接 exit 1，launchd 那条路从来没跑起来。"""
+        daily = self._source("run_daily.sh")
+        self.assertIn('CHROME_PORT="${CHROME_PORT:-', daily)
+        self.assertNotIn("127.0.0.1:9222", daily, "run_daily.sh 不应再硬编码 9222")
+        for name in ("boss_apply.py", "platform_51job.py"):
+            self.assertIn("9223", self._source(name),
+                          f"{name} 的调试端口应与 run_daily.sh 一致（9223）")
+
+
 if __name__ == "__main__":
     unittest.main()

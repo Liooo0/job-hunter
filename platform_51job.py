@@ -420,6 +420,18 @@ def main():
     _safety = load_safety()
     HOURLY_CAP = int(_safety.get("hourly_cap", HOURLY_CAP) or 0)
 
+    # 2026-09-15：与 shared.py 顶部明写的规矩对齐 —— 任何脚本执行写操作前必须调
+    # kill_switch_check()。此前 51job / 猎聘 完全不查急停开关：翻 kill switch 时
+    # Boss 停了、这两个平台照投不误。
+    from shared import kill_switch_check
+    _allowed, _kreason = kill_switch_check()
+    if not _allowed:
+        print(f"⛔ kill switch 生效中，本轮 51job 不投递：{_kreason}")
+        alert("kill_switch_block", "kill switch 生效中，51job 本轮未投递",
+              f"原因：{_kreason}\n恢复：python3 boss_apply.py --kill-off",
+              level="warn", throttle=1800)
+        return
+
     print(f"╔══ 51job v4 ══ 城市{len(cities)} 词{len(keywords)} "
           f"上限{DAILY_LIMIT}/天 {HOURLY_CAP}/时 ══╗")
     try:
