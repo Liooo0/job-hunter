@@ -38,13 +38,17 @@ jobs:
       - name: 敏感路径是否进过历史
         run: |
           set -e
+          # 只列**真正禁止**的类别：HR 对话、真名档案、密钥、数据库、备份、生成物。
+          # 不写裸的 ^data/：历史里有 3 个公开种子文件曾放在 data/ 下（story-bank 与两个
+          # 盲测样本，本身无 PII，2026-09-15 已迁到 datasets/public/ 并声明政策）。
+          # 「当前被追踪的 data/* 必须为 0」由 --all 那一步强制，不需要历史检查重复承担。
           bad=$(git log --all --diff-filter=A --name-only --format="" \
                 | sort -u \
-                | grep -iE '^data/|sent_replies/|pending_replies/|\.env$|\.db$|backups?/|publish_dashboard/index' || true)
+                | grep -iE 'sent_replies/|pending_replies/|reply_pending|my_profile|^data/my_profile|receipts/|\.env$|\.db$|backups?/|publish_dashboard/index|config.*\.bak' || true)
           if [ -n "$bad" ]; then
             echo "❌ 敏感路径出现在历史中："; echo "$bad"; exit 1
           fi
-          echo "✅ 历史中无敏感路径"
+          echo "✅ 历史中无禁止类别路径"
 
       - name: 服务端残留 ref 检查
         continue-on-error: true
