@@ -24,19 +24,35 @@ import httpx
 
 SKILL_DIR = Path(__file__).parent
 
-# ─── LLM 配置（复用 Hermes 的 opencode-go 中转）───
-BASE_URL = "https://opencode.ai/zen/go/v1"
-MODEL = "deepseek-v4-flash"  # 便宜，适合大量回复
-MAX_TOKENS = 500
+# ─── LLM 配置 ───
+# 2026-09-12 切换：opencode-go 中转余额不足（401 CreditsError），改用用户主力通道 commandcode。
+#   可用环境变量覆盖：JOBHUNTER_LLM_BASE_URL / JOBHUNTER_LLM_MODEL / JOBHUNTER_LLM_KEY_ENV
+BASE_URL = os.getenv("JOBHUNTER_LLM_BASE_URL", "https://api.commandcode.ai/provider/v1")
+MODEL = os.getenv("JOBHUNTER_LLM_MODEL", "deepseek/deepseek-v4-flash")
+MAX_TOKENS = int(os.getenv("JOBHUNTER_LLM_MAX_TOKENS", "1500"))  # deepseek-v4-flash 是推理模型，预算含 reasoning_tokens，给太小会 content 空
+MAX_TOKENS_RETRY = 4000  # 首次被 reasoning 吃光时自动加预算重试
+
+# 按优先级尝试的 key 名（前者失效自动回退）
+_KEY_CANDIDATES = [
+    os.getenv("JOBHUNTER_LLM_KEY_ENV", "COMMANDCODE_API_KEY"),
+    "COMMANDCODE_API_KEY",
+    "OPENCODE_GO_API_KEY",
+]
 
 def get_api_key() -> str:
-    """从 ~/.hermes/.env 读取 OPENCODE_GO_API_KEY"""
+    """从 ~/.hermes/.env 读取 API key（多候选，按优先级取第一个非空的）"""
     env_path = Path.home() / ".hermes" / ".env"
+    vals = {}
     if env_path.exists():
         for line in env_path.read_text(encoding="utf-8").splitlines():
-            if line.startswith("OPENCODE_GO_API_KEY="):
-                return line.split("=", 1)[1].strip()
-    return os.getenv("OPENCODE_GO_API_KEY", "")
+            if "=" in line and not line.lstrip().startswith("#"):
+                k, v = line.split("=", 1)
+                vals[k.strip()] = v.strip().strip('"').strip("'")
+    for name in _KEY_CANDIDATES:
+        v = vals.get(name) or os.getenv(name) or ""
+        if v:
+            return v
+    return ""
 
 
 # ─── 用户背景（真实，仅用于生成回复上下文）───
@@ -71,24 +87,32 @@ THANKS_POOL = [
 
 
 def call_llm(messages: list[dict]) -> str:
-    """调用 opencode 中转 API"""
+    """调用中转 API；若推理模型把 token 预算花在 reasoning 上导致 content 为空，自动加预算重试一次"""
     key = get_api_key()
     if not key:
-        print("❌ 未找到 OPENCODE_GO_API_KEY")
+        print("❌ 未找到可用的 LLM API key（见 ~/.hermes/.env）")
         sys.exit(1)
-    resp = httpx.post(
-        f"{BASE_URL}/chat/completions",
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-        json={
-            "model": MODEL,
-            "messages": messages,
-            "max_tokens": MAX_TOKENS,
-            "temperature": 0.6,
-        },
-        timeout=60,
-    )
-    resp.raise_for_status()
-    return resp.json()["choices"][0]["message"]["content"].strip()
+    for budget in (MAX_TOKENS, MAX_TOKENS_RETRY):
+        resp = httpx.post(
+            f"{BASE_URL}/chat/completions",
+            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+            json={
+                "model": MODEL,
+                "messages": messages,
+                "max_tokens": budget,
+                "temperature": 0.6,
+            },
+            timeout=120,
+        )
+        resp.raise_for_status()
+        choice = resp.json()["choices"][0]
+        content = (choice["message"].get("content") or "").strip()
+        if content:
+            return content
+        if choice.get("finish_reason") != "length":
+            break
+        print(f"   ⏳ 推理占满 {budget} tokens、正文为空 → 加预算重试")
+    return ""
 
 
 def build_reply(msg_text: str, job_title: str, company: str) -> tuple[str, str]:
@@ -290,6 +314,8 @@ def main():
         job = m.get("job_context", {}).get("job_title", "")
 
         kind, reply = build_reply(text, job, company)
+        if not reply:
+            print(f"   ⚠️ 未能生成回复（{kind}）→ 本条不入队，需人工看")
         results.append({"msg": m, "kind": kind, "reply": reply})
 
         icon = "💬" if kind == "interest" else "⏭️"

@@ -352,5 +352,62 @@ class TestInterviewPrep(unittest.TestCase):
         self.assertTrue(any('体力' in r for r in rep.reminders))
 
 
+class TestTechClaims(unittest.TestCase):
+    """技术栈/项目声明核验（2026-09-15 新增，career-ops 只核数字没有这层）。
+
+    真实触发案例：自动起草的 HR 回复写了「Chroma+BGE 的 RAG 匹配引擎」，
+    本地磁盘 + GitHub 12 个仓库双向核查都没有实物 → 必须拦。
+    """
+
+    def test_unsupported_when_absent(self):
+        corpus = {'cv.md': 'Python / Dify / 浏览器自动化，做过装修获客 AI 客服'}
+        r = pv.check_tech_claims('我搭过 Chroma+BGE 的 RAG 匹配引擎', corpus)
+        self.assertIn('Chroma 向量库', r['unsupported'])
+        self.assertIn('BGE 向量模型', r['unsupported'])
+        self.assertTrue(r['checked'] >= 2)
+
+    def test_supported_when_present(self):
+        # Chrome 扩展：源语料里出现 manifest.json / chrome-extension 才算有实物
+        corpus = {'github-repos': 'boss-zhipin-helper | AI 驱动的求职 Chrome 扩展 | '
+                                  'javascript | ai chrome-extension manifest-v3'}
+        r = pv.check_tech_claims('我做过 BOSS直聘助手 Chrome 扩展', corpus)
+        self.assertEqual(r['unsupported'], [])
+        self.assertTrue(any(label == 'Chrome 扩展' for label, _ in r['supported']))
+
+    def test_only_checks_claims_present_in_text(self):
+        # 草稿没提到的技术不该进统计（否则报告全是噪音）
+        corpus = {'cv.md': 'Python'}
+        r = pv.check_tech_claims('你好，方便聊一下岗位吗？', corpus)
+        self.assertEqual(r['checked'], 0)
+        self.assertEqual(r['unsupported'], [])
+
+    def test_real_case_corpus_boundary(self):
+        # 面试准备文档不算源事实 —— 只有真实项目自述算
+        draft = '我做过 95分球鞋监控（API逆向 + 视觉 LLM 精筛）'
+        with_repo = {'95fen-monitor': '95fen-monitor 逆向 95分 App 签名，qwen 看图识鞋'}
+        without = {'interview-prep': '可以讲 RAG 项目的 Chroma 向量库'}
+        self.assertEqual(pv.check_tech_claims(draft, with_repo)['unsupported'], [])
+        self.assertIn('95分/球鞋监控', pv.check_tech_claims(draft, without)['unsupported'])
+
+
+class TestUnitBoundaryRegex(unittest.TestCase):
+    """★ 2026-09-12 踩坑：词边界必须 ASCII-only。
+
+    Python 3 的 \\w 把中文也算单词字符 → 数字匹配到单位后，后面紧跟的「的」会让
+    lookahead 失败 → 回退成只匹配数字，**单位被静默丢弃**，于是 '5 分钟' 被当成 '5'。
+    """
+
+    def test_chinese_after_unit_does_not_drop_unit(self):
+        claims = pv.extract_claims('独立负责 5 个月的项目全过程管理。')
+        self.assertIn(('5', '个月'), claims)
+
+    def test_unit_at_end_of_string(self):
+        self.assertIn(('5', '分钟'), pv.extract_claims('响应时效压到 5 分钟'))
+
+    def test_ascii_identifier_not_split(self):
+        # 反例：标识符里的数字不该被当成主张
+        self.assertEqual(pv.extract_claims('变量 abc123def 的值'), [])
+
+
 if __name__ == '__main__':
     unittest.main()

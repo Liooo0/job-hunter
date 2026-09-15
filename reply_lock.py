@@ -44,6 +44,35 @@ def _now() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
 
+# ── 组合轮次 TTL（2026-09-11）──
+# 背景：断点里的 done_combos 语义是"本轮已跑过的 城市×关键词"。全部跑完后
+# total_applied_this_round 归 0，Boss 端从此每天只 SKIPPED 不投递，而 cron 依旧
+# 报 ok（静默死锁，2026-09-11 实测：16 组跑完后连续多日 Boss 端投 0 条）。
+# 修法：超过 TTL 视为新一轮，清空组合集合重新开轮。
+COMBO_TTL_HOURS = 72
+
+
+def combo_round_age_hours(saved_at=None, now=None) -> float:
+    """返回上次组合轮距今小时数；无法解析返回 -1。"""
+    if not saved_at:
+        return -1.0
+    try:
+        t0 = datetime.fromisoformat(str(saved_at))
+    except Exception:
+        return -1.0
+    return ((now or datetime.now()) - t0).total_seconds() / 3600.0
+
+
+def should_reset_combo_round(done_combos, saved_at=None, ttl_hours: float = COMBO_TTL_HOURS, now=None) -> bool:
+    """组合集合非空 + 轮次已超时 → 该重开一轮。"""
+    if not done_combos:
+        return False
+    age = combo_round_age_hours(saved_at, now=now)
+    if age < 0:
+        return False
+    return age >= ttl_hours
+
+
 def _norm(text: str) -> str:
     t = (text or "").strip().strip("。.！!～~，, ")
     return t

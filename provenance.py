@@ -321,6 +321,58 @@ def check_story_bank(bank_path, source_paths: Iterable, overlap_threshold: float
 
 
 # ── 出口硬闸 ──
+# ── 技术栈/项目声明核验（job-hunter 扩展，career-ops 没有）──
+# career-ops 的 story-provenance 只核**数字**。但 2026-09-15 实测发现更致命的是
+# **技术栈声明**：自动起草的 HR 回复里出现了「BOSS直聘助手 Chrome 扩展」和
+# 「Chroma+BGE 的 RAG 匹配引擎」——全盘搜不到任何 manifest.json/扩展项目，
+# 而 match_engine.py 自述是"纯确定性规则、零第三方依赖、无向量库"。
+# 这两条来自 AI 写的面试准备文档（interview-prep/*.md 里的"Chroma 向量库"、
+# "BGE vs BM25 对比实验"）——正是"JD 味措辞被吸收成事实"的通道。
+# 数字可以不出错，技术栈写错一样在面试现场当场翻车，所以必须一起核。
+TECH_CLAIMS = [
+    ("Chrome 扩展", r"chrome\s*扩展|扩展程序|浏览器扩展|manifest\.json|extension"),
+    ("Chroma 向量库", r"chroma"),
+    ("BGE 向量模型", r"\bbge\b"),
+    ("向量检索/embedding", r"向量(库|检索|数据)|embedding|sentence[- ]?transform"),
+    ("DrissionPage", r"drissionpage"),
+    ("RAG 检索增强", r"\brag\b|检索增强"),
+    ("Dify", r"dify"),
+    ("FastAPI", r"fastapi"),
+    ("Flask", r"flask"),
+    ("SQLite", r"sqlite"),
+    ("LangChain/LangGraph", r"langchain|langgraph"),
+    ("95分/球鞋监控", r"95\s*分|95fen|球鞋"),
+    ("Playwright/浏览器自动化", r"playwright|浏览器自动化"),
+    ("LLM API 集成", r"llm\s*api|大模型\s*api|模型\s*api"),
+    ("Prompt 工程", r"prompt"),
+]
+
+
+def check_tech_claims(text: str, corpus: Dict[str, str]) -> dict:
+    """核验文本里的技术栈/项目声明是否在「源事实语料」里有对应实物。
+
+    corpus: {来源名: 文本} —— 建议传简历 + 各项目 README（用户亲手写的/项目自述的）。
+    返回 {'supported': [(声明, 命中来源)], 'unsupported': [声明], 'checked': n}
+    """
+    blob = "\n".join(str(v or "") for v in corpus.values()).lower()
+    supported, unsupported = [], []
+    checked = 0
+    for label, pat in TECH_CLAIMS:
+        if not re.search(pat, text or "", re.I):
+            continue                     # 草稿没提到这项，不用核
+        checked += 1
+        src = None
+        for name, body in corpus.items():
+            if body and re.search(pat, str(body), re.I):
+                src = name
+                break
+        if src:
+            supported.append((label, src))
+        else:
+            unsupported.append(label)
+    return {"supported": supported, "unsupported": unsupported, "checked": checked}
+
+
 def gate_outgoing_text(text: str, sources: Dict[str, str],
                        story_bank_path=None) -> dict:
     """出口闸：找出**要发出去的话**里没有逐字佐证的数字主张。
