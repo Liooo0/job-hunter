@@ -1,6 +1,9 @@
 name: security
 # 公开仓库的第三道门：CI 层 PII / secrets 扫描（不依赖本机是否配好 hook）
-# 来源：job-hunter 2026-09-15 泄露事故复盘 —— 泄露活了 34 天，没有任何巡检发现。
+#
+# 定位（L4 流程级）：**本地 pre-commit 只是 UX，不是安全边界**——它可以被
+# `git commit --no-verify` 绕过。真正的边界是这里 + GitHub 分支保护
+# （要求本 workflow 必须通过才能合入 main）。
 on:
   push:
   pull_request:
@@ -19,10 +22,17 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: 路径门 + 内容门（全部被追踪文件）
+      # 引擎为单例：下面四步都调用同一个 Rule Engine（脚本内不得再有第二套正则）
+      - name: L1+L2 全部被追踪文件（路径类别 + 内容）
         run: python3 scripts/public_repo_guard.py --all
 
-      - name: 全历史扫描（HEAD 干净 ≠ 历史干净）
+      - name: L1+L2 工作区（含未追踪文件）
+        run: python3 scripts/public_repo_guard.py --worktree
+
+      - name: L3 所有 ref（分支 + tag）
+        run: python3 scripts/public_repo_guard.py --refs
+
+      - name: L3 全历史（HEAD 干净 ≠ 历史干净）
         run: python3 scripts/public_repo_guard.py --history
 
       - name: 敏感路径是否进过历史
@@ -30,17 +40,17 @@ jobs:
           set -e
           bad=$(git log --all --diff-filter=A --name-only --format="" \
                 | sort -u \
-                | grep -iE '^(\"?)data/(reply_|my_profile)|sent_replies/|pending_replies/|\.env$|\.db$|backups?/' || true)
+                | grep -iE '^data/|sent_replies/|pending_replies/|\.env$|\.db$|backups?/|publish_dashboard/index' || true)
           if [ -n "$bad" ]; then
             echo "❌ 敏感路径出现在历史中："; echo "$bad"; exit 1
           fi
           echo "✅ 历史中无敏感路径"
 
-      - name: 服务端残留 ref 检查（提示性，不失败）
+      - name: 服务端残留 ref 检查
         continue-on-error: true
         run: |
           git ls-remote origin 2>/dev/null | grep 'refs/pull' \
-            && echo "⚠️ 存在 refs/pull/* —— 已合并 PR 的 head 可能指向旧历史（客户端删不掉，需 Support 或重建仓库）" \
+            && echo "⚠️ 存在 refs/pull/* —— 已合并 PR 的 head 可能指向旧历史（客户端删不掉）" \
             || echo "✅ 无 refs/pull/* 残留"
 
   secrets-scan:

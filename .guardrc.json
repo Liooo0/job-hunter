@@ -1,0 +1,7 @@
+{
+  "_doc": "public_repo_guard 的仓库级声明。例外必须显式写在这里并说明理由（可 review），不要改引擎。",
+  "_why": "本仓库的公开数据放 datasets/public/（见该目录 README），无需额外例外。",
+  "declared_public": [],
+  "extra_deny_paths": [],
+  "extra_allow_content": []
+}
