@@ -1,0 +1,8 @@
+#!/bin/sh
+# ── pre-commit 双闸 ──
+#  ① 工程防护：核心文件完整性 + 全量测试（防 9/3 清空文件那类事故）
+#  ② public-repo-guard：路径门 + 内容门（防业务数据/PII/密钥进库）
+# 2026-09-15 加装②：job-hunter 泄露事故复盘（HR 对话被追踪并推到公开仓库 34 天）
+cd "$(git rev-parse --show-toplevel)" || exit 1
+PYTHONPATH="" /usr/bin/python3 scripts/precommit_guard.py || exit 1
+PYTHONPATH="" /usr/bin/python3 scripts/public_repo_guard.py || exit 1

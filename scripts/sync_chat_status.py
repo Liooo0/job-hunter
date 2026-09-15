@@ -40,6 +40,12 @@ BASE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE))
 
 from store import normalize_company  # noqa: E402
+
+# 本人姓名从本机档案读（公开仓库不留真名）。读不到就退化为"未配置"，判定逻辑仍成立。
+try:
+    from hr_auto_reply import MY_NAME as _MY_NAME  # noqa: E402
+except Exception:
+    _MY_NAME = ""
 from notify import alert            # noqa: E402
 
 DB = BASE / "ab_experiment.db"
@@ -77,7 +83,12 @@ def _load_reply_corpus() -> tuple:
             #  · HR 还没回话时它就是我自己刚发出去的招呼语；
             #  · 也可能是 Boss 的系统占位（「您正在与BossX沟通」）。
             # 两类都要排掉，否则会把招呼语/占位当成 HR 的回复（实测踩过两次）。
-            if h and not (h.startswith("您好！我是") or "我是刘文迪" in h
+            # 自己的招呼语判定：姓名从本机档案读（公开仓库不留真名，见 hr_auto_reply._load_profile）
+            _self_marks = ["您好！我是", "我是"]
+            if _MY_NAME:
+                _self_marks.append(f"我是{_MY_NAME}")
+            if h and not (any(h.startswith(m) for m in _self_marks)
+                          or (_MY_NAME and f"我是{_MY_NAME}" in h)
                           or h.startswith(SYSTEM_PREFIXES)):
                 theirs.add(h)
     return mine, theirs
@@ -105,7 +116,7 @@ def _is_my_message(msg: str, my_texts: set) -> bool:
     m = (msg or "").strip()
     if not m:
         return False
-    if m.startswith("您好！我是") or "我是刘文迪" in m:
+    if m.startswith("您好！我是") or (_MY_NAME and f"我是{_MY_NAME}" in m):
         return True
     if any(m.startswith(p) for p in SYSTEM_PREFIXES):
         return True

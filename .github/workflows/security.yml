@@ -1,0 +1,55 @@
+name: security
+# 公开仓库的第三道门：CI 层 PII / secrets 扫描（不依赖本机是否配好 hook）
+# 来源：job-hunter 2026-09-15 泄露事故复盘 —— 泄露活了 34 天，没有任何巡检发现。
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '0 1 * * 1'   # 每周一 09:00(北京) 定期复审：泄露都来自漂移
+
+jobs:
+  pii-secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # 全历史，才能扫历史 blob
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 路径门 + 内容门（全部被追踪文件）
+        run: python3 scripts/public_repo_guard.py --all
+
+      - name: 全历史扫描（HEAD 干净 ≠ 历史干净）
+        run: python3 scripts/public_repo_guard.py --history
+
+      - name: 敏感路径是否进过历史
+        run: |
+          set -e
+          bad=$(git log --all --diff-filter=A --name-only --format="" \
+                | sort -u \
+                | grep -iE '^(\"?)data/(reply_|my_profile)|sent_replies/|pending_replies/|\.env$|\.db$|backups?/' || true)
+          if [ -n "$bad" ]; then
+            echo "❌ 敏感路径出现在历史中："; echo "$bad"; exit 1
+          fi
+          echo "✅ 历史中无敏感路径"
+
+      - name: 服务端残留 ref 检查（提示性，不失败）
+        continue-on-error: true
+        run: |
+          git ls-remote origin 2>/dev/null | grep 'refs/pull' \
+            && echo "⚠️ 存在 refs/pull/* —— 已合并 PR 的 head 可能指向旧历史（客户端删不掉，需 Support 或重建仓库）" \
+            || echo "✅ 无 refs/pull/* 残留"
+
+  secrets-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks（第三方 secrets 扫描，与自研闸门互为双保险）
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
