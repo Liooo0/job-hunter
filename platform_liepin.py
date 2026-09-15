@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from DrissionPage import ChromiumPage
 from job_decision import evaluate_job
 from store import record_application
+from notify import alert
 
 # 猎聘 dqs 城市码(2026-09-10 实测: URL 用 &dqs= 而非 &city=, 否则返回全国异地岗)
 CITY_CODES = {
@@ -295,10 +296,22 @@ def main():
         count = int(args[args.index("--count")+1])
 
     print(f"╔══ 猎聘 v4 ══ 城市{len(cities)} 词{len(keywords)} 上限{DAILY_LIMIT}/天 ══╗")
+
+    # 2026-09-15：与 shared.py 的规矩对齐 —— 写操作前必须查急停开关
+    from shared import kill_switch_check
+    _allowed, _kreason = kill_switch_check()
+    if not _allowed:
+        print(f"⛔ kill switch 生效中，本轮猎聘不投递：{_kreason}")
+        alert("kill_switch_block", "kill switch 生效中，猎聘本轮未投递",
+              f"原因：{_kreason}\n恢复：python3 boss_apply.py --kill-off",
+              level="warn", throttle=1800)
+        return
     try:
         page = ChromiumPage(PORT)
     except Exception as e:
         print(f"❌ Chrome 未连接(端口{PORT}): {e}")
+        alert("chrome_down", "猎聘无法连接 Chrome，本轮没投出去",
+              f"端口 {PORT} 连不上：{e}", level="error", throttle=1800)
         return
     tab = page.new_tab("about:blank")
     seen = set()
