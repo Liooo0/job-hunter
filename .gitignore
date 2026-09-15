@@ -26,6 +26,8 @@ data/mail_scan_state.json
 data/queue_checkpoint.json
 data/queue_checkpoint.json.*
 data/github_repos.json
+data/alert_state.json
+data/*.lock
 
 # ===== 备份与产物（不入库）=====
 backup-*/
