@@ -70,6 +70,8 @@ CONTENT_PATTERNS = [
     (r"(?<!\d)1[3-9]\d{9}(?!\d)", "手机号", True),
     (r"(?<![\dXx])\d{17}[\dXx](?![\dXx])", "身份证号", False),
     (r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", "邮箱", True),
+    # 注意: 历史重写时把真用户名替换成了 /Users/REPLACED，那是**脱敏占位符**不是真路径，
+    # 由下方 ALLOW 规则放行；真实用户名命中的才拦。
     (r"/Users/[A-Za-z0-9_.-]+", "本机绝对路径（含用户名）", False),
     (r"[A-Za-z]:\\\\+Users", "Windows 本机路径（含用户名）", False),
     (r"\bsk-[A-Za-z0-9_-]{16,}", "OpenAI 风格 API Key", False),
@@ -84,6 +86,8 @@ CONTENT_PATTERNS = [
 ]
 # 明显合成的值 → 不算泄露（真实值绝不会长这样）
 SYNTHETIC_OK = [
+    # 历史重写留下的脱敏占位符（不含真实用户名，属刻意保留的标记）
+    r"/Users/(REPLACED|REDACTED|<[^>]+>|<用户名>|<user>|<name>)",
     # 13800000000 / 13700000000 类：1[3-9] + 任意一位 + 8 个 0
     # （★ 2026-09-15 自测踩坑：原写成 1[3-9]0{8}，"138" 的第三位是 8 不是 0 → 误拦合成手机号。
     #   闸门误杀比漏杀更危险——使用者会干脆关掉它。）
@@ -155,11 +159,18 @@ def is_synthetic(text):
 
 
 def check_content_line(text, real_names):
+    """返回 [(原因, 命中片段)]。
+
+    白名单（SYNTHETIC_OK）对**所有**规则生效：凡是看起来就是合成/占位值的（13800000000、
+    user@example.com、TEST_USER_001、/Users/REPLACED 这类），一律放行。
+    ★ 2026-09-15 自测踩坑：最初只在 allow_synth=True 的规则上查白名单，导致
+      「脱敏占位符 /Users/REPLACED」被当成真实路径误拦、历史审计永远过不去。
+    """
     hits = []
-    for pat, why, allow_synth in CONTENT_PATTERNS:
+    for pat, why, _allow_synth in CONTENT_PATTERNS:
         for m in re.finditer(pat, text):
             frag = m.group(0)
-            if allow_synth and is_synthetic(frag):
+            if is_synthetic(frag):
                 continue
             hits.append((why, frag[:60]))
     for name in real_names:
@@ -180,14 +191,18 @@ def main():
     blocked_paths, blocked_content = [], []
 
     if args.history:
-        # 全历史：逐 blob 扫（用于 CI 与历史清理后的验收）
+        # 全历史：逐 commit 扫（用于 CI 与历史清理后的验收）
+        # ★ 复用 check_content_line 而非另写正则 —— 否则白名单（合成值/脱敏占位符）不生效，
+        #   历史审计会永远失败（自测踩坑：曾把脱敏占位符 /Users/REPLACED 当成真实路径）。
         revs = sh(["git", "rev-list", "--all"]).split()
         for rev in revs[:400]:
             out = sh(["git", "grep", "-n", "-I", "-E",
-                      r"/Users/[A-Za-z0-9_.-]+|\bsk-[A-Za-z0-9_-]{16,}|-----BEGIN [A-Z ]*PRIVATE KEY-----",
+                      r"/Users/|sk-[A-Za-z0-9_-]{16,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|ghp_[A-Za-z0-9]{20,}",
                       rev])
-            for line in out.splitlines()[:5]:
-                blocked_content.append((line[:160], "历史内容"))
+            for line in out.splitlines()[:8]:
+                body = line.split(":", 2)[-1] if line.count(":") >= 2 else line
+                for why, frag in check_content_line(body, real_names):
+                    blocked_content.append((line[:150], why))
         files = []
     elif args.all:
         files = tracked_files()
