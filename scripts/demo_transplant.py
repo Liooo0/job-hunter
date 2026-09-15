@@ -7,7 +7,7 @@
 
 数据来源（全部真实，不编造）：
   · 简历：~/projects/resume-kami/resume-E-ai-delivery.html（当"用户亲手写的源事实"）
-  · 故事库：data/story-bank.md（MVP 种子，数字均来自简历或已标状态）
+  · 故事库：datasets/public/story-bank.md（MVP 种子，数字均来自简历或已标状态）
   · 投递库：ab_experiment.db 的 applications_v2
 """
 import html
@@ -29,7 +29,8 @@ import provenance as pv           # noqa: E402
 import repost_detect as rd        # noqa: E402
 
 RESUME_HTML = Path.home() / 'projects/resume-kami/resume-E-ai-delivery.html'
-STORY_BANK = ROOT / 'data/story-bank.md'
+# 故事库已迁到声明式公开命名空间 datasets/public/（见该目录 README 的政策）
+STORY_BANK = ROOT / 'datasets/public/story-bank.md'
 DB = ROOT / 'ab_experiment.db'
 
 

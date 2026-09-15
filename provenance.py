@@ -214,7 +214,7 @@ class Story:
 
 
 def load_story_bank(path) -> List[Story]:
-    """解析 story-bank.md：`### [主题] 标题` 块 + `**Label:** value` 行。"""
+    """解析 story-bank.md（现位于 datasets/public/）：`### [主题] 标题` 块 + `**Label:** value` 行。"""
     p = Path(path)
     if not p.exists():
         return []
