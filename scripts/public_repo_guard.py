@@ -81,8 +81,11 @@ FILE_CLASSES = [
     #   公开数据集请放声明式命名空间 datasets/public/ 或 fixtures/public/。
     ("local-data", r"^data/|^datasets/(?!public/)|^fixtures/(?!public/)|^local/(backups|logs|exports|receipts|data)/", "deny",
      "项目内运行数据/导出目录（业务数据，公开物请放 datasets/public/）", False),
-    ("deploy-local", r"(^|/)deploy/.*\.(plist|service|conf)$|(^|/)LaunchAgents/", "deny",
-     "本机部署产物（含绝对路径/本机配置，应改模板）", True),
+    # 只针对**本机服务定义**（launchd plist / systemd service）——它们必须含绝对路径，
+    # 所以仓库里只允许放 __HOME__ 模板。不拦 *.conf：容器/应用配置本身可以公开，
+    # 其中的绝对路径与凭据由 L2 内容门负责（自测踩坑：曾连 supervisord.conf 一起拦掉）。
+    ("deploy-local", r"\.(plist|service)$|(^|/)LaunchAgents/", "deny",
+     "本机服务定义（含绝对路径，应改 __HOME__ 模板）", True),
 
     # ── 允许公开（显式白名单，优先级最高）──
     ("template",   r"\.(example|template|sample)(\.|$)|\.plist\.template$|(^|/)anon-rules\.example", "public",
@@ -307,23 +310,19 @@ def collect_staged():
 
 
 def collect_worktree():
-    """工作区：被追踪 + 未追踪（未追踪的最危险——`.gitignore` 与事实漂移就出在这里）。"""
+    """工作区：被追踪 + **未被忽略的**未追踪文件。
+
+    为什么不含被忽略的文件：被正确忽略的运行数据（如 data/app.db）本来就该在本机存在，
+    判它违规是假阳性——「文件存在」不是问题，「文件进了 Git」才是。
+    真正危险的是 `git add -A` 会一口气收进去的那批：未追踪且未被忽略。
+    （★ 自测踩坑：最初把 --ignored 也算进来，本机必然失败、CI 必然通过，闸门等于废掉。）
+    """
     items = []
-    tracked = sh(["git", "ls-files"]).split()
-    for p in tracked:
+    for p in sh(["git", "ls-files"]).split():
         items.append((p, read_text_file(p)))
-    untracked = sh(["git", "ls-files", "--others", "--exclude-standard"]).split()
-    for p in untracked:
+    for p in sh(["git", "ls-files", "--others", "--exclude-standard"]).split():
         items.append((p, read_text_file(p)))
-    ignored = sh(["git", "ls-files", "--others", "--ignored", "--exclude-standard"]).split()
-    for p in ignored:
-        items.append((p, make_ignored(p)))    # 被 ignore 的只看路径类别
     return items
-
-
-def make_ignored(p):
-    """被 .gitignore 挡住的文件：不读内容，但**路径类别仍要判**（防止 ignore 写错却无人发现）。"""
-    return None
 
 
 def collect_tree():
