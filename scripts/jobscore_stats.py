@@ -5,11 +5,14 @@
 import argparse, json, sqlite3, sys
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
+from pathlib import Path
 
-sys.path.insert(0, "/Users/REPLACED/projects/job-hunter")
+# 相对定位（2026-09-15：原来写死 /Users/<name>/... 绝对路径，公开仓库里等于泄露本机用户名）
+_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_ROOT))
 from match_engine import explain_match
 
-DB = "/Users/REPLACED/projects/job-hunter/ab_experiment.db"
+DB = str(_ROOT / "ab_experiment.db")
 SCORE_TYPES = {"smart_filter", "deep_filter", "uncertain", "below_min_score", "applied", "decision_trace", "already_chatted", "chat_not_opened"}
 FAM = ["采购", "供应链", "寻源", "跟单", "供应商", "SQE", "商务", "项目", "硬件", "测试", "实施", "交付", "自动化", "运维", "售前", "技术支持"]
 

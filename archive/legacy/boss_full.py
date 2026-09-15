@@ -91,7 +91,7 @@ def scan_messages():
         if item["unread"] < 1:
             continue
         msg = item.get("lastMsg", "")
-        if "您好！我是本人" in msg:
+        if "您好！我是" in msg:
             continue
         if "ai应用工程师" in msg:
             continue
