@@ -93,7 +93,7 @@ def acquire(sessions: list, reason: str = "HR会话待人工审核") -> bool:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     existing = _load_json(PENDING_FILE, [])
     # 去重只看未完结条目（pending/edited/approved）——sent/rejected 是历史，
-    # 同公司同 HR 的新消息不能被旧记录挡住（2026-09-05: 张女士第二条被吞的 bug）
+    # 同公司同 HR 的新消息不能被旧记录挡住（2026-09-05: 同一 HR 第二条被吞的 bug）
     active = [s for s in existing if s.get("status") in ("pending", "edited", "approved")]
     known = {(s.get("company", ""), s.get("hr_name", "")) for s in active}
     merged = existing + [s for s in sessions
