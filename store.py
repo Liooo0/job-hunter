@@ -283,11 +283,16 @@ def count_applied_since(start_iso: str, include_uncertain: bool = True) -> int:
     """统计某时刻之后发生的投递动作数（跨进程熔断用）。
 
     include_uncertain=True 时把 UNCERTAIN 也计入（会话已打开即视为产生过动作）。
+
+    ★ 2026-09-15 修正：原来只认 decision IN ('applied','uncertain')，**漏了 51job 的
+      decision='ALLOW'** —— 于是 Boss 的小时闸/日闸看不到 51job 的投递，两平台各算各的，
+      实测某小时合计冲到 70+ 条（远超「单小时≤15」的风控红线）。
+      现在合并三态，闸门统一按「全平台合计」计数。
     """
-    decisions = "('applied','uncertain')" if include_uncertain else "('applied')"
+    states = "('applied','uncertain','ALLOW')" if include_uncertain else "('applied','ALLOW')"
     conn = _conn()
     n = conn.execute(
-        f"SELECT COUNT(*) AS c FROM applications_v2 WHERE decision IN {decisions} AND applied_at >= ?",
+        f"SELECT COUNT(*) AS c FROM applications_v2 WHERE decision IN {states} AND applied_at >= ?",
         (start_iso,),
     ).fetchone()["c"]
     conn.close()
