@@ -1,0 +1,323 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "job-hunter 运行时架构 · 一次日常投递运行",
+    "locale": "zh-CN",
+    "output": "docs/archify/job-hunter-runtime.architecture.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    {
+      "id": "timer",
+      "type": "external",
+      "label": "launchd 定时器",
+      "sublabel": "每天 9:00 / 15:30",
+      "tag": "系统调度",
+      "pos": [
+        30,
+        150
+      ],
+      "size": [
+        132,
+        66
+      ]
+    },
+    {
+      "id": "runner",
+      "type": "backend",
+      "label": "run_daily.sh",
+      "sublabel": "单次运行编排",
+      "tag": "入口",
+      "pos": [
+        242,
+        150
+      ],
+      "size": [
+        116,
+        66
+      ]
+    },
+    {
+      "id": "filter",
+      "type": "backend",
+      "label": "deep_filter.py",
+      "sublabel": "三层资格过滤",
+      "tag": "本地规则",
+      "pos": [
+        438,
+        150
+      ],
+      "size": [
+        124,
+        66
+      ]
+    },
+    {
+      "id": "scorer",
+      "type": "backend",
+      "label": "match_engine.py",
+      "sublabel": "五维加权打分",
+      "tag": "0 token",
+      "pos": [
+        642,
+        150
+      ],
+      "size": [
+        128,
+        66
+      ]
+    },
+    {
+      "id": "adapters",
+      "type": "backend",
+      "label": "平台适配层",
+      "sublabel": "boss_apply 等 3 个",
+      "tag": "真实点击",
+      "pos": [
+        850,
+        150
+      ],
+      "size": [
+        132,
+        66
+      ]
+    },
+    {
+      "id": "verify",
+      "type": "backend",
+      "label": "投递验证状态机",
+      "sublabel": "APPLIED / UNCERTAIN / FAILED",
+      "tag": "三态",
+      "pos": [
+        1062,
+        150
+      ],
+      "size": [
+        168,
+        66
+      ]
+    },
+    {
+      "id": "platforms",
+      "type": "external",
+      "label": "招聘平台",
+      "sublabel": "Boss直聘 / 鱼泡 / 前程无忧",
+      "tag": "外部依赖",
+      "pos": [
+        828,
+        16
+      ],
+      "size": [
+        176,
+        66
+      ]
+    },
+    {
+      "id": "guardrails",
+      "type": "security",
+      "label": "guardrails.py",
+      "sublabel": "双熔断 + .kill_switch",
+      "tag": "横切 · 安全",
+      "pos": [
+        230,
+        346
+      ],
+      "size": [
+        150,
+        66
+      ]
+    },
+    {
+      "id": "dashboard",
+      "type": "frontend",
+      "label": "jobintel-dashboard",
+      "sublabel": "只读复盘看板",
+      "tag": "只读",
+      "pos": [
+        442,
+        346
+      ],
+      "size": [
+        160,
+        66
+      ]
+    },
+    {
+      "id": "failures",
+      "type": "backend",
+      "label": "failure_tracking.py",
+      "sublabel": "9 阶段 × 23 失败原因",
+      "tag": "漏斗",
+      "pos": [
+        664,
+        346
+      ],
+      "size": [
+        170,
+        66
+      ]
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "SQLite 单一事实源",
+      "sublabel": "ab_experiment.db",
+      "tag": "本地文件",
+      "pos": [
+        896,
+        346
+      ],
+      "size": [
+        160,
+        66
+      ]
+    },
+    {
+      "id": "store",
+      "type": "backend",
+      "label": "store.py",
+      "sublabel": "唯一写入入口",
+      "tag": "数据层",
+      "pos": [
+        1118,
+        346
+      ],
+      "size": [
+        140,
+        66
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "本机运行环境 · 数据不出本地，简历不上传第三方",
+      "wraps": [
+        "runner",
+        "filter",
+        "scorer",
+        "adapters",
+        "verify",
+        "guardrails",
+        "dashboard",
+        "failures",
+        "db",
+        "store"
+      ],
+      "pad": 26
+    },
+    {
+      "kind": "security-group",
+      "label": "投递执行 · 写操作前熔断检查",
+      "wraps": [
+        "adapters",
+        "verify"
+      ],
+      "pad": 14
+    }
+  ],
+  "connections": [
+    {
+      "from": "timer",
+      "to": "runner",
+      "label": "触发"
+    },
+    {
+      "from": "runner",
+      "to": "filter",
+      "label": "候选 JD"
+    },
+    {
+      "from": "filter",
+      "to": "scorer",
+      "label": "资格通过"
+    },
+    {
+      "from": "scorer",
+      "to": "adapters",
+      "label": "五维总分"
+    },
+    {
+      "from": "adapters",
+      "to": "verify",
+      "label": "会话回执"
+    },
+    {
+      "from": "adapters",
+      "to": "platforms",
+      "label": "点击 / 内联投递",
+      "labelDy": -30,
+      "variant": "emphasis",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "from": "adapters",
+      "to": "guardrails",
+      "label": "写操作前闸门",
+      "variant": "security",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "from": "verify",
+      "to": "store",
+      "label": "投递结果",
+      "labelDy": 40,
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "from": "store",
+      "to": "db",
+      "label": "写入",
+      "fromSide": "left",
+      "toSide": "right"
+    },
+    {
+      "from": "db",
+      "to": "failures",
+      "label": "失败原因",
+      "fromSide": "left",
+      "toSide": "right"
+    },
+    {
+      "from": "failures",
+      "to": "dashboard",
+      "label": "漏斗复盘",
+      "fromSide": "left",
+      "toSide": "right"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "主路径 · 一次运行怎么走完",
+      "items": [
+        "launchd 每天 9:00 与 15:30 各拉起一次 run_daily.sh，脚本先做随机抖动延迟再开工",
+        "deep_filter.py 做三层资格过滤，match_engine.py 按五维加权算总分并给出 verdict",
+        "打分引擎是纯 Python 标准库规则，不走 LLM、0 token，同一 JD 分数恒定可解释",
+        "平台适配层分别是 boss_apply.py、platform_liepin.py、platform_51job.py，只有它做真实点击"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "写操作前的闸门（横切）",
+      "items": [
+        "guardrails.py 启动前自检分层薪资 / 双休 / 实习 / 夜禁 / 日限 / 时限等硬红线，不过就拒绝启动",
+        "shared.py 在任何写操作（投递 / 回复 / 归档）前先检查 .kill_switch 急停文件",
+        "跨进程日上限 + 单小时上限双熔断，超额即停止本轮，避免跨轮累加超限"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "单一事实源与复盘",
+      "items": [
+        "store.py 是唯一写入入口，落 jobs / applications_v2 / events，旧的 *-log.json 一次性迁入后转只读",
+        "failure_tracking.py 用固定枚举记录失败阶段与原因（9 阶段 × 23 原因），写 failure_reasons 表",
+        "jobintel-dashboard 与 funnel_report / funnel_stats 只读消费同一个 SQLite，不写回任何数据"
+      ]
+    }
+  ]
+}
