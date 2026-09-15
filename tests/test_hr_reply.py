@@ -40,7 +40,9 @@ class TestMessageFilter(unittest.TestCase):
     def test_self_and_system_msgs_filtered(self):
         self.assertFalse(hr_auto_reply._is_hr_real_message(""))
         self.assertFalse(hr_auto_reply._is_hr_real_message("好"))
-        self.assertFalse(hr_auto_reply._is_hr_real_message("您好！我是本人，求职方向AI应用"))
+        # 2026-09-15: 不再写死真名——公开仓库不留 PII；本地配了真名时该用例照样成立
+        _n = hr_auto_reply.MY_NAME or "张三"
+        self.assertFalse(hr_auto_reply._is_hr_real_message(f"您好！我是{_n}，求职方向AI应用"))
         self.assertFalse(hr_auto_reply._is_hr_real_message("好的，谢谢您告知，祝您招聘顺利！"))
         self.assertFalse(hr_auto_reply._is_hr_real_message("您正在与Boss张三沟通"))
         self.assertFalse(hr_auto_reply._is_hr_real_message("您的附件简历已送达"))

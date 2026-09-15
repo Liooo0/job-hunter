@@ -210,7 +210,8 @@ class TestDisabilityJobRejection(unittest.TestCase):
 
     def test_disability_keywords_in_config(self):
         import json
-        cfg = json.load(open('/Users/REPLACED/projects/job-hunter/config.json'))
+        from pathlib import Path as _P
+        cfg = json.load(open(_P(__file__).resolve().parent.parent / 'config.json'))
         excl = cfg["exclude_keywords"]
         for w in ["助残", "残疾人"]:
             self.assertIn(w, excl)

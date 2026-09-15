@@ -55,17 +55,48 @@ def get_api_key() -> str:
     return ""
 
 
-# ─── 用户背景（真实，仅用于生成回复上下文）───
-MY_PROFILE = """我是本人，求职方向：AI应用工程师。base深圳（不是上海/成都，异地岗位要如实说明，除非真能接受再谈）。
-学历：2025年本科毕业（广东科技学院·工商管理），往届生，不是在校生，不符合27届/26届校招。
+# ─── 用户背景（仅用于生成回复上下文）───
+# ⚠️ 本文件在**公开仓库**里：绝不写真实姓名/联系方式等 PII；也不要有查无实物的声称。
+# 个性化档案放本机 data/my_profile.txt（已 gitignore），首行写「姓名: XXX」。
+#
+# ★ 2026-09-15 修正（重要）：原第 4 条写「RAG匹配引擎（Chroma+BGE）：简历向量化、
+#   JD语义检索、本地embedding」——本地磁盘 + GitHub 12 个公开仓库双向核查**均无实物**
+#   （job-hunter/match_engine.py 自述「纯确定性规则，LLM 不参与，零第三方依赖」，无向量库）。
+#   这句话被 LLM 原样抄进了多条 HR 回复草稿，差点发出去——面试官一追问就当场翻车。
+#   教训：**喂给 LLM 的"真实背景"里混进一条假的，等于批量制造假话**。改回真实项目。
+_PROFILE_FILE = Path(__file__).parent / 'data' / 'my_profile.txt'
+
+DEFAULT_PROFILE = """求职方向：AI应用工程师，base 深圳（不是上海/成都，异地岗位要如实说明）。
+学历：2025年本科毕业（工商管理），往届生，不是在校生，不符合27届/26届校招。
 背景：移动通信+工商管理复合背景。
 真实项目：
 1. BOSS直聘助手（Chrome扩展）：AI生成个性化招呼语、聊天辅助回复、岗位管理面板
 2. 95分球鞋监控（Python）：API逆向、关键词粗筛+视觉LLM精筛两级过滤、异步并发、SQLite去重、Webhook推送
 3. 求职自动化（Python+DrissionPage）：多平台自动投递、HR消息智能分类、反检测设计
-4. RAG匹配引擎（Chroma+BGE）：简历向量化、JD语义检索、本地embedding
+4. 装修获客 AI 客服（知识库/RAG）：双库分层知识库、LLM 结构化抽取、规则评分分级意向，已部署运行
 技能：Python、LLM API集成、Prompt Engineering、浏览器自动化、数据管道、Linux/Shell。
-注意：没有做过短视频/短剧，没有直播带货经历，没有企业级大厂工作经历。"""
+注意：没有做过短视频/短剧，没有直播带货经历，没有企业级大厂工作经历。
+禁止声称：Chroma/BGE/向量库/本地embedding（无实物，写了就是造假）。"""
+
+
+def _load_profile() -> tuple:
+    """返回 (姓名, 档案文本)。本机档案优先，公开仓库只留 PII-free 默认值。"""
+    if _PROFILE_FILE.exists():
+        try:
+            raw = _PROFILE_FILE.read_text(encoding='utf-8').strip()
+            name = (os.getenv('JOB_HUNTER_NAME') or '').strip()
+            for line in raw.splitlines():
+                if line.strip().startswith('姓名'):
+                    name = line.split(':', 1)[-1].split('：', 1)[-1].strip() or name
+                    break
+            if raw:
+                return name, raw
+        except Exception:
+            pass
+    return (os.getenv('JOB_HUNTER_NAME') or '').strip(), DEFAULT_PROFILE
+
+
+MY_NAME, MY_PROFILE = _load_profile()
 
 # 硬性事实护栏：任何回复不得违反（生成后强制校验）
 FACT_GUARDRAILS = [
@@ -120,16 +151,17 @@ def build_reply(msg_text: str, job_title: str, company: str) -> tuple[str, str]:
     返回 (kind, reply)
     kind: interest(有兴趣，认真回) / reject(拒绝，礼貌回)
     """
-    prompt = f"""你是本人的求职助理。本人正在Boss直聘找工作。
+    _WHO = MY_NAME or '求职者'   # 公开仓库不含真实姓名；本机 data/my_profile.txt 配了就用真名
+    prompt = f"""你是{_WHO}的求职助理。{_WHO}正在Boss直聘找工作。
 
-【本人的真实背景】
+【{_WHO}的真实背景】
 {MY_PROFILE}
 
 【规则】
 1. 判断这条HR消息是"有兴趣"还是"拒绝/无意义"：
    - 有兴趣：要简历、约面试、问经历/技能/作品、说"合适""聊聊""看下简历"等
    - 拒绝/无意义：不合适、不匹配、招满了、暂不推进、系统提示、模板回执
-2. 有兴趣 → 用本人的真实背景写回复（80-150字）：
+2. 有兴趣 → 用{_WHO}的真实背景写回复（80-150字）：
    - 口语自然，像真人聊天，不要"尊敬的"式模板
    - 只提简历里真实存在的经历，绝不编造
    - 呼应HR提到的点（岗位、技能、问题）
@@ -172,9 +204,12 @@ def _is_hr_real_message(msg: str) -> bool:
     """过滤非 HR 真实消息（自己发的招呼语/礼貌回复、系统占位、系统消息、Boss 广告）。"""
     if not msg or len(msg) < 2:
         return False
-    # 自己发的招呼语
-    if "您好！我是本人" in msg or "我是本人" in msg:
+    # 自己发的招呼语（姓名从本机档案读，公开仓库不留真名）
+    if MY_NAME and (f"您好！我是{MY_NAME}" in msg or f"我是{MY_NAME}" in msg):
         return False
+    if not MY_NAME and msg.startswith("您好！我是") and any(
+            k in msg for k in ("求职", "AI", "专注", "工程师")):
+        return False   # 未配姓名时的保守兜底：自己的招呼语不以 HR 消息处理
     # 自己发的礼貌回复（防重复回）
     if any(msg.startswith(p) for p in [
         "好的，谢谢您", "好的，感谢", "收到，感谢", "收到，谢谢",

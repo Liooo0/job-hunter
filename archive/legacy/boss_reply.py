@@ -79,7 +79,7 @@ def check():
     for item in result:
         if item["unread"] > 0:
             msg = item.get("lastMsg", "")
-            if msg and "您好！我是本人" not in msg and "ai应用工程师" not in msg:
+            if msg and "您好！我是" not in msg and "ai应用工程师" not in msg:
                 hr_replies.append(item)
 
     hr_replies_deduped = []

@@ -12,6 +12,8 @@ __pycache__/
 pending_replies/
 archived_replies/
 sent_replies/
+# ★ 本机个性化档案（含真实姓名/背景），公开仓库只留 PII-free 默认值
+data/my_profile.txt
 # ★ 2026-09-15 修复：上一版只挡了目录，漏了实际在用的 json 文件，
 #   结果 data/reply_pending.json（含 HR 姓名/公司/对话原文/拟发内容）
 #   被追踪并推到了公开仓库。凡含真实对话的 json 一律挡。
@@ -46,6 +48,11 @@ data/company_profiles.json
 config.json
 com.*.job-hunter.plist
 dry_run_plan.json
+
+# ===== config 变体/备份（含本机 resume_path 与含真名的招呼语）=====
+config.*.json
+config.json.bak-*
+config.procurement.json
 .DS_Store
 
 # ===== 个人隐私文件（本机保留，不入库）=====
