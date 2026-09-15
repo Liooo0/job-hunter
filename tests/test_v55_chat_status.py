@@ -27,7 +27,9 @@ sys.path.insert(0, str(BASE / "scripts"))
 
 import sync_chat_status as S  # noqa: E402
 
-GREETING = ("您好！我是Lio，主攻 AI 应用与工作流落地。我拥有"
+# 自己的招呼语样本：姓名从模块读（公开仓库不留真名；本机档案配了就用真名）
+_NAME = getattr(S, "_MY_NAME", "") or "张三"
+GREETING = (f"您好！我是{_NAME}，主攻 AI 应用与工作流落地。我拥有"
             "移动通信技术 + 工商管理的复合背景，深谙 Agent 编排与闭环工作流搭建。")
 PLACEHOLDER = "您正在与Boss陈先生沟通"
 
