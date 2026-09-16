@@ -29,7 +29,8 @@ PENDING = ROOT / 'data' / 'reply_pending.json'
 CORPUS_FILES = [
     (HOME / 'projects/resume-kami/resume-E-ai-delivery.html', True),
     (HOME / 'projects/job-hunter/README.md', False),
-    (HOME / 'projects/95fen-monitor/README.md', False),
+    # 商品上新监控那份 README 不在这里写死路径（避免公开仓库点名平台）；
+    # 它由下方 ~/projects/*/README.md 的兜底 glob 自动纳入语料（只加不减）。
     (HOME / 'projects/interview-trainer/README.md', False),
     (HOME / 'projects/jobintel-dashboard/README.md', False),
 ]
