@@ -341,7 +341,7 @@ TECH_CLAIMS = [
     ("Flask", r"flask"),
     ("SQLite", r"sqlite"),
     ("LangChain/LangGraph", r"langchain|langgraph"),
-    ("95分/球鞋监控", r"95\s*分|95fen|球鞋"),
+    ("商品上新监控", r"球鞋|上新监控|sneaker"),
     ("Playwright/浏览器自动化", r"playwright|浏览器自动化"),
     ("LLM API 集成", r"llm\s*api|大模型\s*api|模型\s*api"),
     ("Prompt 工程", r"prompt"),

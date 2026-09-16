@@ -79,7 +79,7 @@ def _load_credentials() -> tuple:
 
     优先级：环境变量 → 本项目 .env.local → 本机 weather-api-backend/.env。
     **绝不自动拉取订阅者列表群发**：那个 app 的订阅者里有别人，把你求职告警
-    推给他们就是泄露隐私（与 95fen-monitor 的同一条规矩）。拿不到 uid 就只写日志、
+    推给他们就是泄露隐私（与商品上新监控项目的同一条规矩）。拿不到 uid 就只写日志、
     不推送。
     """
     token = os.environ.get("WXPUSHER_APP_TOKEN", "").strip()

@@ -71,7 +71,7 @@ DEFAULT_PROFILE = """求职方向：AI应用工程师，base 深圳（不是上�
 背景：移动通信+工商管理复合背景。
 真实项目：
 1. BOSS直聘助手（Chrome扩展）：AI生成个性化招呼语、聊天辅助回复、岗位管理面板
-2. 95分球鞋监控（Python）：API逆向、关键词粗筛+视觉LLM精筛两级过滤、异步并发、SQLite去重、Webhook推送
+2. 商品上新监控（Python）：私有接口签名对接、关键词粗筛+视觉LLM精筛两级过滤、异步并发、SQLite去重、Webhook推送
 3. 求职自动化（Python+DrissionPage）：多平台自动投递、HR消息智能分类、反检测设计
 4. 装修获客 AI 客服（知识库/RAG）：双库分层知识库、LLM 结构化抽取、规则评分分级意向，已部署运行
 技能：Python、LLM API集成、Prompt Engineering、浏览器自动化、数据管道、Linux/Shell。

@@ -383,11 +383,11 @@ class TestTechClaims(unittest.TestCase):
 
     def test_real_case_corpus_boundary(self):
         # 面试准备文档不算源事实 —— 只有真实项目自述算
-        draft = '我做过 95分球鞋监控（API逆向 + 视觉 LLM 精筛）'
-        with_repo = {'95fen-monitor': '95fen-monitor 逆向 95分 App 签名，qwen 看图识鞋'}
+        draft = '我做过商品上新监控（私有接口签名对接 + 视觉 LLM 精筛）'
+        with_repo = {'sneaker-monitor': 'sneaker-monitor 私有接口签名对接，qwen 看图识鞋'}
         without = {'interview-prep': '可以讲 RAG 项目的 Chroma 向量库'}
         self.assertEqual(pv.check_tech_claims(draft, with_repo)['unsupported'], [])
-        self.assertIn('95分/球鞋监控', pv.check_tech_claims(draft, without)['unsupported'])
+        self.assertIn('商品上新监控', pv.check_tech_claims(draft, without)['unsupported'])
 
 
 class TestUnitBoundaryRegex(unittest.TestCase):
