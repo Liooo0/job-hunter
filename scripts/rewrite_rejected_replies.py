@@ -9,7 +9,7 @@
 替换策略：改用**双源可核实的等价能力主张**——
 - RAG / 知识库落地 → 装修获客 AI 客服（renovation-bot，双库分层知识库 + RAG 问答，已部署）
 - 向量库/embedding 相关措辞一律不写
-其余项目声明（Chrome 扩展 / 球鞋监控 / DrissionPage / LLM API / Prompt）均已核到实物，保留。
+其余项目声明（Chrome 扩展 / 商品上新监控 / DrissionPage / LLM API / Prompt）均已核到实物，保留。
 """
 import json
 import shutil
@@ -20,10 +20,10 @@ ROOT = Path(__file__).resolve().parent.parent
 QUEUE = ROOT / 'data' / 'reply_pending.json'
 
 NEW = {
-    "R1789185756-0": "在看。深圳，AI 应用方向。做过 BOSS直聘助手 Chrome 扩展、95分球鞋监控（API 逆向 + 视觉 LLM 精筛）、多平台求职自动化、装修获客 AI 客服（知识库/RAG，已上线）。主要用 Python + LLM API。简历发你？",
-    "R1789185756-1": "可以，远程没问题。深圳，AI 应用方向。项目有 BOSS直聘助手 Chrome 扩展、球鞋监控（API 逆向 + 视觉 LLM）、DrissionPage 求职自动化、装修获客 AI 客服（知识库/RAG 已上线）。简历你先看下？",
-    "R1789185908-0": "在考虑。深圳，AI 应用方向。项目：95分球鞋监控（API 逆向 + 视觉 LLM）、多平台求职自动投递（DrissionPage，3 万+ 条岗位数据）、装修获客 AI 客服（知识库/RAG 已上线）。主要用 Python + LLM API。方便说下岗位和 base 吗？",
-    "R1789380064-0": "同意，简历发你。深圳，AI 应用方向：BOSS直聘助手 Chrome 扩展、球鞋监控（视觉 LLM 两级过滤）、多平台求职自动化（3 万+ 条岗位数据）、装修获客 AI 客服（知识库/RAG）。顺带问下岗位方向和上班地点？"
+    "R1789185756-0": "在看。深圳，AI 应用方向。做过 BOSS直聘助手 Chrome 扩展、商品上新监控（私有接口签名对接 + 视觉 LLM 精筛）、多平台求职自动化、装修获客 AI 客服（知识库/RAG，已上线）。主要用 Python + LLM API。简历发你？",
+    "R1789185756-1": "可以，远程没问题。深圳，AI 应用方向。项目有 BOSS直聘助手 Chrome 扩展、商品上新监控（私有接口签名对接 + 视觉 LLM）、DrissionPage 求职自动化、装修获客 AI 客服（知识库/RAG 已上线）。简历你先看下？",
+    "R1789185908-0": "在考虑。深圳，AI 应用方向。项目：商品上新监控（私有接口签名对接 + 视觉 LLM）、多平台求职自动投递（DrissionPage，3 万+ 条岗位数据）、装修获客 AI 客服（知识库/RAG 已上线）。主要用 Python + LLM API。方便说下岗位和 base 吗？",
+    "R1789380064-0": "同意，简历发你。深圳，AI 应用方向：BOSS直聘助手 Chrome 扩展、商品上新监控（视觉 LLM 两级过滤）、多平台求职自动化（3 万+ 条岗位数据）、装修获客 AI 客服（知识库/RAG）。顺带问下岗位方向和上班地点？"
 }
 
 queue = json.loads(QUEUE.read_text(encoding='utf-8'))

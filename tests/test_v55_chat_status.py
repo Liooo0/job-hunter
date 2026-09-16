@@ -76,7 +76,7 @@ class TestClassify(unittest.TestCase):
 
     def test_unknown_opener_is_unknown(self):
         """我的回复风格是短版直给（好的/了解 起手），命不中留痕时判 unknown，不写库。"""
-        msg = "了解，人工评测为主的岗位我可以考虑。我做过RAG匹配引擎和95分球鞋监控"
+        msg = "了解，人工评测为主的岗位我可以考虑。我做过RAG匹配引擎和商品上新监控"
         self.assertEqual(self.c(msg), "unknown")
 
     def test_empty_is_unknown(self):
