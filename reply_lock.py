@@ -94,10 +94,17 @@ def acquire(sessions: list, reason: str = "HR会话待人工审核") -> bool:
     existing = _load_json(PENDING_FILE, [])
     # 去重只看未完结条目（pending/edited/approved）——sent/rejected 是历史，
     # 同公司同 HR 的新消息不能被旧记录挡住（2026-09-05: 同一 HR 第二条被吞的 bug）
+    # 2026-09-16 再修：原来 key 只有 (公司, HR名)，同一 HR 发了**新消息**时新草稿
+    # 会被静默丢弃（当天慧博云通 HR 追问"在职吗/到岗时间/期望薪资"就丢了，日志却报
+    # "1 条已入队"）。key 加上消息正文：同一句重复扫到仍会去重，新消息正常入队。
     active = [s for s in existing if s.get("status") in ("pending", "edited", "approved")]
-    known = {(s.get("company", ""), s.get("hr_name", "")) for s in active}
-    merged = existing + [s for s in sessions
-                         if (s.get("company", ""), s.get("hr_name", "")) not in known]
+
+    def _key(s):
+        return (s.get("company", ""), s.get("hr_name", ""),
+                (s.get("hr_message") or "")[:200])
+
+    known = {_key(s) for s in active}
+    merged = existing + [s for s in sessions if _key(s) not in known]
     # 若锁已无 active 条目却仍存在（历史残留），先释放再上
     if not active and LOCK_FILE.exists():
         try:

@@ -44,6 +44,56 @@ def _tab_alive(tab) -> bool:
         return False
 
 
+def sweep_stale_tabs(keep=None) -> int:
+    """清扫投递 Chrome 里堆积的僵尸标签页（每轮开始前调用）。
+
+    用**原生 CDP HTTP 接口**而不是 DrissionPage 的 tab API —— 实测后者在本机
+    Chrome 上 `get_tab()` 会超时（一超时整轮清扫就静默失败，关 0 个页）。
+    CDP HTTP 只有两个端点：/json/list 列页、/json/close/<id> 关页。
+
+    安全边界（**红线**，不可放宽）：
+      · 只关 51job 自己的搜索页 / about:blank
+      · **绝不碰** 用户闲鱼（goofish / taobao）、Boss 聊天页、chrome:// 内部页
+      · 只有当没有别的投递进程在跑时才清扫（避免关掉并发轮次的 tab）
+    """
+    import json as _json
+    import subprocess as _sp
+    import urllib.request as _url
+
+    # [] 括号技巧：否则 pgrep 会匹配到执行这段代码的 bash 命令行本身（自匹配）
+    running = _sp.run(["bash", "-lc",
+                       'pgrep -f "boss_apply[.]py|platform_liepin[.]py" | head -1'],
+                       capture_output=True, text=True).stdout.strip()
+    if running:
+        return 0
+    try:
+        with _url.urlopen(f"http://127.0.0.1:{PORT}/json/list", timeout=5) as resp:
+            targets = _json.loads(resp.read().decode("utf-8", "replace"))
+    except Exception:
+        return 0
+    closed = 0
+    for t in targets:
+        tid = t.get("id")
+        u = t.get("url") or ""
+        if not tid or (keep and tid == keep):
+            continue
+        if any(k in u for k in ("goofish", "taobao", "zhipin", "chrome://",
+                                "chrome-extension://", "edge://", "devtools://")):
+            continue
+        disposable = ("51job.com" in u and "/pc/search" in u) or u in ("about:blank", "")
+        if not disposable:
+            continue
+        try:
+            with _url.urlopen(f"http://127.0.0.1:{PORT}/json/close/{tid}", timeout=5) as resp:
+                resp.read()
+            closed += 1
+        except Exception:
+            pass
+    if closed:
+        print(f"  🧹 清掉僵尸标签页 {closed} 个（闲鱼/Boss 页已跳过）")
+    return closed
+
+
 def ensure_tab(page, tab):
     """tab 失联则重建（关旧 + 开新），最多重试 3 次。
 
@@ -64,6 +114,13 @@ def ensure_tab(page, tab):
             if _tab_alive(new_tab):
                 print("  ✅ tab 已重建")
                 return new_tab
+            # ★ 2026-09-18 补：新建出来但不可用的 tab 必须立刻关掉。
+            #   实测每轮重建都会泄漏一个僵尸标签页（攒到 11 个），
+            #   僵尸页反过来加重 Chrome 负担 → 更容易再次失联（恶性循环）。
+            try:
+                new_tab.close()
+            except Exception:
+                pass
         except Exception as e:
             print(f"  ⚠️ tab 重建失败({i}/3): {e}")
         time.sleep(TAB_RETRY_WAIT)
@@ -424,6 +481,7 @@ def main():
     # kill_switch_check()。此前 51job / 猎聘 完全不查急停开关：翻 kill switch 时
     # Boss 停了、这两个平台照投不误。
     from shared import kill_switch_check
+    import reply_lock     # 回复审核锁（v5 第十二条）
     _allowed, _kreason = kill_switch_check()
     if not _allowed:
         print(f"⛔ kill switch 生效中，本轮 51job 不投递：{_kreason}")
@@ -442,6 +500,7 @@ def main():
               f"端口 {PORT} 连不上：{e}\n先确认调试端口的 Chrome 起着。",
               level="error", throttle=1800)
         return
+    sweep_stale_tabs(page)          # 先清僵尸页，再开自己的投递页
     tab = page.new_tab("about:blank")
     tab = ensure_tab(page, tab)
     if tab is None:
@@ -478,6 +537,19 @@ def main():
                 if today_applied >= DAILY_LIMIT: break
                 if in_night_window():
                     print("  🌙 已到夜间禁投时段(22:00-8:00)，本轮收工")
+                    break
+                # ── 回复审核锁（v5 第十二条·最高优先级：回复 > 投递）──
+                # 2026-09-18 补：此前只有 boss_apply 查这个锁，51job 一行都没查 →
+                # 「有待审 HR 回复」的那几天 51job 照投（9/16 99 条、9/17 100 条），
+                # Boss 却正确停了。产量最大的通道上规则是空的。
+                if reply_lock.is_locked():
+                    print(f"\n  🔒 [REPLY_REVIEW_LOCK] 检测到待审核 HR 回复 — "
+                          f"51job 在 {city}×{kw} 前暂停本轮投递")
+                    alert("reply_lock_block", f"51job 因待审 HR 回复暂停（{city}×{kw}）",
+                          "有待审核的 HR 回复时暂停自动投递（v5 第十二条，设计行为）。\n"
+                          "审核：python3 reply_lock.py review ；审完自动恢复。",
+                          level="info", throttle=3600)
+                    fatal = True
                     break
                 # 每个关键词前确认 tab 可用（掉线就重建，别让剩余关键词空转作废）
                 tab = ensure_tab(page, tab)
