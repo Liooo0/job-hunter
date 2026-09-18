@@ -507,6 +507,133 @@ SCAN_INTERVAL = 15 * 60  # 扫描间隔 15 分钟
 SCAN_ROUNDS = 4          # 默认盯 1 小时（4 轮）
 WATCH_BATCH = 3          # （遗留常量）
 
+
+# ── 会话定位（2026-09-18 重写为纯 JS）──
+# 为什么不用 DrissionPage 的元素 API：实测在这页上坑太多 ——
+#   ① 元素定义了 __len__，`.name-box` 无子元素时 `if nb:` 为假 → 静默跳过点击；
+#   ② ele() 在虚拟滚动列表里时好时坏（"No element found"）；
+#   ③ React 受控 input 用 JS 直接赋 value 不触发过滤，需原生 setter + input 事件。
+# 因此全部改用 CDP 执行 JS：文本归一化匹配 + 原生 setter 搜索 + JS 点击。
+
+_FIND_CONV_JS = r"""
+return (() => {
+  const cands = %s;
+  const norm = s => (s || '').replace(/[\s\u200b\u00a0]+/g, '');
+  const strong = cands.filter(c => c.length >= 5);
+  const weak   = cands.filter(c => c.length >= 3 && c.length < 5);
+  const lis = [...document.querySelectorAll('li')];
+  const sHit = [], wHit = [];
+  lis.forEach((li, idx) => {
+    const t = norm(li.innerText || '');
+    if (t.length < 8) return;
+    const si = strong.findIndex(c => t.includes(c));
+    if (si >= 0) { sHit.push({idx: idx, t: t.slice(0, 44), p: si}); return; }
+    if (weak.some(c => t.includes(c))) wHit.push({idx: idx, t: t.slice(0, 44)});
+  });
+  let pick = null, why = '';
+  if (sHit.length) { sHit.sort((a, b) => a.p - b.p); pick = sHit[0]; why = 'strong'; }
+  else if (wHit.length === 1) { pick = wHit[0]; why = 'weak-unique'; }
+  else if (wHit.length > 1) { why = 'ambiguous:' + wHit.length; }
+  else { why = 'none'; }
+  return JSON.stringify({pick: pick, why: why, li: lis.length,
+                         s: sHit.length, w: wHit.length,
+                         samples: [...sHit, ...wHit].slice(0, 4).map(h => h.t)});
+})()
+"""
+
+_CLICK_CONV_JS = r"""
+return (() => {
+  const lis = [...document.querySelectorAll('li')];
+  const li = lis[%d];
+  if (!li) return 'NO_LI';
+  const box = li.querySelector('.name-box') || li;
+  box.scrollIntoView({block: 'center'});
+  box.click();
+  return 'CLICKED:' + (box.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 30);
+})()
+"""
+
+_SET_SEARCH_JS = r"""
+return (() => {
+  const b = document.querySelector('input.boss-search-input') ||
+            [...document.querySelectorAll('input')].find(i => (i.placeholder || '').includes('搜索'));
+  if (!b) return 'NO_BOX';
+  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+  setter.call(b, %s);                     // React 受控输入必须走原生 setter
+  b.dispatchEvent(new Event('input', {bubbles: true}));
+  return 'SET:' + b.value;
+})()
+"""
+
+
+def locate_conversation(tab, name_box: str) -> tuple[bool, str]:
+    """定位并点击目标会话。返回 (是否点到, 说明)。纯 JS，安全优先：
+
+    ＊ 强候选（整串 / 姓氏称谓+公司前 4 字）命中即用；
+    ＊ 只用「李女士」这种短候选时，必须全列表唯一，多个命中直接放弃（防发错人）；
+    ＊ 列表里没有时，用搜索框（原生 setter 触发 React）+ 再找一次。
+    """
+    import re as _re
+
+    def _norm(s: str) -> str:
+        return _re.sub(r"[\s\u200b\u00a0]+", "", s or "")
+
+    full = _norm(name_box)
+    cands = []
+    m = _re.match(r"^([\u4e00-\u9fa5]{1,3}(?:女士|先生|小姐|老师))(.+)$", full)
+    if m:
+        cands.append(m.group(1) + m.group(2)[:4])
+        cands.append(m.group(1))
+    cands.append(full)
+    seen = set()
+    cands = [c for c in cands if len(c) >= 3 and not (c in seen or seen.add(c))]
+
+    def _try() -> tuple[bool, str]:
+        raw = tab.run_js(_FIND_CONV_JS % json.dumps(cands, ensure_ascii=False))
+        try:
+            d = json.loads(raw or "{}")
+        except Exception:
+            return False, f"定位返回异常: {str(raw)[:60]}"
+        if not d.get("pick"):
+            return False, d.get("why") or "none"
+        # ★ 硬规则（2026-09-18 事故）：只接受强匹配。
+        #   弱匹配的「全列表唯一」并不等于「找对了人」——实测把「李女士·聚客科技」
+        #   的回复发给了另一家公司的「李女士」（搜索过滤后列表里只剩那一个李女士）。
+        #   宁可漏发让人工处理，也不能发错人。
+        if d.get("why") != "strong":
+            return False, f"仅弱匹配({d.get('why')})，拒绝发送：{d['pick'].get('t','')[:30]}"
+        r = tab.run_js(_CLICK_CONV_JS % d["pick"]["idx"])
+        if isinstance(r, str) and r.startswith("CLICKED"):
+            return True, r[8:]
+        return False, f"点击失败: {str(r)[:40]}"
+
+    # 先清掉可能残留的过滤词（否则列表被锁着，谁都找不到）
+    try:
+        tab.run_js(_SET_SEARCH_JS % json.dumps("", ensure_ascii=False))
+        time.sleep(0.8)
+    except Exception:
+        pass
+
+    ok, info = _try()
+    if ok:
+        return True, info + " [列表]"
+
+    # 兜底：用搜索框过滤后再找（Boss 只搜 30 天内联系人）
+    short = _norm(name_box)
+    m2 = _re.match(r"^([\u4e00-\u9fa5]{1,3}(?:女士|先生|小姐|老师))", short)
+    kw = m2.group(1) if m2 else short[:4]
+    try:
+        setres = tab.run_js(_SET_SEARCH_JS % json.dumps(kw, ensure_ascii=False))
+        print(f"   🔎 用搜索框过滤: {kw} → {setres}")
+        time.sleep(3)
+        ok2, info2 = _try()      # _try 内部已只认强匹配
+        if ok2:
+            return True, info2 + " [搜索]"
+        return False, f"{info} / 搜索后: {info2}（宁漏发不发错人）"
+    except Exception as e:
+        return False, f"{info} / 搜索异常: {str(e)[:40]}"
+
+
 def send_one(page, name_box: str, reply: str):
     """
     保守发送单条回复（验证过的方案）：
@@ -528,86 +655,12 @@ def send_one(page, name_box: str, reply: str):
     if tab is None:
         return False
 
-    # 1. 点击目标会话（2026-09-18 重写）
-    #    旧版两处硬伤，导致 12 条里 9 条被误报「未找到会话」：
-    #      ① 用 name_box[:10] 原样子串匹配 —— 会话标题带空格（「李女士 聚客科技…」），
-    #         10 字截断后必然匹配不到；
-    #      ② 只看当前渲染出的 <li> —— 会话在列表下方（需滚动）时同样找不到。
-    #    这里改成归一化（去空格/分隔符）+ 滚动查找，并且**防发错人**：
-    #      先只用长候选（整串 / 姓名+公司前4字）匹配；只有唯一命中才敢点。
-    #      退到只用姓氏称谓（如「李女士」）时，必须**全列表唯一**，否则拒绝发送。
-    import re as _re
-
-    def _norm(s: str) -> str:
-        return _re.sub(r"[\s\u200b\u00a0·・|/\\\-—–]+", "", s or "")
-
-    full = _norm(name_box)
-    cands: list[str] = []
-    m = _re.match(r"^([\u4e00-\u9fa5]{1,3}(?:女士|先生|小姐|老师))(.+)$", full)
-    if m:
-        cands.append(m.group(1) + m.group(2)[:4])
-        cands.append(m.group(1))
-    cands.append(full)
-    seen_c: set[str] = set()
-    cands = [c for c in cands if len(c) >= 3 and not (c in seen_c or seen_c.add(c))]
-    strong = [c for c in cands if len(c) >= 5]
-    weak = [c for c in cands if 3 <= len(c) < 5]
-
-    hits: list[tuple[int, int, object, str]] = []   # (0=强/1=弱, 候选序, li, 文本)
-    scroll_js = """
-        var ul = document.querySelector('ul');
-        for (var el of document.querySelectorAll('ul,div')) {
-            if (el.scrollHeight > el.clientHeight + 50) { el.scrollTop += 700; break; }
-        }
-    """
-    try:
-        for _attempt in range(3):                   # 不滚 → 滚一屏 → 再滚一屏
-            for li in tab.eles("tag:li"):
-                txt = _norm(li.text or "")
-                if len(txt) < 8:
-                    continue
-                for pri, c in enumerate(strong):
-                    if c in txt:
-                        hits.append((0, pri, li, txt))
-                        break
-                else:
-                    for c in weak:
-                        if c in txt:
-                            hits.append((1, 0, li, txt))
-                            break
-            if any(h[0] == 0 for h in hits):
-                break
-            tab.run_js(scroll_js)
-            time.sleep(1.5)
-    except Exception:
-        pass
-
-    clicked = False
-    matched_txt = ""
-    strong_hits = [h for h in hits if h[0] == 0]
-    if strong_hits:
-        pick = sorted(strong_hits, key=lambda h: h[1])[0]
-    elif len(hits) == 1:
-        pick = hits[0]
-    elif len(hits) > 1:
-        print(f"   ⛔ 弱匹配命中 {len(hits)} 个会话，拒绝发送（防发错人）: "
-              f"{[h[3][:22] for h in hits[:4]]}")
+    # 定位并点击目标会话（纯 JS，见 locate_conversation 的说明）
+    _ok, _info = locate_conversation(tab, name_box)
+    if not _ok:
+        print(f"   ⚠️ 未找到会话: {name_box!r} — {_info}（Boss 仅可搜 30 天内联系人）")
         return False
-    else:
-        pick = None
-    if pick is not None:
-        try:
-            nb = pick[2].ele("css:.name-box", timeout=2)
-            if nb:
-                nb.click()
-                clicked = True
-                matched_txt = pick[3][:40]
-        except Exception:
-            pass
-    if not clicked:
-        print(f"   ⚠️ 未找到会话: {name_box!r}（候选项 {cands}）")
-        return False
-    print(f"   🎯 命中会话: {matched_txt}")
+    print(f"   🎯 命中会话: {_info}")
 
     time.sleep(3)
 
