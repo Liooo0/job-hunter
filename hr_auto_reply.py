@@ -528,23 +528,86 @@ def send_one(page, name_box: str, reply: str):
     if tab is None:
         return False
 
-    # 1. 点击目标会话（用 name-box 精确点击）
-    search = (name_box or "")[:10]
-    clicked = False
+    # 1. 点击目标会话（2026-09-18 重写）
+    #    旧版两处硬伤，导致 12 条里 9 条被误报「未找到会话」：
+    #      ① 用 name_box[:10] 原样子串匹配 —— 会话标题带空格（「李女士 聚客科技…」），
+    #         10 字截断后必然匹配不到；
+    #      ② 只看当前渲染出的 <li> —— 会话在列表下方（需滚动）时同样找不到。
+    #    这里改成归一化（去空格/分隔符）+ 滚动查找，并且**防发错人**：
+    #      先只用长候选（整串 / 姓名+公司前4字）匹配；只有唯一命中才敢点。
+    #      退到只用姓氏称谓（如「李女士」）时，必须**全列表唯一**，否则拒绝发送。
+    import re as _re
+
+    def _norm(s: str) -> str:
+        return _re.sub(r"[\s\u200b\u00a0·・|/\\\-—–]+", "", s or "")
+
+    full = _norm(name_box)
+    cands: list[str] = []
+    m = _re.match(r"^([\u4e00-\u9fa5]{1,3}(?:女士|先生|小姐|老师))(.+)$", full)
+    if m:
+        cands.append(m.group(1) + m.group(2)[:4])
+        cands.append(m.group(1))
+    cands.append(full)
+    seen_c: set[str] = set()
+    cands = [c for c in cands if len(c) >= 3 and not (c in seen_c or seen_c.add(c))]
+    strong = [c for c in cands if len(c) >= 5]
+    weak = [c for c in cands if 3 <= len(c) < 5]
+
+    hits: list[tuple[int, int, object, str]] = []   # (0=强/1=弱, 候选序, li, 文本)
+    scroll_js = """
+        var ul = document.querySelector('ul');
+        for (var el of document.querySelectorAll('ul,div')) {
+            if (el.scrollHeight > el.clientHeight + 50) { el.scrollTop += 700; break; }
+        }
+    """
     try:
-        for li in tab.eles("tag:li"):
-            txt = li.text or ""
-            if search and search in txt and len(txt) > 15:
-                nb = li.ele("css:.name-box", timeout=2)
-                if nb:
-                    nb.click()
-                    clicked = True
-                    break
+        for _attempt in range(3):                   # 不滚 → 滚一屏 → 再滚一屏
+            for li in tab.eles("tag:li"):
+                txt = _norm(li.text or "")
+                if len(txt) < 8:
+                    continue
+                for pri, c in enumerate(strong):
+                    if c in txt:
+                        hits.append((0, pri, li, txt))
+                        break
+                else:
+                    for c in weak:
+                        if c in txt:
+                            hits.append((1, 0, li, txt))
+                            break
+            if any(h[0] == 0 for h in hits):
+                break
+            tab.run_js(scroll_js)
+            time.sleep(1.5)
     except Exception:
         pass
-    if not clicked:
-        print(f"   ⚠️ 未找到会话: {search}")
+
+    clicked = False
+    matched_txt = ""
+    strong_hits = [h for h in hits if h[0] == 0]
+    if strong_hits:
+        pick = sorted(strong_hits, key=lambda h: h[1])[0]
+    elif len(hits) == 1:
+        pick = hits[0]
+    elif len(hits) > 1:
+        print(f"   ⛔ 弱匹配命中 {len(hits)} 个会话，拒绝发送（防发错人）: "
+              f"{[h[3][:22] for h in hits[:4]]}")
         return False
+    else:
+        pick = None
+    if pick is not None:
+        try:
+            nb = pick[2].ele("css:.name-box", timeout=2)
+            if nb:
+                nb.click()
+                clicked = True
+                matched_txt = pick[3][:40]
+        except Exception:
+            pass
+    if not clicked:
+        print(f"   ⚠️ 未找到会话: {name_box!r}（候选项 {cands}）")
+        return False
+    print(f"   🎯 命中会话: {matched_txt}")
 
     time.sleep(3)
 
