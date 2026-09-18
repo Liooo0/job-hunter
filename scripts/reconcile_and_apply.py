@@ -38,7 +38,7 @@ for s in left:
 # 3) 释放锁
 released = RL.release_if_empty()
 info = RL.lock_info()
-print(f"\n投递锁: {'🔓 已释放' if released else '🔒 仍锁着'} "
+print("\n投递锁：" + ("🔒 仍锁着" if RL.is_locked() else "🔓 已释放（无活跃条目）"))
       f"(locked={info.get('locked')}, pending={info.get('pending_count')})")
 
 if not RL.is_locked():

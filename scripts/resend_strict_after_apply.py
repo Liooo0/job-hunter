@@ -55,4 +55,7 @@ for s in left:
                note="严格匹配（只认强匹配，宁漏发不发错人）下仍找不到会话；"
                     "Boss 网页仅覆盖 30 天内联系人 → 需人工在 Boss APP 回复。")
 print(f"\n本轮：成功 {sent} / 失败 {failed}；落终态 {len(left)} 条", flush=True)
-print("投递锁：" + ("🔓 已释放" if RL.release_if_empty() else "🔒 仍锁着"), flush=True)
+RL.release_if_empty()
+# 注意：状态必须看 is_locked()。release_if_empty() 的返回值只表示「本次是否真的删了锁」，
+# 锁已被前一个环节释放时它会返回 False，据此打印会误报「仍锁着」（2026-09-18 踩到）。
+print("投递锁：" + ("🔒 仍锁着" if RL.is_locked() else "🔓 已释放（无活跃条目）"), flush=True)
