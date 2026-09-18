@@ -24,9 +24,9 @@ SALARY_NORMAL_FLOOR_MIN = 8.0     # 8-10K 正常档 —— 不得低于 8
 SALARY_PRIORITY_MIN = 10.0        # >=10K 优先档 —— 不得低于 10
 
 # 双休红线：这些词一旦从正文排除词消失 → 拒绝启动
-# 2026-09-05 冲刺模式：大小周移出（改由 job_decision 薪资感知处理：≥12K 特批/<12K 拒，
-# 见 check_decisioner 对 DXZ_WAIVER 的校验）。单休/996/夜班仍是硬排除词。
-WEEKEND_MANDATORY_WORDS = ["单休", "996", "夜班"]
+# 2026-09-16 用户定稿「至少双休」：大小周/单双休**回到硬排除词**（冲刺期的
+# 「≥12K 可谈」特批已废除，见 check_decisioner 对 DXZ_WAIVER 的反向校验）。
+WEEKEND_MANDATORY_WORDS = ["单休", "大小周", "单双休", "996", "夜班"]
 # 实习硬过滤：标题排除词必须含
 INTERN_MANDATORY_WORDS = ["实习", "实习生"]
 
@@ -114,12 +114,15 @@ def check_decisioner(cfg: dict) -> list:
             v.append("WORKDAY_REDLINES 过短（<6词）—— 制度红线被抽空")
         elif len(jd.SPECIAL_APPROVAL_SIGNALS) < 6:
             v.append("SPECIAL_APPROVAL_SIGNALS 过短（<6词）—— 特批通道被抽空")
-        # 2026-09-05 冲刺模式：大小周移出 body_exclude 后，必须确认 job_decision
-        # 仍有薪资感知豁免分支（≥12K 放行），否则双休红线被彻底绕过
+        # 2026-09-16 用户定稿「至少双休」：job_decision 里**不得**再有大小周薪资豁免分支。
+        # 历史事故形态：冲刺期给大小周开的特批通道（≥12K 放行）事后没人收回，
+        # 于是高薪大小周被静默放行。这里反向校验，发现残留就拒绝启动。
         try:
             _src = Path(jd.__file__).read_text(encoding="utf-8")
-            if 'hit == "大小周"' not in _src:
-                v.append("job_decision 缺失大小周薪资豁免分支（DXZ_WAIVER）—— 双休红线被绕过")
+            if 'hit == "大小周"' in _src:
+                v.append("job_decision 仍有大小周薪资豁免分支（DXZ_WAIVER）—— 违反「至少双休」定稿")
+            if "单双休" not in jd.WORKDAY_REDLINES:
+                v.append("WORKDAY_REDLINES 缺「单双休」—— 一个月休六天会被当双休放行")
         except Exception:
             v.append("无法读取 job_decision.py 源码校验大小周豁免分支")
     except Exception as e:

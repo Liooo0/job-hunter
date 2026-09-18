@@ -29,7 +29,7 @@ SALARY_PRIORITY = 10.0       # ≥10K 高优先级
 
 # ── 制度红线信号（从 desc/title 结构化提取，命中即死） ──
 WORKDAY_REDLINES = [
-    "单休", "大小周", "996", "007", "上六休一", "做六休一",
+    "单休", "大小周", "单双休", "996", "007", "上六休一", "做六休一",
     "轮班", "倒班", "三班倒", "两班倒", "夜班", "通宵",
     "月休4天", "月休四天", "每周休1天", "每周休息一天",
 ]
@@ -213,17 +213,12 @@ def evaluate_job(company: str, title: str, desc: str, salary: str,
         return Decision("REJECT", reason="解析信号:实习岗→过滤")
 
     # ── 1. 关键词兜底：制度红线 ──
-    # 2026-09-05 冲刺模式：单休/996/007/夜班/轮班 仍命中即死（真坑，26天也耗不起）；
-    # 大小周 = 降级为"薪资≥12K 可谈"（SPECIAL_APPROVAL_SIGNALS 含 salary 12K 判定见下），
-    # <12K 的大小周仍 REJECT。双休仍是最优，但不再一票否决大小周。
+    # 用户在 2026-09-16 定稿：**至少双休**。单休/大小周/996/007/夜班/轮班 一律命中即死，
+    # 不再有薪资例外（原「大小周 ≥12K 可谈」的特批通道已废除，见 tests 中对应用例）。
     _hit = _has_any(combined, WORKDAY_REDLINES)
     if _hit:
         hit = next(w for w in WORKDAY_REDLINES if w in combined)
-        # 仅"大小周"可被 12K+ 薪资特批覆盖（parse_salary_low 返回 K 单位，故 ≥12）
-        if hit == "大小周" and parse_salary_low(salary) >= 12:
-            pass  # 允许，进入薪资分层（reason 由薪资档位给出）
-        else:
-            return Decision("REJECT", reason=f"制度红线:{hit}")
+        return Decision("REJECT", reason=f"制度红线:{hit}")
     if sig.get("workday") == "unknown" and _has_any(title, ["轮班", "夜班", "倒班"]):
         return Decision("REJECT", reason="制度红线:标题轮班/夜班")
 

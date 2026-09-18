@@ -168,6 +168,7 @@ def build_reply(msg_text: str, job_title: str, company: str) -> tuple[str, str]:
    - 只提简历里真实存在的经历，绝不编造（尤其不得提 Chroma/BGE/向量库）
    - 呼应HR提到的点（岗位、技能、问题）
 3. 拒绝/无意义 → 短回复（8-15字），如"好的，收到，祝顺利！"
+4. **不许编档案里没有的数字/条件**：期望薪资、到岗时间这类具体数字，档案里没写就不要替{_WHO}报（2026-09-16 实例：LLM 自行编出"期望10-15K"）。改成"具体看岗位聊"或反问对方。
 
 【当前消息】
 公司: {company}
@@ -231,6 +232,117 @@ def _is_hr_real_message(msg: str) -> bool:
     return True
 
 
+def _target_pages() -> list:
+    """取 Chrome 的 page 目标列表（HTTP /json/list，走 browser 进程，不碰 renderer）。
+
+    2026-09-16：原来靠「遍历所有 tab 读 tb.url」找聊天页，一旦某个 tab 的 renderer
+    卡死（页面 readyState 永远到不了 complete，DrissionPage 的 .url 会一直等），
+    整个扫描就永久挂住——当天 zhipin/goofish 三个 tab 就是这样把扫描挂死的。
+    改成 target 级查询 + 只挑命中的那个 tab 建对象。
+    """
+    import urllib.request
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:9223/json/list", timeout=5) as r:
+            return json.load(r)
+    except Exception as e:
+        print(f"⚠️ 取 Chrome 目标列表失败: {e}")
+        return []
+
+
+def _cdp_call(ws, mid: int, method: str, params: dict = None, wait: float = 6):
+    """裸 CDP 调用（自带超时），用来判断某个 tab 的 renderer 是不是卡死了"""
+    try:
+        ws.send(json.dumps({"id": mid, "method": method, "params": params or {}}))
+    except Exception as e:
+        return {"_err": repr(e)[:80]}
+    end = time.time() + wait
+    while time.time() < end:
+        try:
+            ws.settimeout(max(0.3, end - time.time()))
+            raw = ws.recv()
+        except Exception as e:
+            return {"_err": repr(e)[:80]}
+        try:
+            msg = json.loads(raw)
+        except Exception:
+            continue
+        if msg.get("id") == mid:
+            return msg
+    return {"_timeout": True}
+
+
+def _revive_if_hung(t: dict) -> bool:
+    """tab 卡死时用 Page.reload 救活。
+
+    Page.reload 由 browser 进程处理，卡住的 renderer 也能收到 → 实测有效
+    （2026-09-16 三个卡死的 zhipin tab + goofish tab 都是一次 reload 复活）。
+    返回 True 表示这个 tab 现在可以用了。
+    """
+    import websocket
+    try:
+        ws = websocket.create_connection(t["webSocketDebuggerUrl"], timeout=8,
+                                         suppress_origin=True)
+    except Exception:
+        return False
+    try:
+        alive = _cdp_call(ws, 9001, "Runtime.evaluate",
+                          {"expression": "1", "returnByValue": True}, wait=5)
+        if alive.get("result"):
+            return True
+        print(f"   ♻️ tab 卡死，reload 救活: {t.get('url', '')[:50]}")
+        _cdp_call(ws, 9002, "Page.reload", {"ignoreCache": False}, wait=5)
+    finally:
+        try:
+            ws.close()
+        except Exception:
+            pass
+    time.sleep(8)
+    return True
+
+
+def _find_chat_tab(page):
+    """找到（必要时新建）Boss 聊天页 tab。找不到/接管失败返回 None。"""
+    import time as _t
+    for t in _target_pages():
+        if t.get("type") == "page" and "zhipin.com/web/geek/chat" in (t.get("url") or ""):
+            _revive_if_hung(t)
+            try:
+                return page.get_tab(t["id"])
+            except Exception as e:
+                print(f"⚠️ 接管聊天 tab 失败: {e}")
+                break
+    try:
+        tab = page.new_tab("https://www.zhipin.com/web/geek/chat")
+        _t.sleep(6)
+        return tab
+    except Exception as e:
+        print(f"❌ 打开聊天页失败: {e}")
+        return None
+
+
+def _own_sent_texts() -> set:
+    """取我们**已经发出去**的回复正文（reply_pending.json 里 status=sent 的 draft）。
+
+    2026-09-16：Boss 会话列表最后一句话如果是我们自己的回复，原来会被当成
+    HR 新消息又起草一遍（当场在队列里看到一条「回给自己」的草稿）。这里按
+    正文精确比对（去空白）来挡掉，只认已发送的记录，不与真实 HR 消息混淆。
+    """
+    try:
+        import reply_lock as _RL
+        return {(s.get('draft') or '') for s in _RL.pending()
+                if s.get('status') == 'sent' and s.get('draft')}
+    except Exception:
+        return set()
+
+
+def _is_own_text(msg: str, own_texts: set) -> bool:
+    """消息是否就是我们自己发出去的那句（去空白后精确比对）"""
+    t = re.sub(r'\s+', '', msg or '')
+    if not t:
+        return False
+    return any(t == re.sub(r'\s+', '', o) for o in own_texts if o)
+
+
 def _scan_chat_page(unread_only: bool = False) -> list:
     """
     扫描 Boss 聊天页会话列表，返回 HR 真实消息列表。
@@ -245,18 +357,9 @@ def _scan_chat_page(unread_only: bool = False) -> list:
         print(f"❌ Chrome连接失败: {e}")
         return []
 
-    tab = None
-    for tid in page.tab_ids:
-        try:
-            tb = page.get_tab(tid)
-            if "zhipin.com/web/geek/chat" in (tb.url or ""):
-                tab = tb
-                break
-        except Exception:
-            continue
+    tab = _find_chat_tab(page)
     if tab is None:
-        tab = page.new_tab("https://www.zhipin.com/web/geek/chat")
-        _t.sleep(6)
+        return []
 
     # 先滚动到底部，确保列表全加载
     for _ in range(3):
@@ -283,6 +386,7 @@ def _scan_chat_page(unread_only: bool = False) -> list:
     ''')
 
     # 过滤：只保留 HR 真实消息；未读模式额外要求角标 ≥ 1
+    own_texts = _own_sent_texts()
     hr_replies = []
     for item in result:
         if unread_only and item.get("unread", 0) < 1:
@@ -290,6 +394,8 @@ def _scan_chat_page(unread_only: bool = False) -> list:
         msg = item.get("lastMsg", "")
         if not _is_hr_real_message(msg):
             continue
+        if _is_own_text(msg, own_texts):
+            continue   # 最后一句是我们自己发的 → 不是 HR 新消息
 
         hr_replies.append({
             "company": _extract_company(item["nameBox"]),
@@ -418,22 +524,9 @@ def send_one(page, name_box: str, reply: str):
         return False
 
     # 复用已打开的聊天 tab（不开新 tab，降低风控）
-    tab = None
-    for tid in page.tab_ids:
-        try:
-            tb = page.get_tab(tid)
-            if "zhipin.com/web/geek/chat" in (tb.url or ""):
-                tab = tb
-                break
-        except Exception:
-            continue
+    tab = _find_chat_tab(page)
     if tab is None:
-        try:
-            tab = page.new_tab("https://www.zhipin.com/web/geek/chat")
-            time.sleep(6)
-        except Exception as e:
-            print(f"❌ 打开聊天页失败: {e}")
-            return False
+        return False
 
     # 1. 点击目标会话（用 name-box 精确点击）
     search = (name_box or "")[:10]

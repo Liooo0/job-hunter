@@ -73,5 +73,37 @@ class TestScanGracefulDegradation(unittest.TestCase):
                 sys.modules.pop("DrissionPage", None)
 
 
+class TestHangDeadlockGuard(unittest.TestCase):
+    """2026-09-16 回归：某个 tab 的 renderer 卡死不能把整个扫描挂住。
+
+    当天事实：zhipin 三个 tab + goofish tab 的 renderer 卡在加载中，
+    DrissionPage 读 .url 会一直等 → 扫描永久挂起。修法：改用目标级列表
+    (HTTP /json/list) 只挑聊天页 tab，卡死的用 Page.reload 救活。
+    """
+
+    def setUp(self):
+        self.src = (PROJECT / "hr_auto_reply.py").read_text(encoding="utf-8")
+
+    def test_no_longer_loops_all_tabs_reading_url(self):
+        self.assertNotIn("for tid in page.tab_ids", self.src,
+                         "遍历所有 tab 读 url 会把扫描挂死，必须走目标级列表")
+
+    def test_uses_target_level_lookup_and_revive(self):
+        self.assertIn("def _find_chat_tab", self.src)
+        self.assertIn("json/list", self.src)
+        self.assertIn("Page.reload", self.src)
+
+    def test_own_sent_message_is_not_treated_as_hr_message(self):
+        """Boss 会话最后一句是自己发的回复时，不能再起草一遍回给自己。"""
+        own = {"目前离职状态，随时能到岗。简历发你？"}
+        self.assertTrue(hr_auto_reply._is_own_text("目前离职状态，随时能到岗。简历发你？", own))
+        self.assertTrue(hr_auto_reply._is_own_text("目前离职状态， 随时能到岗。简历发你？", own),
+                        "空白差异不应影响判定")
+        self.assertFalse(hr_auto_reply._is_own_text("你好，方便发份简历吗？", own))
+        self.assertFalse(hr_auto_reply._is_own_text("", own))
+        self.assertFalse(hr_auto_reply._is_own_text("随便一句话", set()))
+        self.assertIsInstance(hr_auto_reply._own_sent_texts(), set)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
