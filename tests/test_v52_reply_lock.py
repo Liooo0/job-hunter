@@ -182,3 +182,41 @@ class TestDuplicateAcquireBug(unittest.TestCase):
         ids = [s["id"] for s in self.rl.pending()]
         self.assertIn("R2", ids, "同HR第二条必须能入队（不被sent旧记录挡）")
         os.environ.pop("REPLY_LOCK_FAKE_SEND", None)
+
+
+class TestSameHrNewMessageDedupe(unittest.TestCase):
+    """2026-09-16 回归：同一 HR 的 pending 条目不能把**新消息**的草稿吞掉。
+
+    当天慧博云通 HR 从"要附件简历"追问到"在职吗/到岗时间/期望薪资"，
+    reply_lock 用 (公司, HR名) 去重 → 新草稿被静默丢弃，日志却报"已入队"。
+    key 加上消息正文后：新消息入队，同一句重复扫到仍去重。
+    """
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="rldedupe_"))
+        import reply_lock
+        self.rl = importlib.reload(reply_lock)
+        self.rl.DATA_DIR = self.tmp
+        self.rl.LOCK_FILE = self.tmp / "reply_review.lock"
+        self.rl.PENDING_FILE = self.tmp / "reply_pending.json"
+        self.rl.STATS_FILE = self.tmp / "reply_stats.json"
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _s(self, sid, msg):
+        return {"id": sid, "company": "慧博云通", "hr_name": "陈先生", "status": "pending",
+                "hr_message": msg, "draft": f"答{sid}", "purpose": "x"}
+
+    def test_new_message_from_same_hr_is_queued(self):
+        self.rl.acquire([self._s("R1", "我想要一份您的附件简历，您是否同意")])
+        self.rl.acquire([self._s("R2", "简历收到啦，请问目前在职吗，多久能到岗呀")])
+        ids = [s["id"] for s in self.rl.pending()]
+        self.assertIn("R2", ids, "同HR的新消息必须入队（不能被 pending 旧条目吞掉）")
+        self.assertEqual(sorted(ids), ["R1", "R2"])
+
+    def test_same_message_rescanned_is_deduped(self):
+        self.rl.acquire([self._s("R1", "同一句话")])
+        self.rl.acquire([self._s("R1b", "同一句话")])   # 下一轮扫描重复扫到
+        ids = [s["id"] for s in self.rl.pending()]
+        self.assertEqual(ids, ["R1"], "同一句重复扫到不得重复入队")

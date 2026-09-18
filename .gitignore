@@ -13,6 +13,12 @@ pending_replies/
 archived_replies/
 sent_replies/
 # ★ 本机个性化档案（含真实姓名/背景），公开仓库只留 PII-free 默认值
+# ── 治本（2026-09-18）：整个 data/ 一律不进 Git ──
+# 旧写法是逐个文件名（data/reply_pending.json 等），新出现的运行数据
+# （如 data/51job_status.json）每次都漏，闸门 L1 每次都要兜。
+# 规则：运行数据属于本机，公开物只走 datasets/public/。
+data/
+!datasets/
 data/my_profile.txt
 # ★ 2026-09-15 修复：上一版只挡了目录，漏了实际在用的 json 文件，
 #   结果 data/reply_pending.json（含 HR 姓名/公司/对话原文/拟发内容）

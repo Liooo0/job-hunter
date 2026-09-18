@@ -299,6 +299,7 @@ def main():
 
     # 2026-09-15：与 shared.py 的规矩对齐 —— 写操作前必须查急停开关
     from shared import kill_switch_check
+    import reply_lock     # 回复审核锁（v5 第十二条）
     _allowed, _kreason = kill_switch_check()
     if not _allowed:
         print(f"⛔ kill switch 生效中，本轮猎聘不投递：{_kreason}")
@@ -322,6 +323,15 @@ def main():
             if today_applied >= DAILY_LIMIT: break
             for kw in keywords:
                 if today_applied >= DAILY_LIMIT: break
+                # ── 回复审核锁（v5 第十二条：回复 > 投递）——2026-09-18 补，此前只有 Boss 查 ──
+                if reply_lock.is_locked():
+                    print(f"\n  🔒 [REPLY_REVIEW_LOCK] 检测到待审核 HR 回复 — "
+                          f"猎聘在 {city}×{kw} 前暂停本轮投递")
+                    alert("reply_lock_block", f"猎聘因待审 HR 回复暂停（{city}×{kw}）",
+                          "有待审核的 HR 回复时暂停自动投递（v5 第十二条，设计行为）。\n"
+                          "审核：python3 reply_lock.py review ；审完自动恢复。",
+                          level="info", throttle=3600)
+                    return
                 try:
                     a, s = run_city_keyword(page, tab, city, kw, count, seen, today_applied)
                     total_a += a; total_s += s; today_applied += a

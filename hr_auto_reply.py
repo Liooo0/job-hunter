@@ -168,6 +168,7 @@ def build_reply(msg_text: str, job_title: str, company: str) -> tuple[str, str]:
    - 只提简历里真实存在的经历，绝不编造（尤其不得提 Chroma/BGE/向量库）
    - 呼应HR提到的点（岗位、技能、问题）
 3. 拒绝/无意义 → 短回复（8-15字），如"好的，收到，祝顺利！"
+4. **不许编档案里没有的数字/条件**：期望薪资、到岗时间这类具体数字，档案里没写就不要替{_WHO}报（2026-09-16 实例：LLM 自行编出"期望10-15K"）。改成"具体看岗位聊"或反问对方。
 
 【当前消息】
 公司: {company}
@@ -231,6 +232,117 @@ def _is_hr_real_message(msg: str) -> bool:
     return True
 
 
+def _target_pages() -> list:
+    """取 Chrome 的 page 目标列表（HTTP /json/list，走 browser 进程，不碰 renderer）。
+
+    2026-09-16：原来靠「遍历所有 tab 读 tb.url」找聊天页，一旦某个 tab 的 renderer
+    卡死（页面 readyState 永远到不了 complete，DrissionPage 的 .url 会一直等），
+    整个扫描就永久挂住——当天 zhipin/goofish 三个 tab 就是这样把扫描挂死的。
+    改成 target 级查询 + 只挑命中的那个 tab 建对象。
+    """
+    import urllib.request
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:9223/json/list", timeout=5) as r:
+            return json.load(r)
+    except Exception as e:
+        print(f"⚠️ 取 Chrome 目标列表失败: {e}")
+        return []
+
+
+def _cdp_call(ws, mid: int, method: str, params: dict = None, wait: float = 6):
+    """裸 CDP 调用（自带超时），用来判断某个 tab 的 renderer 是不是卡死了"""
+    try:
+        ws.send(json.dumps({"id": mid, "method": method, "params": params or {}}))
+    except Exception as e:
+        return {"_err": repr(e)[:80]}
+    end = time.time() + wait
+    while time.time() < end:
+        try:
+            ws.settimeout(max(0.3, end - time.time()))
+            raw = ws.recv()
+        except Exception as e:
+            return {"_err": repr(e)[:80]}
+        try:
+            msg = json.loads(raw)
+        except Exception:
+            continue
+        if msg.get("id") == mid:
+            return msg
+    return {"_timeout": True}
+
+
+def _revive_if_hung(t: dict) -> bool:
+    """tab 卡死时用 Page.reload 救活。
+
+    Page.reload 由 browser 进程处理，卡住的 renderer 也能收到 → 实测有效
+    （2026-09-16 三个卡死的 zhipin tab + goofish tab 都是一次 reload 复活）。
+    返回 True 表示这个 tab 现在可以用了。
+    """
+    import websocket
+    try:
+        ws = websocket.create_connection(t["webSocketDebuggerUrl"], timeout=8,
+                                         suppress_origin=True)
+    except Exception:
+        return False
+    try:
+        alive = _cdp_call(ws, 9001, "Runtime.evaluate",
+                          {"expression": "1", "returnByValue": True}, wait=5)
+        if alive.get("result"):
+            return True
+        print(f"   ♻️ tab 卡死，reload 救活: {t.get('url', '')[:50]}")
+        _cdp_call(ws, 9002, "Page.reload", {"ignoreCache": False}, wait=5)
+    finally:
+        try:
+            ws.close()
+        except Exception:
+            pass
+    time.sleep(8)
+    return True
+
+
+def _find_chat_tab(page):
+    """找到（必要时新建）Boss 聊天页 tab。找不到/接管失败返回 None。"""
+    import time as _t
+    for t in _target_pages():
+        if t.get("type") == "page" and "zhipin.com/web/geek/chat" in (t.get("url") or ""):
+            _revive_if_hung(t)
+            try:
+                return page.get_tab(t["id"])
+            except Exception as e:
+                print(f"⚠️ 接管聊天 tab 失败: {e}")
+                break
+    try:
+        tab = page.new_tab("https://www.zhipin.com/web/geek/chat")
+        _t.sleep(6)
+        return tab
+    except Exception as e:
+        print(f"❌ 打开聊天页失败: {e}")
+        return None
+
+
+def _own_sent_texts() -> set:
+    """取我们**已经发出去**的回复正文（reply_pending.json 里 status=sent 的 draft）。
+
+    2026-09-16：Boss 会话列表最后一句话如果是我们自己的回复，原来会被当成
+    HR 新消息又起草一遍（当场在队列里看到一条「回给自己」的草稿）。这里按
+    正文精确比对（去空白）来挡掉，只认已发送的记录，不与真实 HR 消息混淆。
+    """
+    try:
+        import reply_lock as _RL
+        return {(s.get('draft') or '') for s in _RL.pending()
+                if s.get('status') == 'sent' and s.get('draft')}
+    except Exception:
+        return set()
+
+
+def _is_own_text(msg: str, own_texts: set) -> bool:
+    """消息是否就是我们自己发出去的那句（去空白后精确比对）"""
+    t = re.sub(r'\s+', '', msg or '')
+    if not t:
+        return False
+    return any(t == re.sub(r'\s+', '', o) for o in own_texts if o)
+
+
 def _scan_chat_page(unread_only: bool = False) -> list:
     """
     扫描 Boss 聊天页会话列表，返回 HR 真实消息列表。
@@ -245,18 +357,9 @@ def _scan_chat_page(unread_only: bool = False) -> list:
         print(f"❌ Chrome连接失败: {e}")
         return []
 
-    tab = None
-    for tid in page.tab_ids:
-        try:
-            tb = page.get_tab(tid)
-            if "zhipin.com/web/geek/chat" in (tb.url or ""):
-                tab = tb
-                break
-        except Exception:
-            continue
+    tab = _find_chat_tab(page)
     if tab is None:
-        tab = page.new_tab("https://www.zhipin.com/web/geek/chat")
-        _t.sleep(6)
+        return []
 
     # 先滚动到底部，确保列表全加载
     for _ in range(3):
@@ -283,6 +386,7 @@ def _scan_chat_page(unread_only: bool = False) -> list:
     ''')
 
     # 过滤：只保留 HR 真实消息；未读模式额外要求角标 ≥ 1
+    own_texts = _own_sent_texts()
     hr_replies = []
     for item in result:
         if unread_only and item.get("unread", 0) < 1:
@@ -290,6 +394,8 @@ def _scan_chat_page(unread_only: bool = False) -> list:
         msg = item.get("lastMsg", "")
         if not _is_hr_real_message(msg):
             continue
+        if _is_own_text(msg, own_texts):
+            continue   # 最后一句是我们自己发的 → 不是 HR 新消息
 
         hr_replies.append({
             "company": _extract_company(item["nameBox"]),
@@ -418,40 +524,90 @@ def send_one(page, name_box: str, reply: str):
         return False
 
     # 复用已打开的聊天 tab（不开新 tab，降低风控）
-    tab = None
-    for tid in page.tab_ids:
-        try:
-            tb = page.get_tab(tid)
-            if "zhipin.com/web/geek/chat" in (tb.url or ""):
-                tab = tb
-                break
-        except Exception:
-            continue
+    tab = _find_chat_tab(page)
     if tab is None:
-        try:
-            tab = page.new_tab("https://www.zhipin.com/web/geek/chat")
-            time.sleep(6)
-        except Exception as e:
-            print(f"❌ 打开聊天页失败: {e}")
-            return False
+        return False
 
-    # 1. 点击目标会话（用 name-box 精确点击）
-    search = (name_box or "")[:10]
-    clicked = False
+    # 1. 点击目标会话（2026-09-18 重写）
+    #    旧版两处硬伤，导致 12 条里 9 条被误报「未找到会话」：
+    #      ① 用 name_box[:10] 原样子串匹配 —— 会话标题带空格（「李女士 聚客科技…」），
+    #         10 字截断后必然匹配不到；
+    #      ② 只看当前渲染出的 <li> —— 会话在列表下方（需滚动）时同样找不到。
+    #    这里改成归一化（去空格/分隔符）+ 滚动查找，并且**防发错人**：
+    #      先只用长候选（整串 / 姓名+公司前4字）匹配；只有唯一命中才敢点。
+    #      退到只用姓氏称谓（如「李女士」）时，必须**全列表唯一**，否则拒绝发送。
+    import re as _re
+
+    def _norm(s: str) -> str:
+        return _re.sub(r"[\s\u200b\u00a0·・|/\\\-—–]+", "", s or "")
+
+    full = _norm(name_box)
+    cands: list[str] = []
+    m = _re.match(r"^([\u4e00-\u9fa5]{1,3}(?:女士|先生|小姐|老师))(.+)$", full)
+    if m:
+        cands.append(m.group(1) + m.group(2)[:4])
+        cands.append(m.group(1))
+    cands.append(full)
+    seen_c: set[str] = set()
+    cands = [c for c in cands if len(c) >= 3 and not (c in seen_c or seen_c.add(c))]
+    strong = [c for c in cands if len(c) >= 5]
+    weak = [c for c in cands if 3 <= len(c) < 5]
+
+    hits: list[tuple[int, int, object, str]] = []   # (0=强/1=弱, 候选序, li, 文本)
+    scroll_js = """
+        var ul = document.querySelector('ul');
+        for (var el of document.querySelectorAll('ul,div')) {
+            if (el.scrollHeight > el.clientHeight + 50) { el.scrollTop += 700; break; }
+        }
+    """
     try:
-        for li in tab.eles("tag:li"):
-            txt = li.text or ""
-            if search and search in txt and len(txt) > 15:
-                nb = li.ele("css:.name-box", timeout=2)
-                if nb:
-                    nb.click()
-                    clicked = True
-                    break
+        for _attempt in range(3):                   # 不滚 → 滚一屏 → 再滚一屏
+            for li in tab.eles("tag:li"):
+                txt = _norm(li.text or "")
+                if len(txt) < 8:
+                    continue
+                for pri, c in enumerate(strong):
+                    if c in txt:
+                        hits.append((0, pri, li, txt))
+                        break
+                else:
+                    for c in weak:
+                        if c in txt:
+                            hits.append((1, 0, li, txt))
+                            break
+            if any(h[0] == 0 for h in hits):
+                break
+            tab.run_js(scroll_js)
+            time.sleep(1.5)
     except Exception:
         pass
-    if not clicked:
-        print(f"   ⚠️ 未找到会话: {search}")
+
+    clicked = False
+    matched_txt = ""
+    strong_hits = [h for h in hits if h[0] == 0]
+    if strong_hits:
+        pick = sorted(strong_hits, key=lambda h: h[1])[0]
+    elif len(hits) == 1:
+        pick = hits[0]
+    elif len(hits) > 1:
+        print(f"   ⛔ 弱匹配命中 {len(hits)} 个会话，拒绝发送（防发错人）: "
+              f"{[h[3][:22] for h in hits[:4]]}")
         return False
+    else:
+        pick = None
+    if pick is not None:
+        try:
+            nb = pick[2].ele("css:.name-box", timeout=2)
+            if nb:
+                nb.click()
+                clicked = True
+                matched_txt = pick[3][:40]
+        except Exception:
+            pass
+    if not clicked:
+        print(f"   ⚠️ 未找到会话: {name_box!r}（候选项 {cands}）")
+        return False
+    print(f"   🎯 命中会话: {matched_txt}")
 
     time.sleep(3)
 

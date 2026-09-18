@@ -72,9 +72,9 @@ class TestSpecialApproval(unittest.TestCase):
 
 class TestHardRedlines(unittest.TestCase):
     def test_single_rest_high_salary_still_reject(self):
-        # 冲刺模式：大小周 12K+ 可谈（不再一票否决），但单休/996 高薪仍拒（真红线）
+        # 2026-09-16 用户定稿：至少双休 → 大小周不论薪资一律拒（原「≥12K 可谈」特批已废除）
         d = evaluate_job("某科技", "AI应用工程师", "大小周", "15-20K")
-        self.assertEqual(d.action, "ALLOW")  # 15K 大小周 → 冲刺特批
+        self.assertEqual(d.action, "REJECT")  # 大小周高薪同样死
         d2 = evaluate_job("某科技", "AI应用工程师", "单休", "15-20K")
         self.assertEqual(d2.action, "REJECT")  # 单休高薪仍死
         d3 = evaluate_job("某科技", "AI应用工程师", "996", "15-20K")
@@ -110,7 +110,7 @@ if __name__ == "__main__":
     unittest.main()
 
 class TestPuaSalary(unittest.TestCase):
-    """2026-09-05 回归：Boss 图标字体 PUA 薪资字符必须能解码，否则 12K 大小周特批失效。"""
+    """2026-09-05 回归：Boss 图标字体 PUA 薪资字符必须能解码（薪资要读对才能判红线）。"""
 
     def test_pua_digits_decoded(self):
         from job_decision import parse_salary_low
@@ -118,13 +118,15 @@ class TestPuaSalary(unittest.TestCase):
         self.assertEqual(parse_salary_low("\ue032\ue039-\ue034\ue031K"), 29.0)
         self.assertEqual(parse_salary_low("\ue035\ue030-\ue031\ue030\ue030K"), 50.0)
 
-    def test_pua_salary_triggers_daxiaozhou_waiver(self):
-        # 18-26K 大小周 → PUA 解码后 ≥12K → 特批放行（不超30K红线）
+    def test_pua_salary_daxiaozhou_always_reject(self):
+        # 18-26K 大小周：薪资要能正确解码，但制度红线不看薪资 → 一律拒
+        from job_decision import parse_salary_low
+        self.assertEqual(parse_salary_low("\ue031\ue038-\ue032\ue036K"), 18.0)
         d = evaluate_job("优必选", "AI专家", "大小周", "\ue031\ue038-\ue032\ue036K", city="深圳")
-        self.assertEqual(d.action, "ALLOW")
+        self.assertEqual(d.action, "REJECT")
 
     def test_pua_low_salary_daxiaozhou_still_reject(self):
-        # 4-6K 大小周 → 仍拒（特批只覆盖 ≥12K）
+        # 4-6K 大小周 → 同样拒
         d = evaluate_job("某司", "AI漫剧", "大小周", "\ue034-\ue036K", city="广州")
         self.assertEqual(d.action, "REJECT")
 
