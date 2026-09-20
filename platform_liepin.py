@@ -12,7 +12,7 @@ from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).parent))
 from DrissionPage import ChromiumPage
-from job_decision import evaluate_job
+from job_decision import evaluate_job, cohort_block_reason
 from store import record_application
 from notify import alert
 
@@ -24,6 +24,14 @@ CITY_CODES = {
 }
 DAILY_LIMIT = 20  # 2026-09-11: 猎聘风控敏感(详情页有强限速),宁少勿封
 PORT = 9223
+
+# ── 通道总开关（2026-09-20）──
+# False = 彻底熔断：main() 第一句就返回，不启动浏览器、不校验会话、不做账号登录、
+# 不拉 Chrome、不查任何闸门。改成 True 才会真正跑起来。
+# 为什么直接熔断而不是留个空跑：2026-09-19 实测，猎聘详情页限速 60s+/个，
+# 一轮 5 个岗位要 8 分钟以上，产出却长期为 0 —— 在它被修好之前，跑它纯粹是
+# 浪费 Chrome 独占窗口（那段时间 Boss/51job 都投不出去）。
+LIEPIN_ENABLED = False
 
 
 def get_cards(tab):
@@ -188,14 +196,13 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
                 break
             seen.add(c["jobId"])
 
-            # 校招/应届/实习一律不投（用户 2026-09-09 定稿：应届生岗也不投了）
-            # 命中: XX届 / 校招 / 应届生 / 实习
+            # 届别闸：拦校招/实习/届别过晚，放行合理应届（2026-09-20 收敛）
+            # 规则实现在 job_decision.cohort_block_reason，本平台不再自带一份正则。
             t = c["title"] or ""
-            import re as _re
-            if (_re.search(r"[0-9０-９]{2}届", t) or "校招" in t or "应届" in t
-                    or "实习" in t or "管培生" in t or "培训生" in t):
+            _cohort = cohort_block_reason(t)
+            if _cohort:
                 skipped += 1
-                print(f"  [🚫校招/应届/实习] {t[:35]} | {c['salary']}")
+                print(f"  [🚫届别] {t[:35]} | {c['salary']} → {_cohort}")
                 continue
 
             # L2 决策(全平台统一规则) — 与 boss_apply 同款三段闸
@@ -208,6 +215,8 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
                     block = True
                 else:
                     reason = f"L2:({getattr(dec, 'priority', '?')}|{getattr(dec, 'salary_band', '?')})"
+                # 猎聘列表卡片同样只有 title/salary，无正文 → 作息结论是 UNKNOWN
+                schedule_verdict = getattr(dec, "schedule_verdict", "UNKNOWN")
             except Exception as e:
                 print(f"  [⚠️决策器异常] {c['title'][:30]}: {e}")
                 continue
@@ -238,7 +247,8 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
                 print(f"  [🚫] {c['title'][:35]} | {c['salary']} → {reason}")
                 continue
 
-            print(f"  [✅{c['title'][:30]}] | {c['salary']} | {c['company'][:15]}")
+            print(f"  [✅{c['title'][:30]}] | {c['salary']} | {c['company'][:15]}"
+                  f" | 制度:{schedule_verdict}")
             state = click_apply_and_check(tab, c.get('href', ''), page)
             # 2026-09-19 修正：猎聘走的是 _find_and_click，成功回执是 'CLICKED:投简历'，
             # 而 51job 的 click_apply_and_check 才返回「已申请/已投递」。
@@ -257,6 +267,7 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
                         verified=1, event_type="apply", event_error=None,
                         extra_payload={"jobId": c["jobId"], "area": c.get("area", ""),
                                        "button_state": state,
+                                       "schedule_verdict": schedule_verdict,
                                        "evidence": "liepin按钮回执"},
                         gates=None, greeting_template_id=None,
                     )
@@ -286,6 +297,14 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
 
 
 def main():
+    # ── 通道总入口熔断（2026-09-20）──
+    # 必须是 main() 的第一句：在它之前不做任何事——不 import config、不连 Chrome、
+    # 不查 kill switch、不取 chrome_lock。否则「关闭」只是名义上的，浏览器照拉、
+    # 会话照校验，纯空转还占着全局 Chrome 独占锁。
+    if not LIEPIN_ENABLED:
+        print("⏭️ 猎聘通道已熔断（LIEPIN_ENABLED=False），本轮不投递")
+        return
+
     import config
     args = sys.argv[1:]
     cities = ["深圳", "广州", "杭州", "成都"]

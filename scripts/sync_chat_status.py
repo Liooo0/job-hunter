@@ -57,6 +57,14 @@ INTERVIEW_SIGNALS = re.compile(r"面试|面谈|视频面|电话沟通|聊一聊|
 SYSTEM_PREFIXES = ("您正在与Boss", "您正在与boss", "您的附件简历")
 SYSTEM_CONTAINS = ("撤回了一条消息", "职位竞争者", "查看详细分析")
 
+# ── 遗留招呼语开头（2026-09-20 §3.5）──
+# 这些是**改动之前**的招呼语写法。新的招呼语（§3.5 定稿，如「主攻 AI Agent 与
+# 自动化工作流落地…」）一句都不匹配它们 —— 也就是说这条规则**不可能**造成
+# 「新招呼语被误判成 HR 消息」这个目标故障。留着的唯一用途是认出历史会话里那些
+# 没进留痕的老招呼语；等老会话沉底后可以整体删掉。
+# 自方消息判定的**主路径**已经是 self_sent 发送留痕（见 _is_my_message）。
+_LEGACY_SELF_MARKS = ("您好！我是", "我是")
+
 
 def _load_reply_corpus() -> tuple:
     """返回 (我发出去过的话, HR 说过的话)。
@@ -83,11 +91,16 @@ def _load_reply_corpus() -> tuple:
             #  · HR 还没回话时它就是我自己刚发出去的招呼语；
             #  · 也可能是 Boss 的系统占位（「您正在与BossX沟通」）。
             # 两类都要排掉，否则会把招呼语/占位当成 HR 的回复（实测踩过两次）。
-            # 自己的招呼语判定：姓名从本机档案读（公开仓库不留真名，见 hr_auto_reply._load_profile）
-            _self_marks = ["您好！我是", "我是"]
-            if _MY_NAME:
-                _self_marks.append(f"我是{_MY_NAME}")
-            if h and not (any(h.startswith(m) for m in _self_marks)
+            # 自己的招呼语判定：主路径是发送留痕（self_sent），
+            # _LEGACY_SELF_MARKS 只兜底改动前发出的老招呼语（见其定义处注释）。
+            try:
+                import self_sent as _SS
+                _is_mine = _SS.is_self_sent(h)
+            except Exception:
+                _is_mine = False
+            if not _is_mine:
+                _is_mine = any(h.startswith(k) for k in _LEGACY_SELF_MARKS)
+            if h and not (_is_mine
                           or (_MY_NAME and f"我是{_MY_NAME}" in h)
                           or h.startswith(SYSTEM_PREFIXES)):
                 theirs.add(h)
@@ -112,13 +125,33 @@ def _corpus_hit(m: str, texts: set, min_prefix: int = 8):
 
 
 def _is_my_message(msg: str, my_texts: set) -> bool:
-    """最后一条是不是我发的（招呼语/我的回复/系统占位）——是则不算 HR 回复。"""
+    """最后一条是不是我发的（招呼语/我的回复/系统占位）——是则不算 HR 回复。
+
+    2026-09-20 §3.5：**主路径改成查发送留痕**（self_sent）。
+    原来这里靠 `_self_marks = ["您好！我是", "我是"]` 前缀认自己的话 —— 文案耦合：
+    招呼语一改（新文案既不含「您好」也不含「我是」），我们自己发出去的招呼语立刻
+    被当成 HR 回复 → 库里写错「HR 已回复」，并且在新扫流程里误触发 REPLY_REVIEW_LOCK
+    把投递锁死。换成留痕后，改多少次文案都不会漏判。
+    """
     m = (msg or "").strip()
     if not m:
         return False
-    if m.startswith("您好！我是") or (_MY_NAME and f"我是{_MY_NAME}" in m):
+    # 主路径：这条消息在我们的发送留痕里吗（与文案长什么样无关）
+    try:
+        import self_sent
+        if self_sent.is_self_sent(m, extra=my_texts):
+            return True
+    except Exception:
+        pass
+    # 身份信号（与文案无关）：本机档案配了姓名时，「我是<姓名>」必是我方
+    if _MY_NAME and f"我是{_MY_NAME}" in m:
         return True
     if any(m.startswith(p) for p in SYSTEM_PREFIXES):
+        return True
+    # 遗留兜底：只用来认**改动之前**发出去的老招呼语（那些没进留痕）。
+    # 这不是判定主路径 —— §3.5 定稿的新招呼语一句都不匹配它，所以它不可能造成
+    # 「新招呼语被当成 HR 消息」这个目标故障；等老会话沉底后可整体删除。
+    if any(m.startswith(k) for k in _LEGACY_SELF_MARKS):
         return True
     return _corpus_hit(m, my_texts) is not None
 
