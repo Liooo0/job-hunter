@@ -38,8 +38,8 @@ for s in left:
 # 3) 释放锁
 released = RL.release_if_empty()
 info = RL.lock_info()
-print("\n投递锁：" + ("🔒 仍锁着" if RL.is_locked() else "🔓 已释放（无活跃条目）"))
-      f"(locked={info.get('locked')}, pending={info.get('pending_count')})")
+print("\n投递锁：" + ("🔒 仍锁着" if RL.is_locked() else "🔓 已释放（无活跃条目）")
+      + f" (locked={info.get('locked')}, pending={info.get('pending_count')})")
 
 if not RL.is_locked():
     print("\n▶ 开始 51job 投递轮…")

@@ -492,8 +492,14 @@ def main():
                 "purpose": "回应HR兴趣信号" if r["kind"] == "interest" else "礼貌收尾",
                 "status": "pending", "drafted_at": datetime.now().isoformat(timespec="seconds"),
             })
-        _RL.acquire(sessions)
-        print(f"\n🔒 {len(sessions)} 条拟回复已进入审核队列（REPLY_REVIEW_LOCK 已上锁，自动投递暂停）")
+        _locked = _RL.acquire(sessions)
+        # 2026-09-19：原来无条件打印「已上锁」，即使 acquire() 因历史去重而**没**上锁
+        # 也照样报锁生效 → 和随后那行「没有待审核的 HR 回复」自相矛盾，误导读日志的人。
+        # 现在按 acquire() 的真实返回值播报。
+        if _locked:
+            print(f"\n🔒 {len(sessions)} 条拟回复已进入审核队列（REPLY_REVIEW_LOCK 已上锁，自动投递暂停）")
+        else:
+            print(f"\n📭 {len(sessions)} 条消息均已处理过（历史去重命中），无新增待审条目，未上锁")
         print(_RL.review_text())
     else:
         print("📭 没有需要回复的消息。")

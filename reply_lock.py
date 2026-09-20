@@ -103,15 +103,34 @@ def acquire(sessions: list, reason: str = "HR会话待人工审核") -> bool:
         return (s.get("company", ""), s.get("hr_name", ""),
                 (s.get("hr_message") or "")[:200])
 
-    known = {_key(s) for s in active}
+    # 2026-09-18：去重集合从「只算未完结」改成「全历史」。
+    # 理由：key 里已经含消息正文（见上一条 09-16 修复），所以拿 sent/rejected/
+    # unsendable 一起挡是安全的 —— 同一条消息被用户拒绝或已回复后，下次扫描不该
+    # 再当成新的待回复捞起来（否则每次扫描都重复入队 + 重新上锁，实测把用户
+    # 「不用回」的决定反复翻出来）。同一 HR 的**新消息** key 不同，照样能进。
+    _hist = [s for s in existing if s.get("status") in
+             ("pending", "edited", "approved", "sent", "rejected", "unsendable")]
+    known = {_key(s) for s in _hist}
     merged = existing + [s for s in sessions if _key(s) not in known]
-    # 若锁已无 active 条目却仍存在（历史残留），先释放再上
-    if not active and LOCK_FILE.exists():
-        try:
-            LOCK_FILE.unlink()
-        except Exception:
-            pass
+    # 2026-09-19 修复：只有合并后**确实存在待审核条目**时才落锁。
+    # 原实现无条件写锁 → 当扫到的消息全被历史去重挡住（同一句在 sent/rejected 里）
+    # 时，队列 0 条待审却留下一个锁：status 报「已暂停/待审核 0 条」，review 里无条目可审，
+    # 之后每一轮 boss_apply / platform_51job / platform_liepin 都会被 reply_lock_block
+    # 挡死，且没有任何命令能解开（队列空 → 没东西可 confirm/reject）。
+    # 2026-09-19 10:28 实测触发：已判「婉拒不回」的文女士维音旧消息被重复扫到。
+    # 语义与 release_if_empty() 一致：队列空 ⇔ 没有锁。
+    active_after = [s for s in merged
+                    if s.get("status") in ("pending", "edited", "approved")]
     _dump(PENDING_FILE, merged)
+    if not active_after:
+        if LOCK_FILE.exists():
+            try:
+                LOCK_FILE.unlink()
+            except Exception:
+                pass
+        record("hr_messages_detected", len(sessions))
+        record("hr_replies_drafted", sum(1 for s in sessions if s.get("draft")))
+        return False
     lock = _load_json(LOCK_FILE, None) or {
         "locked_at": _now(), "reason": reason, "source": "reply_lock",
     }
