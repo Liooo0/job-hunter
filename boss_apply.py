@@ -667,6 +667,110 @@ def _dismiss_modals(tab) -> str:
         return "no_modal"
 
 
+# ── 聊天输入框定位（2026-09-20：修 Boss 最后一公里）──
+# 症状：近 40 天 Boss 端 uncertain 174 / failed 35、applied ≈ 1，理由集中在
+#       「已找到会话但发送未验证」79 条 + 「会话已打开但发送未验证」76 条。
+#       也就是会话打开了、招呼语也可能真发出去了，但**系统认不出自己发成功**。
+#
+# 原因一：填充和验证**各写了一套选择器**。填充时过滤 `[style*="display: none"]`，
+#        验证时直接 `querySelector('[contenteditable="true"]')` 取第一个。聊天页上
+#        只要另有一个不可见的 contenteditable（左侧会话列表的搜索框、折叠会话的残留
+#        输入框），验证就永远读到那个隐藏元素 → 判 has_text → UNCERTAIN。
+#
+# 原因二：判定可见性用 `offsetParent !== null`。**position:fixed 的元素 offsetParent
+#        恒为 null**，聊天页输入框若在 fixed 容器里就会被当成隐藏元素跳过，于是填充
+#        回落到隐藏元素上 —— 招呼语写进了一个用户根本看不见的框。
+#
+# 原因三（2026-09-20 真机只读探针确诊）：搜索页上根本没有 contenteditable，旧代码的
+#        兜底是「取第一个可见 textarea」。而 `zhipin.com/web/geek/jobs` 上恰好有 3 个
+#        可见 textarea，全是**岗位卡片下方的「请填写更多反馈意见…」反馈框**
+#        （祖先链 c-satisfaction-feedback，附近没有任何发送按钮）。于是招呼语被打进了
+#        岗位反馈框，那里没有发送按钮 → 落到 Enter 键分支 → 什么都没发出去 → 验证时
+#        同一个框里还留着我们的文字 → has_text → 「会话已打开但发送未验证」。
+#        这既是那 76 条的来源，也是个**合规风险**（往平台的反馈框里灌内容）。
+#
+# 修法：定位收敛成**一套**规则（_jhChatInput），填充和验证都走它。一个候选要成立，
+#      除了「可见、不是检索框」之外，还必须**像聊天输入框**：要么在 chat/editor/message
+#      类名的祖先里，要么同一容器内有发送按钮。三者都不满足就返回 null —— 宁可
+#      老老实实报 NO_INPUT，也不能把招呼语打进反馈框。
+_JS_CHAT_INPUT = r"""
+function _jhVisible(el) {
+    if (!el) return false;
+    var r = el.getBoundingClientRect();
+    if (!r || r.width <= 0 || r.height <= 0) return false;
+    var st = window.getComputedStyle(el);
+    if (st.display === 'none' || st.visibility === 'hidden') return false;
+    return true;
+}
+function _jhInSearch(el) {
+    var p = el;
+    for (var d = 0; d < 5 && p; d++, p = p.parentElement) {
+        if (String(p.className || '').toLowerCase().indexOf('search') > -1) return true;
+    }
+    return false;
+}
+function _jhInChatScope(el) {
+    var p = el;
+    for (var d = 0; d < 12 && p; d++, p = p.parentElement) {
+        var c = String(p.className || '').toLowerCase();
+        if (c.indexOf('chat') > -1 || c.indexOf('editor') > -1 || c.indexOf('message') > -1) return true;
+    }
+    return false;
+}
+function _jhNearSend(el) {
+    var p = el;
+    for (var d = 0; d < 6 && p; d++, p = p.parentElement) {
+        var cands = p.querySelectorAll('button, a, [role="button"], [class*="send"], [class*="btn"]');
+        for (var i = 0; i < cands.length; i++) {
+            var t = String(cands[i].textContent || '').trim();
+            var c = String(cands[i].className || '').toLowerCase();
+            if (t.indexOf('发送') > -1 || c.indexOf('send') > -1) return true;
+        }
+    }
+    return false;
+}
+function _jhChatInput() {
+    var scopes = document.querySelectorAll(
+        '.chat-container, .chat-panel, [class*="chat-detail"], [class*="chat-content"], body');
+    for (var s = 0; s < scopes.length; s++) {
+        var eds = scopes[s].querySelectorAll('[contenteditable="true"], textarea');
+        for (var i = 0; i < eds.length; i++) {
+            var el = eds[i];
+            if (!_jhVisible(el) || _jhInSearch(el)) continue;
+            if (_jhInChatScope(el) || _jhNearSend(el)) return el;
+        }
+    }
+    return null;
+}
+"""
+
+# ── 会话列表滚动（2026-09-20）──
+# `window.scrollTo(0, document.body.scrollHeight)` 在很多 Boss 页面上**什么都不滚**：
+# 会话列表在自带的内部滚动容器里（overflow:auto 的 div），window 本身没有滚动条，
+# 所以列表压根不会往下加载新会话 —— 这是 60 条「聊天页未找到会话」的一个来源：
+# 刚点击沟通的那个 HR 排在最上头，列表没加载出来自然找不到。
+# 改成从列表项往上找**真正可滚动**的祖先容器并把 scrollTop 打到底。
+_JS_SCROLL_CHAT_LIST = r"""
+function _jhScrollList() {
+    try { window.scrollTo(0, document.body.scrollHeight); } catch (e) {}
+    var seen = [];
+    var anchors = document.querySelectorAll('.name-box, .chat-user, li');
+    for (var i = 0; i < anchors.length; i++) {
+        var p = anchors[i].parentElement;
+        for (var d = 0; d < 8 && p; d++, p = p.parentElement) {
+            if (seen.indexOf(p) > -1) continue;
+            if (p.clientHeight > 100 && p.scrollHeight > p.clientHeight + 40) {
+                seen.push(p);
+                p.scrollTop = p.scrollHeight;
+            }
+        }
+    }
+    return seen.length;
+}
+_jhScrollList();
+"""
+
+
 def _chat_signal(tab) -> str:
     """验证点击"立即沟通"后的会话状态信号。
 
@@ -677,16 +781,12 @@ def _chat_signal(tab) -> str:
       ''       以上都没有（视为未打开）
     """
     try:
-        r = tab.run_js("""
-            (function() {
-                var ed = document.querySelector('[contenteditable="true"]');
-                if (ed && ed.offsetParent !== null) return 'input';
-                var tas = document.querySelectorAll('textarea');
-                for (var t of tas) { if (t.offsetParent !== null) return 'input'; }
+        r = tab.run_js("(function() {" + _JS_CHAT_INPUT + """
+                if (_jhChatInput()) return 'input';
                 var b = document.querySelector('.op-btn-chat');
                 if (b && (b.classList.contains('is-disabled') || /已沟通/.test(b.textContent || ''))) return 'already';
                 var panel = document.querySelector('.chat-panel, .chat-detail, .chat-container, [class*="chat-detail"]');
-                if (panel && panel.offsetParent !== null) return 'panel';
+                if (panel && _jhVisible(panel)) return 'panel';
                 return '';
             })();
         """, as_expr=True)
@@ -719,10 +819,10 @@ def _send_greeting_via_chat(page, search_tab, company: str, greeting: str) -> tu
         else:
             chat_tab.get("https://www.zhipin.com/web/geek/chat")
         time.sleep(4 + random.uniform(0, 2))
-        # 滚动让会话列表加载完
+        # 滚动让会话列表加载完（滚的是列表自己的滚动容器，见 _JS_SCROLL_CHAT_LIST）
         for _ in range(3):
             try:
-                chat_tab.run_js("window.scrollTo(0, document.body.scrollHeight)")
+                chat_tab.run_js(_JS_SCROLL_CHAT_LIST)
             except Exception:
                 pass
             time.sleep(0.6)
@@ -746,7 +846,7 @@ def _send_greeting_via_chat(page, search_tab, company: str, greeting: str) -> tu
             if attempt:
                 time.sleep(3)
                 try:
-                    chat_tab.run_js("window.scrollTo(0, document.body.scrollHeight)")
+                    chat_tab.run_js(_JS_SCROLL_CHAT_LIST)
                 except Exception:
                     pass
                 time.sleep(1)
@@ -798,15 +898,16 @@ def _send_greeting_via_chat(page, search_tab, company: str, greeting: str) -> tu
 
 
 def _fill_and_send(tab, greeting: str) -> bool:
-    """填充招呼语并发送，验证输入框清空/会话关闭。返回 True=已验证发出。"""
+    """填充招呼语并发送，验证输入框清空/会话关闭。返回 True=已验证发出。
+
+    2026-09-20：填充与验证改为共用同一套输入框定位（_jhChatInput），
+    不再出现「填进 A 元素、去验 B 元素」。见 _JS_CHAT_INPUT 上方说明。
+    """
     try:
         r = tab.run_js(f"""
             (function() {{
-                var ed = document.querySelector('[contenteditable="true"]:not([style*="display: none"])');
-                if (!ed || ed.offsetParent === null) {{
-                    var tas = document.querySelectorAll('textarea');
-                    for (var t of tas) {{ if (t.offsetParent !== null) {{ ed = t; break; }} }}
-                }}
+                {_JS_CHAT_INPUT}
+                var ed = _jhChatInput();
                 if (!ed) return 'NO_INPUT';
                 ed.focus();
                 if (ed.tagName === 'TEXTAREA') {{
@@ -824,7 +925,7 @@ def _fill_and_send(tab, greeting: str) -> bool:
                     var t = (b.textContent || '').trim();
                     var cls = (b.className || '') + ' ' + (b.getAttribute('class') || '');
                     if ((t === '发送' || t.indexOf('发送') > -1 || cls.indexOf('send') > -1)
-                        && b.offsetParent !== null && !b.disabled) {{
+                        && _jhVisible(b) && !b.disabled) {{
                         b.click();
                         return 'SENT_CLICKED';
                     }}
@@ -845,20 +946,26 @@ def _fill_and_send(tab, greeting: str) -> bool:
         return False
     if r in ("NO_INPUT", "EMPTY_AFTER_FILL"):
         return False
-    # 验证：输入框已清空 = 发出；输入框已消失 = 会话关闭（同样视为发出）
+    # 验证：输入框已清空 = 发出；输入框已消失 = 会话关闭（同样视为发出）。
+    # 定位规则与填充**完全一致**（同一个 _jhChatInput），否则会验到别的元素上。
+    # 判否时带回残留字数，让「发不出去」在日志里能看出是残留多少字、哪个元素。
     try:
-        state = tab.run_js("""
-            var ed = document.querySelector('[contenteditable="true"]');
-            if (ed) return ed.textContent.trim() === '' ? 'cleared' : 'has_text';
-            var tas = document.querySelectorAll('textarea');
-            for (var t of tas) { if (t.offsetParent !== null) return t.value.trim() === '' ? 'cleared' : 'has_text'; }
-            return 'no_input';
+        state = tab.run_js(_JS_CHAT_INPUT + """
+            var ed = _jhChatInput();
+            if (!ed) return 'no_input';
+            var cur = (ed.tagName === 'TEXTAREA' ? ed.value : ed.textContent) || '';
+            cur = cur.trim();
+            return cur === '' ? 'cleared' : ('has_text:' + cur.length + ':' + ed.tagName);
         """)
     except Exception:
         state = ""
     if state is None:
         return False
-    return state != "has_text"
+    s = str(state)
+    if s.startswith("has_text"):
+        print(f"    ⚠️ 发送未验证：输入框仍有残留 → {s}（清空后才是发出去的判据）")
+        return False
+    return True
 
 
 # ── A8：投递单岗位流程拆分（纯结构性重构，异常语义逐点保持）──
