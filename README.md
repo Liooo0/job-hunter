@@ -69,8 +69,9 @@ git clone https://github.com/Liooo0/job-hunter.git ~/.claude/skills/job-hunter
 pip install DrissionPage httpx
 
 # 3. 启动带调试端口的 Chrome 并登录招聘平台（macOS 示例）
+#    端口与 user-data-dir 要和脚本一致：三个平台脚本都用 9223 + ~/job-hunter-chrome
 /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
-  --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug
+  --remote-debugging-port=9223 --user-data-dir="$HOME/job-hunter-chrome"
 
 # 4. （可选）生成自己的配置——不做这步也开箱即用，内置了兜底词表/薪资线/岗位池
 cp config.example.json config.json
@@ -87,8 +88,8 @@ PYTHONPATH="" python3 boss_apply.py --cities "深圳,广州" --jobs "AI应用工
 > 想验证整套规则而不碰浏览器，可以跑测试（纯标准库，无需安装任何东西）：
 >
 > ```bash
-> python3 tests/regression.py          # 19 个真实 JD 回归案例
-> python3 -m unittest discover -s tests -p "test_*.py" -t .   # 31 个单元测试
+> python3 tests/regression.py          # 25 个真实 JD 回归案例
+> PYTHONPATH="" python3 -m unittest discover -s tests -p "test_*.py" -t .   # 432 个单元测试
 > ```
 
 ## 配置说明
@@ -137,7 +138,7 @@ PYTHONPATH="" python3 boss_apply.py --cities "深圳,广州" --jobs "AI应用工
 - **投递验证状态机**：点击"立即沟通"后验证会话真实打开、消息真实发出，结果分为 `APPLIED` / `UNCERTAIN`（需人工复核）/ `FAILED`，杜绝"假发送"
 - **风控防护**：kill switch 全局急停、跨进程日/小时双熔断、夜间禁投、公司去重——这是被平台封号两次换来的教训清单
 - **确定性优先**：所有打分/过滤都是本地规则，LLM 只用于可选的 HR 消息草拟；同一输入永远同一输出
-- **回归测试**：19 个真实 JD 案例回归集 + 31 个单元测试，GitHub Actions 每次 push 跑语法检查
+- **回归测试**：25 个真实 JD 案例回归集 + 432 个单元测试，GitHub Actions 每次 push 跑语法检查
 
 ## Token 消耗预估
 
@@ -154,10 +155,40 @@ PYTHONPATH="" python3 boss_apply.py --cities "深圳,广州" --jobs "AI应用工
 | 平台 | 投递方式 | 城市 | 前置要求 |
 |------|---------|------|---------|
 | Boss 直聘 | "立即沟通" | 全国主要城市 | 登录 |
-| 鱼泡直聘 | "发送简历"优先，降级"聊一聊" | 50+ 城市 | 登录 |
+| 猎聘 | "聊一聊" | 搜索页自带城市切换 | 登录 |
 | 前程无忧 51job | 搜索页内联"投递"按钮 | 北京/上海/广州/深圳/杭州 | 登录 + 完善 51job 在线简历 |
 
 51job 说明：跳转到应届生求职网的校招岗会自动跳过；首屏 Vue 懒加载卡片偶发首次点击失败，已内置重试。
+
+> **鱼泡直聘尚未接入。** 本文与 `SKILL.md` 此前把它列成可用平台，是文档漂移 ——
+> 仓库根目录从来没有 `yupao_apply.py`，只有 `archive/platforms/` 下那份 V1 遗留脚本，
+> 它的 URL 方案（`/topic/{城市码}/?keywords=`）与 CSS 选择器早已失效。
+> 2026-09-20 对鱼泡做过一轮只读侦察，结论见下方「鱼泡接入前置条件」。
+
+## 鱼泡接入前置条件
+
+2026-09-20 对着本机投递浏览器（CDP 9223）做了一轮**只读** DOM 侦察，结论：
+
+**能做**
+- 岗位列表页 `https://www.yupao.com/zhaogong/{城市码}/`（深圳 = `a77`）**未登录也能打开**；
+- 岗位详情页 `https://www.yupao.com/zhaogong/{id}/{hash}.html` 上确实有
+  **「发送简历」** 与 **「聊一聊」** 两个动作入口 —— 这是 V1 脚本里唯一没过时的判断；
+- 岗位卡片的可靠锚点是**链接结构** `a[href^="/zhaogong/"]` 且路径含数字 id，
+  不是类名。
+
+**不能做（卡住的点）**
+- **登录**：鱼泡用手机号 + 短信验证码，脚本无法代过，必须先由人工登录一次；
+- **CSS 类名是按构建随机化的**：同一会话内两次打开列表页，
+  同一个容器一次是 `acded ahdc`、一次是 `acded agbb` ——
+  所以任何写死类名的选择器（V1 用的 `div.acbab`）必然腐坏。
+  这也意味着真实适配器要**对着登录态**逐轮迭代选择器，不能凭空写；
+- **搜索是 JS 驱动的 SPA**：在列表页往搜索框灌值再回车，
+  URL 不变、无 `pushState`、无 `fetch`，结果集也不随 `?keywords=` 变化。
+  未登录时拿不到「按关键词搜索」这条路 —— 而关键词搜索是投递主循环的入口。
+
+**下一个动作**：先人工登录鱼泡，再对着登录态做一轮选择器侦察，然后按
+`platform_51job.py` 的结构写 `platform_yupao.py`（它必须接 `JH_LINE=transition`，
+蓝领岗位与 AI 主线的 ≥8K 底薪线天然冲突）。
 
 ## 安全与伦理
 
