@@ -30,6 +30,7 @@ CATEGORIES = [
     ("part_time",        "兼职过滤 (Part-time Filter)"),
     ("schedule_inquiry", "制度问询状态机 (Schedule Inquiry)"),
     ("line_isolation",   "双线隔离 (Line Isolation)"),
+    ("transition_idle",  "过渡线取舍 (Transition Trade)"),
     ("wording",          "技术措辞对齐 (Wording Consistency)"),
     ("greeting",         "招呼语 (Greeting Templates)"),
     ("rate_gates",       "频率与风控闸 (Rate Gates)"),

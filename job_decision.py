@@ -41,6 +41,28 @@ SALARY_CEILING = 60.0
 TRANSITION_SALARY_FLOOR = 4.0
 TRANSITION_PIECE_RATE_WORDS = ["计件", "按件计酬", "按单计酬", "众包", "按量计酬",
                                "多劳多得", "无底薪"]
+
+# ── 过渡线：钱少 → 换 事少（2026-09-20 用户定）──
+# 用户口径：「事少钱多离家近，总得占一个」。过渡线是上岸、不是攒钱，所以 3-4K 的岗
+# 不该一刀切拒掉 —— 明显清闲的（看店/坐班/不加班那类）是「拿钱换时间」的合理交换；
+# 而同样是 3-4K 的销售/客服/流水线，钱少事还多，就没有理由去。
+#
+# 注意这一组**只收「低强度」的表述，不收岗位名**：写「文员」「标注」并不等于事少，
+# 那是岗位类别；只有 JD 自己写明「清闲/不加班/无压力/简单」才算数。
+IDLE_JOB_SIGNALS = (
+    "清闲", "轻松", "工作轻松", "压力小", "无压力", "没什么压力", "不累",
+    "不加班", "无需加班", "加班少", "很少加班", "基本不加班", "准点下班",
+    "工作简单", "简单易上手", "上手简单", "容易上手", "事少",
+    "坐班", "看店", "守店",
+)
+# 反向否决：钱已经少了，事还多 → 不适用上面那条换取逻辑。
+# 顺带补上「<5K 计件岗」的缺口 —— 计件闸原来只挂在 5-8K 那一档上。
+BUSY_JOB_SIGNALS = (
+    "高强度", "加班多", "经常加班", "长期加班", "压力大", "抗压",
+    "赶工", "赶货", "旺季", "冲刺", "业绩", "提成", "计件", "多劳多得",
+    "销售", "电销", "客服", "话务", "外呼", "流水线", "普工", "操作工",
+)
+
 SALARY_NORMAL_FLOOR = 8.0    # 8-10K 正常可接受
 SALARY_PRIORITY = 10.0       # ≥10K 高优先级
 
@@ -402,15 +424,20 @@ def _evaluate_job_core(company: str, title: str, desc: str, salary: str,
     if band == "<5K":
         # 过渡线（2026-09-18）：办公室岗现实区间就是 3.5-6K，≥4K 放行上岸优先。
         if line == "transition":
-            _num = None
-            _m = re.search(r"(\d+(?:\.\d+)?)\s*(?:千|[kK])", salary or "")
-            if _m:
-                _num = float(_m.group(1))
-            if _num is not None and _num >= TRANSITION_SALARY_FLOOR:
+            # 2026-09-20 修 bug：这里原来**另写了一个正则**从原始薪资串抓数字，
+            # `re.search(r"(\d+(?:\.\d+)?)\s*(?:千|[kK])", salary)` 抓到的是**区间上界**
+            # （"3-4K" → 4.0），于是 3K 起的岗被当成 4K 放行 —— 门槛实际是虚的。
+            # 改用上面薪资分层里已经算好的 low，口径与 band 的判定同源。
+            if low >= TRANSITION_SALARY_FLOOR:
                 return Decision("ALLOW", priority="LOW", salary_band=band,
                                 reason=f"{band}过渡线:≥{TRANSITION_SALARY_FLOOR:g}K→上岸优先")
+            # 低于门槛 → 得用「事少」换（用户口径：事少/钱多/离家近总得占一个）。
+            # 「离家近」不在这里判 —— 它由 value_score 的「地点通勤」维度单独计分。
+            if _has_any(combined, IDLE_JOB_SIGNALS) and not _has_any(combined, BUSY_JOB_SIGNALS):
+                return Decision("ALLOW", priority="LOW", salary_band=band,
+                                reason=f"{band}过渡线:钱少但事少→可投(以时间换钱)")
             return Decision("REJECT", priority="", salary_band=band,
-                            reason=f"{band}过渡线:低于{TRANSITION_SALARY_FLOOR:g}K仍拒")
+                            reason=f"{band}过渡线:低于{TRANSITION_SALARY_FLOOR:g}K且无事少信号→拒")
         # 特批检查：即使<5K，正式工/编制/极高稳定也留一条缝（用户场景少但存在）
         if _has_any(combined, SPECIAL_APPROVAL_SIGNALS):
             return Decision("ALLOW", priority="LOW", salary_band=band,
