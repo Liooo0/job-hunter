@@ -106,7 +106,9 @@ PYTHONPATH="" python3 platform_liepin.py --cities "深圳" --jobs "AI应用工�
 三个脚本的 CLI 形状一致（`--cities` / `--jobs` / `--count`）。
 
 > **鱼泡直聘没有对应脚本。** 此前这里写的 `python3 yupao_apply.py …` 指向一个不存在的文件 ——
-> 接入前置条件（SMS 登录、类名随机化、搜索框不受控）见 `README.md` 的「鱼泡接入前置条件」。
+> 接入前置条件（SMS 登录、类名随机化）见 `README.md` 的「鱼泡接入前置条件」。
+> 那边记的是 2026-09-20 **登录态下**复测的结果，推翻了更早一版「`/topic/` URL 已失效、
+> 搜索不可控」的结论。
 
 ### Step 5：反馈结果
 
@@ -260,4 +262,5 @@ PYTHONPATH="" python3 platform_liepin.py --cities "深圳" --jobs "AI应用工�
 - 部分校招岗位链接跳到 `yingjiesheng.com`（应届生求职网），脚本会**自动跳过**这类卡片
 - 首屏卡片点击有时静默失败（服务端节流/Vue 懒加载），脚本已加重试 + 预热滚动，但单轮可能要多遍历几张卡片才能投满目标
 
-**鱼泡直聘：未接入。** 无脚本、无可用的 URL 方案，接入卡点见 `README.md` 的「鱼泡接入前置条件」。
+**鱼泡直聘：未接入。** 无脚本。搜索入口是有的（`/topic/{城市码}/?keywords=`，
+V1 的 `CITY_CODES` 仍有效），接入卡点见 `README.md` 的「鱼泡接入前置条件」。
