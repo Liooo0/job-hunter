@@ -35,6 +35,7 @@ CATEGORIES = [
     ("rate_gates",       "频率与风控闸 (Rate Gates)"),
     ("liepin",           "猎聘熔断 (Liepin Bypass)"),
     ("salary_ceiling",   "30K 薪资上限 (Salary Ceiling)"),
+    ("boss_last_mile",   "Boss 最后一公里 (Boss Last Mile)"),
 ]
 _LABEL_W = 39
 _SEP = "=" * 48
