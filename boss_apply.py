@@ -1686,6 +1686,11 @@ def main():
 ╚══════════════════════════════════════╝
 """)
 
+    # ── 全局 Chrome 互斥（2026-09-19 事故复盘）──
+    from chrome_lock import acquire as _chrome_acquire
+    if not _chrome_acquire("boss", wait_seconds=1500, max_minutes=45):
+        return
+
     # 连接投递专用 Chrome 2 — 复用已有窗口，不新建
     print("🔗 连接投递专用 Chrome...")
     from DrissionPage import ChromiumOptions

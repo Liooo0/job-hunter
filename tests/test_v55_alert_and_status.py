@@ -138,8 +138,13 @@ class TestPlatformStatusContract(unittest.TestCase):
                          "成功分支不得再写 UNCERTAIN（2026-09-15 修的就是这个）")
 
     def test_liepin_success_branch_writes_applied(self):
+        """2026-09-19: 猎聘的成功回执是 _find_and_click 返回的 'CLICKED:投简历'，
+        「已申请/已投递」是 51job 的 click_apply_and_check 才有的措辞。
+        原断言只认后者 → 猎聘每次真实投递都落进失败分支（长期 0 入库的第一个因）。
+        锚点随实现更新，但校验的成功分支语义不变。
+        """
         src = self._source("platform_liepin.py")
-        guard = 'if "已申请" in state or "已投递" in state:'
+        guard = 'if "已申请" in state or "已投递" in state or state.startswith("CLICKED"):'
         self.assertIn(guard, src)
         branch = self._strip_comments(src.rsplit(guard, 1)[1][:1500])
         self.assertIn('status="APPLIED"', branch, "猎聘成功分支必须写 APPLIED")

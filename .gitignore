@@ -34,6 +34,8 @@ data/queue_checkpoint.json.*
 data/github_repos.json
 data/alert_state.json
 data/*.lock
+# 全局 Chrome 互斥锁（chrome_lock.py 的运行时产物，含持有者 pid/时间戳）
+.chrome.lock
 
 # ===== 备份与产物（不入库）=====
 backup-*/

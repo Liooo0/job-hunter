@@ -220,3 +220,46 @@ class TestSameHrNewMessageDedupe(unittest.TestCase):
         self.rl.acquire([self._s("R1b", "同一句话")])   # 下一轮扫描重复扫到
         ids = [s["id"] for s in self.rl.pending()]
         self.assertEqual(ids, ["R1"], "同一句重复扫到不得重复入队")
+
+
+class TestNoPhantomLock(unittest.TestCase):
+    """2026-09-19 回归：全部被历史去重挡住时，不得留下「有锁但 0 条待审」的幽灵锁。
+
+    当天 10:28 实测：文女士维音那条已被判「婉拒不回」（status=rejected）的旧拒信
+    被重复扫到，acquire() 去重后队列无新增，却照样写了锁 → status 显示
+    「REPLY_REVIEW_LOCK 生效 / 待审核 0 条」，review 里又没条目可审，
+    后续每轮 boss/51job 都会被 reply_block 挡死且无法解开。
+    """
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="rlphantom_"))
+        import reply_lock
+        self.rl = importlib.reload(reply_lock)
+        self.rl.DATA_DIR = self.tmp
+        self.rl.LOCK_FILE = self.tmp / "reply_review.lock"
+        self.rl.PENDING_FILE = self.tmp / "reply_pending.json"
+        self.rl.STATS_FILE = self.tmp / "reply_stats.json"
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _s(self, sid, msg):
+        return {"id": sid, "company": "维音中国", "hr_name": "文女士", "status": "pending",
+                "hr_message": msg, "draft": "好的，收到，祝顺利！", "purpose": "礼貌收尾"}
+
+    def test_already_rejected_message_rescan_leaves_no_lock(self):
+        self.rl.acquire([self._s("R1", "感谢您的关注，但不太匹配")])
+        self.assertTrue(self.rl.is_locked())
+        self.rl.reject("R1", "婉拒类，用户决定不回复")
+        self.assertFalse(self.rl.is_locked())
+        # 下一轮扫描又扫到同一条旧消息
+        self.rl.acquire([self._s("R2", "感谢您的关注，但不太匹配")])
+        self.assertFalse(self.rl.is_locked(),
+                         "重复扫到已处理的旧消息不得留下幽灵锁（队列空 ⇔ 无锁）")
+        self.assertEqual([s["id"] for s in self.rl.pending()], ["R1"])
+
+    def test_new_pending_message_still_locks(self):
+        self.rl.acquire([self._s("R1", "第一条")])
+        self.rl.reject("R1", "不回")
+        self.rl.acquire([self._s("R2", "全新的问题：到岗时间？")])
+        self.assertTrue(self.rl.is_locked(), "真有新待审条目时必须照旧上锁")
