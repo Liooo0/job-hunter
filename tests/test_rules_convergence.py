@@ -22,6 +22,7 @@ sys.path.insert(0, str(BASE))
 import job_decision as JD            # noqa: E402
 import schedule_inquiry as SI        # noqa: E402
 import self_sent as SS               # noqa: E402
+import shared as SH                  # noqa: E402
 
 
 def _with_line(line=None):
@@ -90,6 +91,63 @@ class TestCohortGate(unittest.TestCase):
         d = JD.evaluate_job("某公司", "2027届AI应用工程师", "双休", "12-20K")
         self.assertEqual(d.action, "REJECT")
         self.assertIn("届别闸", d.reason)
+
+
+class TestCohortSingleSource(unittest.TestCase):
+    """届别闸只能有**一处**实现（§3.2 逻辑约束）。
+
+    收敛的坑不在 job_decision 内部，而在它**上游**：`shared.score_jd` 跑在
+    `evaluate_job` 之前，命中 `exclude_keywords` 即归零。所以词表里只要还留着
+    届别类词，决策器把「应届生」定成放行词也白搭 —— 岗位在打分层就已经没了。
+
+    这不是假想：2026-09-20 查到仓库自带的 `shared.FALLBACK_CONFIG` 里就有「应届」，
+    fresh clone 必然踩同一个坑；用户本地 config.json 里还有「应届/应届生/25届/26届/
+    2025届/2026届」，近 30 天在 Boss 端误拦 70 条（其中 34 条本该进投递池）。
+    """
+
+    JH_CATEGORY = "cohort"
+    JH_NEW = True
+
+    def test_allow_words_are_not_empty(self):
+        """前置：没有放行词的话，下面两条用例就成了空转。"""
+        self.assertTrue(JD.COHORT_ALLOW_WORDS)
+
+    def test_bundled_keyword_list_does_not_veto_allow_words(self):
+        """仓库自带词表里不许出现「其子串会命中某个放行词」的排除词。"""
+        for w in SH.FALLBACK_CONFIG["exclude_keywords"]:
+            for allow in JD.COHORT_ALLOW_WORDS:
+                self.assertNotIn(
+                    w, allow,
+                    f"排除词「{w}」是放行词「{allow}」的子串 —— "
+                    f"score_jd 会先把「{allow}」的岗位归零，决策器的放行永远轮不到")
+
+    def test_allow_word_survives_the_scoring_layer(self):
+        """行为口径：放行词出现在标题里时，不得在 score_jd 那一层就被杀掉。"""
+        cfg = SH.FALLBACK_CONFIG
+        for w in JD.COHORT_ALLOW_WORDS:
+            title = f"AI应用工程师（{w}）"
+            _score, why = SH.score_jd(title, "", cfg)
+            self.assertFalse(why.startswith("标题包含排除词"),
+                             f"「{w}」是 §3.2 的放行词，却在打分层被排除词杀了：{why}")
+
+    def test_allow_word_reaches_the_decision_layer(self):
+        """全链：打分层放行 + 决策层 ALLOW，缺一不可。"""
+        cfg = SH.FALLBACK_CONFIG
+        title = "AI应用工程师（应届生可投）"
+        score, why = SH.score_jd(title, "", cfg)
+        self.assertFalse(why.startswith("标题包含排除词"), why)
+        self.assertGreater(score, 0, "打分层不该把这岗归零")
+        d = JD.evaluate_job("某某科技", title, "双休", "12-18K", city="深圳", cfg=cfg)
+        self.assertEqual(d.action, "ALLOW", f"决策层把它拒了：{d.reason}")
+
+    def test_identity_words_are_still_blocked_at_the_scoring_layer(self):
+        """防矫枉过正：校招/实习/管培生 仍要在打分层被拦（与决策器同向）。"""
+        cfg = SH.FALLBACK_CONFIG
+        for title in ("2027届校园招聘管培生", "AI应用工程师实习生", "培训生计划"):
+            _score, why = SH.score_jd(title, "", cfg)
+            d = JD.evaluate_job("某某科技", title, "", "12-18K", city="深圳", cfg=cfg)
+            self.assertEqual(d.action, "REJECT", f"{title} 该被届别闸拦")
+            self.assertIn("届别闸", d.reason)
 
 
 # ══════════════════════════════════════════════════════════════
