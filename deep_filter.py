@@ -298,7 +298,10 @@ def deep_filter(company: str, title: str, desc: str, salary: str,
     """深度筛选总入口。
 
     profile: 公司画像（来自背调），None = 未背调（跳过公司规则）
-    返回 (adjusted_score, reason)。score 归零 = 过滤。
+    返回 (adjusted_score, reason)。
+
+    ⚠️ 判定「是否被拦下」请用 is_filtered(score, reason)，**不要**用 score == 0：
+    未命中规则时会原样返回入参 score，传 0 进来同样得到 0。原因字符串才是判据。
     """
     # Priority 1: 标题党检测（本地）
     clickbait, reason = detect_clickbait(title, desc)
@@ -339,8 +342,29 @@ def deep_filter(company: str, title: str, desc: str, salary: str,
         if kw in comp_lower:
             return 0, f"公司名含「{kw}」→人力中介/代招风险"
 
-    # Priority 8: 无命中风险项 → 保持原始分数
+    # Priority 8: 无命中风险项 → **原样返回传入的 score**
+    # ⚠️ 注意这里返回的是入参 score，不是常量 100：调用方若传进来 0 分（例如
+    #    shared.score_jd 因标题命中排除词而归零），返回值同样是 (0, "")。
+    #    所以**绝不能**用 `adjusted_score == 0` 判断「deep_filter 拦了这个岗」——
+    #    (0, "") 是「通过」。(0, "标题党:…") 才是「拦截」。
+    #    判据统一走下面的 is_filtered()。
     return score, ""
+
+
+def is_filtered(adjusted_score: int, reason: str) -> bool:
+    """deep_filter 的结果是否表示「这个岗被拦下了」。**唯一判据。**
+
+    为什么不能用 adjusted_score == 0 判：未命中任何规则时 deep_filter 原样返回入参
+    score（见上面 Priority 8），传 0 进来就得到 (0, "")。历史实现正是这么写的 ——
+
+        2026-09-20 查到：`if deep_score == 0` 把「入参本来就是 0 分」误当成 deep_filter
+        拦截，于是 score_jd 已经给出的真实原因（「标题包含排除词: 应届」…）被一个空串
+        覆盖后落库。8/23 起 Boss 端 1048 条 SKIPPED 的 reason 就是这么丢的 ——
+        全部 event=deep_filter、reason=''、score=0，而岗位其实一个都没被 deep_filter 拦过。
+
+    判据只有一个：有没有给出原因。拦截路径（Priority 1-7）全都带原因，通过路径恒为空串。
+    """
+    return bool(reason)
 
 
 def run_company_background_check(company: str, city: str, eval_js_fn) -> dict:
