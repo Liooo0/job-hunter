@@ -661,3 +661,104 @@ class TestLiepinBypass(unittest.TestCase):
         cp.assert_not_called()
         self.assertNotIn("config", sys.modules,
                          "熔断状态下不许走到 import config（更不许连 Chrome）")
+
+
+# ══════════════════════════════════════════════════════════════
+#  过渡线：钱少 ↔ 事少 的换取闸（2026-09-20）
+# ══════════════════════════════════════════════════════════════
+
+class TestTransitionIdleTrade(unittest.TestCase):
+    """用户口径：「事少钱多离家近，总得占一个」。
+
+    过渡线是上岸不是攒钱 —— 3-4K 不该一刀切拒。明显清闲的（看店/坐班/不加班那类）
+    是「拿钱换时间」的合理交换；同样 3-4K 的销售/客服/流水线，钱少事还多，就没理由去。
+    （「离家近」不在本闸内，由 value_score 的「地点通勤」维度单独计分。）
+    """
+
+    JH_CATEGORY = "transition_idle"
+    JH_NEW = True
+
+    def _ev(self, title, desc, salary):
+        with _with_line("transition"):
+            return JD.evaluate_job("某公司", title, desc, salary)
+
+    # ── 门槛取的是区间**下限**，不是上限 ──
+
+    def test_floor_uses_lower_bound_not_upper_bound(self):
+        """`3-4K` 的下限是 3K，不能因为串里有「4K」就当成达标。
+
+        旧实现另写了一个 re.search 抓数字，抓到的正是区间上界 → 门槛实际是虚的。
+        """
+        self.assertEqual(JD.parse_salary_low("3-4K"), 3.0)
+        d = self._ev("内勤文员", "", "3-4K")
+        self.assertEqual(d.action, "REJECT")
+        self.assertIn("低于", d.reason)
+
+    def test_lower_bound_at_floor_still_passes(self):
+        """`4-5K` 下限 = 4K，正好达标 → 照旧放行（既有行为不许动）。"""
+        d = self._ev("内勤文员", "", "4-5K")
+        self.assertEqual((d.action, d.priority), ("ALLOW", "LOW"))
+
+    def test_single_value_below_floor_rejected(self):
+        with _with_line("transition"):
+            self.assertEqual(JD.evaluate_job("某公司", "内勤文员", "", "3.5K").action,
+                             "REJECT")
+
+    # ── 钱少 → 用「事少」换 ──
+
+    def test_idle_low_pay_job_is_accepted(self):
+        """KKV 那种看店/理货的清闲岗：钱少但事少 → 可投。"""
+        d = self._ev("门店店员", "负责看店、整理货架，工作轻松不加班", "3-4K")
+        self.assertEqual((d.action, d.priority), ("ALLOW", "LOW"))
+        self.assertIn("事少", d.reason)
+
+    def test_idle_signal_rescues_a_range_whose_low_is_below_floor(self):
+        d = self._ev("数据录入", "工作简单易上手，基本不加班", "3.5-4.5K")
+        self.assertEqual(d.action, "ALLOW")
+
+    def test_low_pay_without_idle_signal_is_rejected(self):
+        d = self._ev("内勤文员", "整理档案", "3-4K")
+        self.assertEqual(d.action, "REJECT")
+
+    # ── 反向否决：钱已少，事还多 → 没理由去 ──
+
+    def test_busy_signal_vetoes_the_idle_trade(self):
+        """「坐班」是低强度词，但「销售」是否决词 —— 3K+高提成的坐班销售不该放行。"""
+        d = self._ev("销售顾问", "坐班销售，底薪3K+高提成", "3-4K")
+        self.assertEqual(d.action, "REJECT")
+
+    def test_busy_wins_even_when_idle_words_also_present(self):
+        """同一段 JD 里既有「清闲」又有「客服」→ 否决优先。"""
+        d = self._ev("客服", "工作清闲，不加班，负责接听", "3-4K")
+        self.assertEqual(d.action, "REJECT")
+
+    def test_piece_rate_low_pay_rejected(self):
+        d = self._ev("理货员", "计件工资，多劳多得，工作简单", "3-4K")
+        self.assertEqual(d.action, "REJECT")
+        self.assertIn("多劳多得", d.reason)
+
+    # ── 只解锁「底薪 < 4K」这一条，别的闸不许被带跑 ──
+
+    def test_idle_trade_does_not_bypass_redlines(self):
+        """事少信号不能用来解制度红线。"""
+        d = self._ev("门店店员", "工作轻松不加班，但大小周轮班", "3-4K")
+        self.assertEqual(d.action, "REJECT")
+        self.assertIn("红线", d.reason)
+
+    def test_idle_trade_is_transition_line_only(self):
+        """同一岗位两条线结论不同：「钱少事少」这套交换只在过渡线成立。
+
+        用「清闲／看店」而不是「轻松／不加班」做信号 —— 后两个词本来就在 AI 线的
+        特批名单（SPECIAL_APPROVAL_SIGNALS）里，拿它们做对照会分不清是谁在放行。
+        """
+        job = ("某公司", "门店店员", "负责看店，清闲", "3-4K")
+        with _with_line(None):
+            self.assertEqual(JD.evaluate_job(*job).action, "REJECT")
+        with _with_line("transition"):
+            self.assertEqual(JD.evaluate_job(*job).action, "ALLOW")
+
+    def test_job_category_words_are_not_idle_signals(self):
+        """「文员/标注」是岗位类别，不等于事少 —— 光写岗位名不解锁门槛。"""
+        for title in ("内勤文员", "数据标注", "资料整理"):
+            d = self._ev(title, "负责日常事务", "3-4K")
+            self.assertEqual(d.action, "REJECT", f"{title} 不该仅凭岗位名放行")
