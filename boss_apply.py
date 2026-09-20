@@ -297,15 +297,22 @@ USER_BG = {
     "默认": "我擅长用AI工具解决实际业务问题，独立交付过完整的自动化项目，能快速上手干活",
 }
 
-# 招呼语三风格变体（v2.1 任务三）：
+# 招呼语三风格变体（v2.1 任务三，2026-09-20 §3.5 改稿）：
 #   T1 技术栈对齐型 / T2 业务场景型 / T3 项目亮点型
 # 素材约束：bg 一律取 USER_BG（用户真实背景），问句 q 按 JD 匹配角色选取，
 # 绝不编造经历。按公司名确定性轮换，同一岗位重跑必得同一模板。
+#
+# 2026-09-20 改稿（§3.5）：
+#   - 去掉「您好／感谢／希望能有机会」类客套，去掉「熟练掌握」等虚词；
+#   - **不得写「已阅读岗位需求」**：51job 线路是从搜索卡片直接投递、根本没打开详情页，
+#     这句话站不住；Boss 线路也不该替平台说谎。
+#   - 结构 = 一句话说清能干什么（带一个可核实的落地事实 bg）+ 问回对方（q）；
+#   - 保持短、直、不谦卑。三种风格只在「怎么把同一件事说出口」上不同，信息量一致。
 GREETING_STYLE_ORDER = ("T1", "T2", "T3")
 GREETING_STYLES = {
-    "T1": {"name": "技术栈对齐型", "pattern": "看到贵司的{title}岗位，{bg}。{q}"},
-    "T2": {"name": "业务场景型", "pattern": "您好，看到贵司在招{title}，{bg}。想了解这个岗位主要负责的业务场景，另外{q}"},
-    "T3": {"name": "项目亮点型", "pattern": "{bg}——这是我独立跑通的项目。看到贵司的{title}岗位方向很匹配，{q}"},
+    "T1": {"name": "技术栈对齐型", "pattern": "{bg}。看到贵司在招{title}，{q}"},
+    "T2": {"name": "业务场景型", "pattern": "{bg}。{title}这岗我能直接上手，{q}"},
+    "T3": {"name": "项目亮点型", "pattern": "{bg}——这是我自己跑通的。{title}这岗想跟您聊聊，{q}"},
 }
 
 # 各角色的追问（从原 GREETING_TEMPLATES 的问句部分拆出，随 JD 关键词变化）
@@ -323,7 +330,7 @@ ROLE_QUESTIONS = {
     "座舱": "想了解一下这个岗位主要负责座舱的哪些功能模块？",
     "Python": "想了解这个岗位的技术栈和主要业务场景？",
     "知识库": "咱们的知识库主要服务内部还是对外产品？",
-    "默认": "期待进一步了解这个岗位的具体方向和团队情况！",
+    "默认": "这个岗位主要看哪方面的经验？",
 }
 
 
@@ -375,7 +382,17 @@ def generate_greeting_with_meta(title: str, desc: str, company: str = "") -> tup
 
     greeting = pattern.format(title=(title or "")[:20], bg=bg, q=q)
     if len(greeting) > 120:
-        greeting = greeting[:117] + "..."
+        # 2026-09-20 §3.5：原实现直接截尾部，长 bg（如采购人设）会把末尾「问回对方」
+        # 的问句整句砍掉，招呼语退化成纯自我介绍。改成先按需压缩 bg，保住问句；
+        # 万一压完还超（角色问句本身就很长），再走兜底截断。
+        _head = pattern.format(title=(title or "")[:20], bg="", q=q)
+        _room = max(8, 120 - len(_head) - 1)   # 1 = 省略号占位
+        greeting = pattern.format(title=(title or "")[:20],
+                                  bg=bg[:_room] + "…", q=q)
+        # 省略号后面紧跟模板自带的句号会读成「…。看到」，去掉多余的句号
+        greeting = greeting.replace("…。", "…")
+        if len(greeting) > 120:
+            greeting = greeting[:117] + "..."
 
     template_id = f"{style}:{matched_role}"
     return greeting, template_id
@@ -1157,6 +1174,18 @@ def _execute_apply(page, search_tab, city, keyword, title, company, salary, ctx)
         else:
             app_status, app_decision, verified, verify_note = "UNCERTAIN", "uncertain", 0, note
     print(f"    {'✅' if verified else '⚠️'} {verify_note}")
+
+    # ── 2026-09-20 §3.5：招呼语**真的发出去**了才留痕。──
+    # 这条留痕是「会话最后一条是不是我发的」的判定依据（self_sent.is_self_sent）。
+    # 原来靠比对招呼语开头几个字（"您好！我是"），文案一改就认不出自己的话，
+    # 会被当成 HR 新消息 → 误触发 REPLY_REVIEW_LOCK。所以必须在**验证通过**这一支记，
+    # 没验证通过的（UNCERTAIN）不能记：没发出去却留痕，等于把 HR 的话误判成我方消息。
+    if verified:
+        try:
+            import self_sent
+            self_sent.record(greeting, channel="boss_greeting", company=company)
+        except Exception as e:
+            print(f"    ⚠️ 招呼语留痕失败（不影响本次投递）: {e}")
 
     # v2.1：动作已执行 → apply 门 pass（uncertain 与否由 final_decision 体现），收口快照
     decision_trace.gate(tr, "apply", "pass", detail=f"{app_status}:{verify_note}")

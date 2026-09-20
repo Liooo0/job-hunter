@@ -71,7 +71,7 @@ DEFAULT_PROFILE = """求职方向：AI应用工程师，base 深圳（不是上�
 背景：移动通信+工商管理复合背景。
 真实项目：
 1. BOSS直聘助手（Chrome扩展）：AI生成个性化招呼语、聊天辅助回复、岗位管理面板
-2. 商品上新监控（Python）：私有接口签名对接、关键词粗筛+视觉LLM精筛两级过滤、异步并发、SQLite去重、Webhook推送
+2. 电商商品上新监控（私有接口签名对接 + 多模态 LLM 视觉识别）：关键词粗筛与视觉精筛两级过滤、异步并发、SQLite 去重、Webhook 推送
 3. 求职自动化（Python+DrissionPage）：多平台自动投递、HR消息智能分类、反检测设计
 4. 装修获客 AI 客服（知识库/RAG）：双库分层知识库、LLM 结构化抽取、规则评分分级意向，已部署运行
 技能：Python、LLM API集成、Prompt Engineering、浏览器自动化、数据管道、Linux/Shell。
@@ -203,16 +203,51 @@ HR说: {msg_text[:300]}
     return "interest", ""  # 空则跳过发送
 
 
+def _is_self_sent(msg: str) -> bool:
+    """是不是我们自己发出去的话（查发送留痕，不看文案长什么样）。见 self_sent 模块。
+
+    扫描时每个会话都要问一次，所以这里把这堆留痕缓存到进程内 —— 扫描本身不发送，
+    扫描期间留痕不会变，每次重读文件纯属浪费。
+    """
+    global _SELF_SENT_POOL
+    if _SELF_SENT_POOL is None:
+        try:
+            import self_sent
+            _SELF_SENT_POOL = self_sent.self_sent_pool()
+        except Exception:
+            _SELF_SENT_POOL = set()
+    if not _SELF_SENT_POOL:
+        return False
+    try:
+        import self_sent
+        return self_sent.matches(msg, _SELF_SENT_POOL)
+    except Exception:
+        return False
+
+
+_SELF_SENT_POOL = None
+
+
 def _is_hr_real_message(msg: str) -> bool:
     """过滤非 HR 真实消息（自己发的招呼语/礼貌回复、系统占位、系统消息、Boss 广告）。"""
     if not msg or len(msg) < 2:
         return False
-    # 自己发的招呼语（姓名从本机档案读，公开仓库不留真名）
-    if MY_NAME and (f"您好！我是{MY_NAME}" in msg or f"我是{MY_NAME}" in msg):
+    # ── 自方消息判定（2026-09-20 §3.5 改：改判「发送留痕」，不再靠文案开头几个字）──
+    # 原来这里写死 "您好！我是{MY_NAME}" 前缀。招呼语一改（§3.5 新文案既不含「您好」
+    # 也不含「我是」），我们自己发出去的话就认不出来了 → 被当成 HR 新消息扫进待回复
+    # 队列 → 误触发 REPLY_REVIEW_LOCK 把投递锁死。所以主路径改成查发送留痕：
+    # 发出去的招呼语/回复在发送成功那一刻就登记进 self_sent，改多少次文案都不会漏判。
+    if _is_self_sent(msg):
         return False
+    # 身份信号（与文案无关）：本机档案配了姓名时，正文里出现「我是<姓名>」即我方。
+    if MY_NAME and f"我是{MY_NAME}" in msg:
+        return False
+    # 遗留兜底：只用来认**改动之前**发出去的老招呼语（那些没进留痕）。
+    # 这条不是判定主路径 —— §3.5 的新文案压根不匹配它，所以它不可能造成
+    # 「新招呼语被当成 HR 消息」这个目标故障；等老会话沉底后可以整体删掉。
     if not MY_NAME and msg.startswith("您好！我是") and any(
             k in msg for k in ("求职", "AI", "专注", "工程师")):
-        return False   # 未配姓名时的保守兜底：自己的招呼语不以 HR 消息处理
+        return False
     # 自己发的礼貌回复（防重复回）
     if any(msg.startswith(p) for p in [
         "好的，谢谢您", "好的，感谢", "收到，感谢", "收到，谢谢",
@@ -477,18 +512,33 @@ def main():
     #    入队即上 REPLY_REVIEW_LOCK → 自动投递 worker 在任务边界暂停。──
     if interests or rejects:
         import reply_lock as _RL
+        import schedule_inquiry as _SI   # §3.1 后置状态机：制度问询
         sessions = []
         for r in results:
             if not r.get("reply"):
                 continue
             m = r["msg"]
+            _sid = f"R{int(datetime.now().timestamp())}-{len(sessions)}"
+            _draft = r["reply"]
+            # ── §3.1（2026-09-20）：51job 搜索卡片没有 jd_text → 双休/排班/加班
+            #    在投递那一刻只能是 UNKNOWN。改为等 HR 真的开口聊了再顺便问一句。
+            #    问询只追加在草稿末尾，仍然走「人工审核 → 确认 → 发送」唯一通路，
+            #    不新增任何自动发送路径（v5 第十二条不变量）。
+            #    ask_once() 自带「同一 HR 只问一次」的落盘去重。──
+            if _SI.is_substantive(m.get("message", "")):
+                _q = _SI.ask_once(m.get("company", ""), m.get("name", ""),
+                                  session_id=_sid)
+                if _q:
+                    _draft = f"{_draft}\n{_q}"
+                    print(f"   🩺 制度问询已附上（{m.get('company','')[:14]} · "
+                          f"{m.get('name','')}）：{_q}")
             sessions.append({
-                "id": f"R{int(datetime.now().timestamp())}-{len(sessions)}",
+                "id": _sid,
                 "company": m.get("company", ""), "hr_name": m.get("name", ""),
                 "name_box": m.get("nameBox", ""),
                 "job": (m.get("job_context") or {}).get("job_title", ""),
                 "hr_message": m.get("message", "")[:200],
-                "draft": r["reply"], "kind": r["kind"],
+                "draft": _draft, "kind": r["kind"],
                 "purpose": "回应HR兴趣信号" if r["kind"] == "interest" else "礼貌收尾",
                 "status": "pending", "drafted_at": datetime.now().isoformat(timespec="seconds"),
             })
@@ -700,6 +750,13 @@ def send_one(page, name_box: str, reply: str):
         var ed = document.querySelector('[contenteditable="true"]');
         return ed ? ed.textContent.trim() === '' : false;
     """)
+    # ── 2026-09-20 §3.5：验证通过才留痕（没发出去不能记，否则会把 HR 的话当成我方消息）──
+    if cleared:
+        try:
+            import self_sent
+            self_sent.record(reply, channel="hr_reply", name_box=name_box)
+        except Exception as e:
+            print(f"   ⚠️ 回复留痕失败（不影响本次发送）: {e}")
     return bool(cleared)
 
 
