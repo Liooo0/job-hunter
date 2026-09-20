@@ -23,6 +23,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Optional
 
+import scam_guard
+
 # ── 薪资带（K/月） ──
 SALARY_HARD_FLOOR = 5.0      # <5K 默认拒绝
 
@@ -169,9 +171,14 @@ class Decision:
     # 51job 的搜索卡片只有 title/salary，jd_text 是空的 —— 那时作息结论只能是
     # UNKNOWN，绝不能被当成「没命中单休关键词 = 默认双休 = PASS」。
     schedule_verdict: str = SCHEDULE_UNKNOWN
+    # 弱信号标签（scam_guard.weak_flags）。**不参与裁决**，只在复核时展示：
+    # 「远程岗要求自备设备」「主体形态:工作室/个人独资」这类组合正规岗也常见，
+    # 拿它拦人会大面积误杀。硬信号（要收费/垫付/招转培）走的是 REJECT，不进这里。
+    risk_flags: list = field(default_factory=list)
 
     def __str__(self):
-        return f"[{self.action}] {self.priority} | {self.reason}"
+        tail = f" | 风险:{'/'.join(self.risk_flags)}" if self.risk_flags else ""
+        return f"[{self.action}] {self.priority} | {self.reason}{tail}"
 
 
 def _decode_salary_text(salary: str) -> str:
@@ -330,10 +337,15 @@ def evaluate_job(company: str, title: str, desc: str, salary: str,
     与 _evaluate_job_core 的区别只有一个：**统一补上作息制度的判定结果**。
     放在外层补，是为了不破坏 core 里那一串 return（每个分支都手写一遍
     容易漏，也容易在改动时忘掉某一支）。
+
+    同时在外层挂上 scam_guard 的**弱信号标签**（`risk_flags`）——同样是为了
+    不碰 core 里那一串 return：弱信号不参与裁决，只跟着 Decision 走，
+    让复核的人看到「远程岗要求自备设备」这类风险面。
     """
     d = _evaluate_job_core(company, title, desc, salary, city, cfg,
                            parsed_signals, line)
     d.schedule_verdict = schedule_verdict(title, desc)
+    d.risk_flags = scam_guard.weak_flags(company, title, desc)
     return d
 
 
@@ -355,7 +367,16 @@ def _evaluate_job_core(company: str, title: str, desc: str, salary: str,
     desc = desc or ""
     combined = title + " " + desc
 
-    # ── 0. 解析层信号优先 ──
+    # ── 0. 诈骗红线（2026-09-20 新增，最先判）──
+    # 放在最前：薪资再合适、作息再完美，「要你先交钱」也是一票否决，
+    # 而且这条原因最该被看见（落库后 reason 会直接告诉人为什么没投）。
+    # 判据只有三类硬信号：入职前收费 / 垫付刷单 / 显式招转培。
+    # 弱信号（远程+自备设备、工作室主体）**不在这里拦**，见 scam_guard.weak_flags。
+    _scam, _scam_reason = scam_guard.detect_scam(company, title, desc)
+    if _scam:
+        return Decision("REJECT", reason=_scam_reason)
+
+    # ── 0.1 解析层信号优先 ──
     sig = parsed_signals or {}
     workday = sig.get("workday")
     if workday == "single_rest":
@@ -365,7 +386,7 @@ def _evaluate_job_core(company: str, title: str, desc: str, salary: str,
     if sig.get("intern"):
         return Decision("REJECT", reason="解析信号:实习岗→过滤")
 
-    # ── 0.5 届别闸 + 兼职闸（2026-09-20 新增，收敛原先散在平台的重复实现）──
+    # ── 0.2 届别闸 + 兼职闸（2026-09-20 新增，收敛原先散在平台的重复实现）──
     # 顺序放在制度红线之前：身份不匹配（校招/实习/兼职）比作息更根本。
     _cohort = cohort_block_reason(title)
     if _cohort:

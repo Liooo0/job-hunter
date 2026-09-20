@@ -89,7 +89,7 @@ PYTHONPATH="" python3 boss_apply.py --cities "深圳,广州" --jobs "AI应用工
 >
 > ```bash
 > python3 tests/regression.py          # 25 个真实 JD 回归案例
-> PYTHONPATH="" python3 -m unittest discover -s tests -p "test_*.py" -t .   # 432 个单元测试
+> PYTHONPATH="" python3 -m unittest discover -s tests -p "test_*.py" -t .   # 468 个单元测试
 > ```
 
 ## 配置说明
@@ -138,7 +138,7 @@ PYTHONPATH="" python3 boss_apply.py --cities "深圳,广州" --jobs "AI应用工
 - **投递验证状态机**：点击"立即沟通"后验证会话真实打开、消息真实发出，结果分为 `APPLIED` / `UNCERTAIN`（需人工复核）/ `FAILED`，杜绝"假发送"
 - **风控防护**：kill switch 全局急停、跨进程日/小时双熔断、夜间禁投、公司去重——这是被平台封号两次换来的教训清单
 - **确定性优先**：所有打分/过滤都是本地规则，LLM 只用于可选的 HR 消息草拟；同一输入永远同一输出
-- **回归测试**：25 个真实 JD 案例回归集 + 432 个单元测试，GitHub Actions 每次 push 跑语法检查
+- **回归测试**：25 个真实 JD 案例回归集 + 468 个单元测试，GitHub Actions 每次 push 跑语法检查
 
 ## Token 消耗预估
 
