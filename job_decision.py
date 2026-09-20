@@ -18,12 +18,29 @@
   - 纯劳务/人力代招主体
   - 外包 + 低技术 + 低价（<6K）
 """
+import os
 import re
 from dataclasses import dataclass, field
 from typing import Optional
 
 # ── 薪资带（K/月） ──
 SALARY_HARD_FLOOR = 5.0      # <5K 默认拒绝
+
+# ── 薪资天花板红线（2026-09-19 用户改稿）──
+# 原值 30K（2026-09-05 定：>30K 视为虚高画饼）。
+# 实测三天拒掉 112 个岗位，其中大量是深圳正常的 AI 岗
+# （AI FDE 21-31K / AI效率工程师 20-36K / 产品总监AI 20-41K），
+# 属于「拿防画饼的规则误杀真实高薪岗」——改到 60K，只拦明显离谱的。
+# 注意：仍按「上限 > 阈值」判，即 21-31K 这类区间整体不再被误杀。
+SALARY_CEILING = 60.0
+
+# ── 过渡线（line="transition"，2026-09-18 用户定）──
+# 用途：找「办公室职位」先上岸（拿工资/有工位/能双休），目标是 AI 评测·数据标注 /
+# 游戏运营·内容运营 / 内勤文员。与 AI 主线共用同一套制度红线（双休/文化/夜班/校招），
+# 但放松两处：薪资下限、以及外包/人服红线（这一档岗位大多挂在人服公司名下）。
+TRANSITION_SALARY_FLOOR = 4.0
+TRANSITION_PIECE_RATE_WORDS = ["计件", "按件计酬", "按单计酬", "众包", "按量计酬",
+                               "多劳多得", "无底薪"]
 SALARY_NORMAL_FLOOR = 8.0    # 8-10K 正常可接受
 SALARY_PRIORITY = 10.0       # ≥10K 高优先级
 
@@ -115,7 +132,7 @@ def _strip_pay_suffix(s: str) -> str:
 
     2026-09-12 修复: 51job/Boss 常见 "2.5-5万·13薪"。原 _parse_salary_value 用
     float(s.replace("万","")) 解析，得到 "2.5·13薪" → ValueError → 返回 0.0，
-    于是 high=0 → `high > 30` 永不成立 → 30K 红线对该类岗位完全失效（漏投）。
+    于是 high=0 → `high > SALARY_CEILING` 永不成立 → 天花板红线对该类岗位完全失效（漏投）。
     """
     return re.sub(r"[·\-]?\s*\d+\s*薪", "", s)
 
@@ -171,7 +188,7 @@ def parse_salary_low(salary: str) -> float:
 
 
 def parse_salary_high(salary: str) -> float:
-    """解析薪资上限(K/月)。0 = 未知。用于超高价线判断(>30K 不投, 用户2026-09-05定稿)。"""
+    """解析薪资上限(K/月)。0 = 未知。用于薪资天花板红线判断(>SALARY_CEILING 不投)。"""
     s = _decode_salary_text(salary)
     if not s:
         return 0.0
@@ -190,7 +207,8 @@ def _has_any(text: str, words) -> bool:
 
 def evaluate_job(company: str, title: str, desc: str, salary: str,
                  city: str = "", cfg=None,
-                 parsed_signals: Optional[dict] = None) -> Decision:
+                 parsed_signals: Optional[dict] = None,
+                 line: str = "ai") -> Decision:
     """确定性岗位裁决。
 
     parsed_signals: 模型/解析层提供的结构化信号（可选）：
@@ -198,6 +216,9 @@ def evaluate_job(company: str, title: str, desc: str, salary: str,
        "shift": bool, "outsourcing": bool, "intern": bool}
     提供后以信号为准；未提供则用关键词提取兜底。
     """
+    # 线路切换：JH_LINE=transition 时走过渡线规则（不改调用方代码即可切换）
+    if line == "ai":
+        line = os.environ.get("JH_LINE", "ai")
     title = title or ""
     desc = desc or ""
     combined = title + " " + desc
@@ -242,10 +263,10 @@ def evaluate_job(company: str, title: str, desc: str, salary: str,
     # ── 4. 薪资分层 ──
     low = parse_salary_low(salary)
     high = parse_salary_high(salary)
-    # 2026-09-05 用户定稿：超过 30K 不投，不真实（虚高画饼）。上限或单值 >30K 直接拒。
-    if high > 30.0 or (high <= 0 and low > 30.0):
-        return Decision("REJECT", priority="", salary_band=">30K",
-                        reason=f"薪资超30K红线({salary[:16]}→high={high:g}K)→不投,不真实")
+    # 2026-09-19 改：天花板 30K → 60K（SALARY_CEILING）。上限或单值 >60K 直接拒。
+    if high > SALARY_CEILING or (high <= 0 and low > SALARY_CEILING):
+        return Decision("REJECT", priority="", salary_band=f">{SALARY_CEILING:g}K",
+                        reason=f"薪资超{SALARY_CEILING:g}K红线({salary[:16]}→high={high:g}K)→不投,不真实")
     if low <= 0:
         band = "unknown"
     elif low < SALARY_HARD_FLOOR:
@@ -261,12 +282,31 @@ def evaluate_job(company: str, title: str, desc: str, salary: str,
         return Decision("ALLOW", priority="NORMAL", salary_band=band,
                         reason=f"薪资未知→不因薪资拒绝({salary[:20]})")
     if band == "<5K":
+        # 过渡线（2026-09-18）：办公室岗现实区间就是 3.5-6K，≥4K 放行上岸优先。
+        if line == "transition":
+            _num = None
+            _m = re.search(r"(\d+(?:\.\d+)?)\s*(?:千|[kK])", salary or "")
+            if _m:
+                _num = float(_m.group(1))
+            if _num is not None and _num >= TRANSITION_SALARY_FLOOR:
+                return Decision("ALLOW", priority="LOW", salary_band=band,
+                                reason=f"{band}过渡线:≥{TRANSITION_SALARY_FLOOR:g}K→上岸优先")
+            return Decision("REJECT", priority="", salary_band=band,
+                            reason=f"{band}过渡线:低于{TRANSITION_SALARY_FLOOR:g}K仍拒")
         # 特批检查：即使<5K，正式工/编制/极高稳定也留一条缝（用户场景少但存在）
         if _has_any(combined, SPECIAL_APPROVAL_SIGNALS):
             return Decision("ALLOW", priority="LOW", salary_band=band,
                             special_approval=True,
                             reason=f"{band}特批:正式工/编制/高稳定信号")
         return Decision("REJECT", priority="", salary_band=band, reason=f"{band}→默认拒绝")
+    if band == "5-8K" and line == "transition":
+        # 过渡线：5-8K 直接可投（不再要求特批信号）；但计件/无底薪一律拒
+        # （调研结论：计件是这一档最主要的坑，单价会被压、月薪波动大）。
+        if _has_any(combined, TRANSITION_PIECE_RATE_WORDS):
+            return Decision("REJECT", priority="", salary_band=band,
+                            reason=f"{band}过渡线:计件/无底薪→拒（月薪不稳）")
+        return Decision("ALLOW", priority="LOW", salary_band=band,
+                        reason=f"{band}过渡线→可投(LOW)")
     if band == "5-8K":
         # 2026-09-05 用户定稿：底薪(无责底薪) ≥8K 才投，绩效/提成不算。
         # 区间下限 5-8K 的岗：若 JD 明确声明底薪≥8K（如"底薪8K+高提成"）→ 放行；

@@ -2,7 +2,7 @@
 """猎聘 自动投递 v4 — 升级: 9223 + evaluate_job(L2决策) + record_application落库 + 日限50
 
 复用 v3 的抓取/点击核心(sensorsdata结构化卡片), 决策层从 score_jd 换成 job_decision.evaluate_job
-规则全平台统一: 底薪≥8K / 薪资≤30K / 排除销售标注狼性实习
+规则全平台统一: 底薪≥8K / 薪资≤60K / 排除销售标注狼性实习
 独立限额: 50/天 (不占Boss的150)
 """
 import argparse, json, time, random, sys
@@ -240,7 +240,10 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
 
             print(f"  [✅{c['title'][:30]}] | {c['salary']} | {c['company'][:15]}")
             state = click_apply_and_check(tab, c.get('href', ''), page)
-            if "已申请" in state or "已投递" in state:
+            # 2026-09-19 修正：猎聘走的是 _find_and_click，成功回执是 'CLICKED:投简历'，
+            # 而 51job 的 click_apply_and_check 才返回「已申请/已投递」。
+            # 原来这里只认后者 → 每一次真实投递都落进 else 失败分支（猎聘长期 0 入库的第一个因）。
+            if "已申请" in state or "已投递" in state or state.startswith("CLICKED"):
                 applied += 1
                 today_applied += 1
                 try:
@@ -252,7 +255,7 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
                         # 的成功分支，原来却写死 UNCERTAIN/verified=0。
                         status="APPLIED", reason=str(reason)[:60],
                         verified=1, event_type="apply", event_error=None,
-                        extra_payload={"jobId": c["jobId"], "area": c["area"],
+                        extra_payload={"jobId": c["jobId"], "area": c.get("area", ""),
                                        "button_state": state,
                                        "evidence": "liepin按钮回执"},
                         gates=None, greeting_template_id=None,
@@ -271,7 +274,7 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
                         status="FAILED", reason=f"按钮未确认:{state or '无回执'}"[:80],
                         verified=0, event_type="apply",
                         event_error=f"按钮状态未确认: {state or '空回执'}",
-                        extra_payload={"jobId": c["jobId"], "area": c["area"]},
+                        extra_payload={"jobId": c["jobId"], "area": c.get("area", "")},
                         gates=None, greeting_template_id=None,
                     )
                 except Exception as e:
@@ -306,6 +309,10 @@ def main():
         alert("kill_switch_block", "kill switch 生效中，猎聘本轮未投递",
               f"原因：{_kreason}\n恢复：python3 boss_apply.py --kill-off",
               level="warn", throttle=1800)
+        return
+    # ── 全局 Chrome 互斥（2026-09-19）──
+    from chrome_lock import acquire as _chrome_acquire
+    if not _chrome_acquire("liepin", wait_seconds=1500, max_minutes=45):
         return
     try:
         page = ChromiumPage(PORT)

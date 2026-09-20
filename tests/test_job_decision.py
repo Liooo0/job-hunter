@@ -155,19 +155,26 @@ class TestBaseSalaryPolicy(unittest.TestCase):
         self.assertIn("狼性", d.reason)
 
 
-class TestSalaryCap30K(unittest.TestCase):
-    """2026-09-05 用户定稿：超过 30K 不投，不真实（虚高画饼）。"""
+class TestSalaryCeiling(unittest.TestCase):
+    """薪资天花板红线。2026-09-05 定稿 30K；2026-09-19 按实测改到 60K。
 
-    def test_over_30k_reject(self):
+    改稿理由（完整版见 job_decision.SALARY_CEILING 上方注释）：30K 口径三天拒掉
+    112 个岗位，其中大量是深圳正常的 AI 岗（AI FDE 21-31K / AI效率工程师 20-36K /
+    产品总监AI 20-41K），属于拿防画饼的规则误杀真实高薪岗。
+    语义不变：仍按「区间上限或单值 > SALARY_CEILING」判。
+    """
+
+    def test_over_ceiling_reject(self):
         d = evaluate_job("快手", "AI Agent研发", "双休", "\ue035\ue031-\ue038\ue031K", city="杭州")  # 51-81K
         self.assertEqual(d.action, "REJECT")
-        self.assertIn("30K", d.reason)
+        self.assertIn("60K", d.reason)
 
-    def test_29_41k_reject(self):
-        d = evaluate_job("某司", "AI应用", "双休", "\ue032\ue039-\ue034\ue031K", city="深圳")  # 29-41K
-        self.assertEqual(d.action, "REJECT")
+    def test_29_41k_now_allowed(self):
+        # 29-41K：30K 口径下被误杀，60K 口径下放行（本次改稿要修的就是这一类）
+        d = evaluate_job("某司", "AI应用", "双休", "\ue032\ue039-\ue034\ue031K", city="深圳")
+        self.assertEqual(d.action, "ALLOW")
 
-    def test_under_30k_allow(self):
+    def test_under_ceiling_allow(self):
         d = evaluate_job("某司", "AI应用", "双休", "\ue032\ue035-\ue032\ue039K", city="深圳")  # 25-29K
         self.assertEqual(d.action, "ALLOW")
 
@@ -179,7 +186,7 @@ class TestSalaryCap30K(unittest.TestCase):
 
 
 class TestAnnualSalaryParsing(unittest.TestCase):
-    """2026-09-10 修复: 年薪格式(万/年)曾被当月薪万误判为150K→误拦30K线。
+    """2026-09-10 修复: 年薪格式(万/年)曾被当月薪万误判为150K→误触天花板红线。
 
     51job 上"15-22万/年"很常见,误拦会漏掉大量可投岗(AI解决方案经理类)。
     """
@@ -190,14 +197,14 @@ class TestAnnualSalaryParsing(unittest.TestCase):
         self.assertAlmostEqual(parse_salary_low("15-22万/年"), 12.5, places=1)
         self.assertAlmostEqual(parse_salary_high("15-22万/年"), 18.3, places=1)
 
-    def test_annual_salary_within_30k_allowed(self):
+    def test_annual_salary_within_ceiling_allowed(self):
         from job_decision import evaluate_job
         d = evaluate_job("某公司", "AI解决方案经理", "", "15-30万/年", city="深圳")
         self.assertEqual(d.action, "ALLOW")
 
     def test_high_annual_salary_still_rejected(self):
         from job_decision import evaluate_job
-        # 80-100万/年 = 66.7-83.3K/月 → 超30K线,应拦
+        # 80-100万/年 = 66.7-83.3K/月 → 超天花板,应拦
         d = evaluate_job("某公司", "AI智能化专家", "", "80-100万/年", city="深圳")
         self.assertEqual(d.action, "REJECT")
 
@@ -220,34 +227,44 @@ class TestDisabilityJobRejection(unittest.TestCase):
 
 
 class TestPaySuffixSalaryParsing(unittest.TestCase):
-    """2026-09-12 修复: 「·13薪/·14薪」后缀致薪资解析失败 → 30K 红线永久失效。
+    """2026-09-12 修复: 「·13薪/·14薪」后缀致薪资解析失败 → 天花板红线永久失效。
 
     根因: _parse_salary_value 用 float(s.replace("万","")) 解析,
     "5万·13薪" → "5·13薪" → ValueError → 返回 0.0 → high=0 →
-    `high > 30` 永不成立。51job/Boss 上「·13薪」极常见,属系统性漏投。
-    实测漏投: 安帝爱科技 2.5-5万·13薪(50K)、广州美聚优选 2-4万·13薪(40K)。
+    `high > SALARY_CEILING` 永不成立。51job/Boss 上「·13薪」极常见,属系统性漏投。
+    2026-09-19 天花板 30K→60K 后这条回归的校验点不变：后缀必须剥得掉、high 必须
+    算得出、超线必须拦——只是「哪一档算超线」跟着上限走。
     """
 
-    # ── 正例: 带薪后缀且上界 >30K,必须触发红线 ──
-    def test_suffix_high_range_rejected(self):
-        from job_decision import evaluate_job
-        d = evaluate_job("安帝爱科技（深圳）有限公司", "软件工程师", "", "2.5-5万·13薪", city="深圳")
+    # ── 正例: 带薪后缀且上界 > 天花板,必须触发红线 ──
+    def test_suffix_high_range_over_ceiling_rejected(self):
+        from job_decision import evaluate_job, parse_salary_high
+        # 后缀剥掉后 high 必须算得出来（原 bug 是 high=0 → 红线彻底失效）
+        self.assertAlmostEqual(parse_salary_high("8-12万·13薪"), 120.0, places=1)
+        d = evaluate_job("某公司", "AI架构专家", "", "8-12万·13薪", city="深圳")
         self.assertEqual(d.action, "REJECT")
-        self.assertIn("30K", d.reason)
+        self.assertIn("60K", d.reason)
 
     def test_suffix_high_range_rejected_2(self):
         from job_decision import evaluate_job
-        d = evaluate_job("广州美聚优选影视传媒有限公司", "AI应用工程师", "", "2-4万·13薪", city="广州")
+        d = evaluate_job("某公司", "AI专家", "", "5-9万·13薪", city="深圳")  # 50-90K
         self.assertEqual(d.action, "REJECT")
 
-    # ── 反例: 带同样后缀但上界 ≤30K,必须放行(不能因后缀一律拦) ──
+    # ── 反例: 带同样后缀但上界在天花板内,必须放行(不能因后缀一律拦) ──
+    # 后两条是 09-12 实测漏投的真实岗位：30K 口径下被误杀，60K 口径下放行。
     def test_suffix_within_cap_allowed(self):
-        from job_decision import evaluate_job
-        d = evaluate_job("深圳市米尔电子有限公司", "AI Agent应用工程师", "", "1.6-2.4万·13薪", city="深圳")
-        self.assertEqual(d.action, "ALLOW")
+        from job_decision import evaluate_job, parse_salary_high
+        self.assertAlmostEqual(parse_salary_high("2.5-5万·13薪"), 50.0, places=1)
+        for company, title, salary, city in (
+            ("深圳市米尔电子有限公司", "AI Agent应用工程师", "1.6-2.4万·13薪", "深圳"),
+            ("安帝爱科技（深圳）有限公司", "软件工程师", "2.5-5万·13薪", "深圳"),
+            ("广州美聚优选影视传媒有限公司", "AI应用工程师", "2-4万·13薪", "广州"),
+        ):
+            d = evaluate_job(company, title, "", salary, city=city)
+            self.assertEqual(d.action, "ALLOW", f"{company} {salary} 应在天花板内放行")
 
-    # ── 边界: 上界正好等于 30K → 不拦(红线是 >30K) ──
-    def test_suffix_boundary_exactly_30k_allowed(self):
+    # ── 边界: 上界正好等于天花板 → 不拦(红线是 >) ──
+    def test_suffix_boundary_at_ceiling_allowed(self):
         from job_decision import evaluate_job, parse_salary_high
         self.assertAlmostEqual(parse_salary_high("1.5-3万·14薪"), 30.0, places=1)
         d = evaluate_job("某公司", "AI应用工程师", "", "1.5-3万·14薪", city="深圳")
@@ -259,7 +276,7 @@ class TestPaySuffixSalaryParsing(unittest.TestCase):
         self.assertAlmostEqual(parse_salary_low("2.5万·13薪"), 25.0, places=1)
         self.assertAlmostEqual(parse_salary_high("2.5万·13薪"), 25.0, places=1)
 
-    def test_single_value_with_suffix_over_30k_rejected(self):
+    def test_single_value_with_suffix_over_ceiling_rejected(self):
         from job_decision import evaluate_job
         d = evaluate_job("某公司", "AI专家", "", "40万·13薪", city="深圳")
         self.assertEqual(d.action, "REJECT")

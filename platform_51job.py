@@ -2,7 +2,7 @@
 """51job 自动投递 v4 — 升级: 9223 + evaluate_job(L2决策) + record_application落库 + 日限50
 
 复用 v3 的抓取/点击核心(sensorsdata结构化卡片), 决策层从 score_jd 换成 job_decision.evaluate_job
-规则全平台统一: 底薪≥8K / 薪资≤30K / 排除销售标注狼性实习
+规则全平台统一: 底薪≥8K / 薪资≤60K / 排除销售标注狼性实习
 独立限额: 50/天 (不占Boss的150)
 """
 import argparse, json, time, random, sys
@@ -488,6 +488,13 @@ def main():
         alert("kill_switch_block", "kill switch 生效中，51job 本轮未投递",
               f"原因：{_kreason}\n恢复：python3 boss_apply.py --kill-off",
               level="warn", throttle=1800)
+        return
+
+    # ── 全局 Chrome 互斥（2026-09-19 事故复盘）──────────────────
+    # 原来只有「启动时 pgrep 看一眼」的弱互斥，防不住后启动的进程和 cron 孤儿；
+    # 实测两个进程抢同一 Chrome 标签页，13 条 51job 投递回执被读空。
+    from chrome_lock import acquire as _chrome_acquire
+    if not _chrome_acquire("51job", wait_seconds=1500, max_minutes=40):
         return
 
     print(f"╔══ 51job v4 ══ 城市{len(cities)} 词{len(keywords)} "
