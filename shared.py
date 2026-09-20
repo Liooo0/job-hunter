@@ -73,7 +73,10 @@ def get_chrome_opts(port: int = 9224):
 
 DEFAULT_CONFIG = {
     "resume_path": "",
-    "greeting": "您好，我对贵司岗位非常感兴趣，期待进一步沟通！",
+    # 2026-09-20 §3.5：招呼语统一改短、直、不谦卑 —— 去掉「您好／期待进一步沟通」类客套，
+    # 结构 = 一句话说清能干什么（带可核实的落地事实）+ 问回对方。
+    # 与 boss_apply.GREETING_STYLES 同一套语气（那边按 JD 角色选素材，这里是通用兜底）。
+    "greeting": "主攻 AI Agent 与自动化工作流落地（私有接口签名对接 + 本地知识库落地）。方便发份简历给您评估吗？",
     "skills": [],
     "target_roles": [],
     "exclude_keywords": [],

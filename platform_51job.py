@@ -13,7 +13,7 @@ from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).parent))
 from DrissionPage import ChromiumPage
-from job_decision import evaluate_job
+from job_decision import evaluate_job, cohort_block_reason
 from store import record_application
 from notify import alert
 
@@ -333,14 +333,14 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
                 return applied, skipped, tab
             seen.add(c["jobId"])
 
-            # 校招/应届/实习一律不投（用户 2026-09-09 定稿：应届生岗也不投了）
-            # 命中: XX届 / 校招 / 应届生 / 实习
+            # 届别闸：拦校招/实习/届别过晚，放行合理应届（2026-09-20 收敛）
+            # 规则实现在 job_decision.cohort_block_reason，本平台不再自带一份正则
+            # —— 原来那份 `[0-9]{2}届` 会把用户自己的 25届 一起拦掉。
             t = c["title"] or ""
-            import re as _re
-            if (_re.search(r"[0-9０-９]{2}届", t) or "校招" in t or "应届" in t
-                    or "实习" in t or "管培生" in t or "培训生" in t):
+            _cohort = cohort_block_reason(t)
+            if _cohort:
                 skipped += 1
-                print(f"  [🚫校招/应届/实习] {t[:35]} | {c['salary']}")
+                print(f"  [🚫届别] {t[:35]} | {c['salary']} → {_cohort}")
                 continue
 
             # L2 决策(全平台统一规则) — 与 boss_apply 同款三段闸
@@ -353,6 +353,9 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
                     block = True
                 else:
                     reason = f"L2:({getattr(dec, 'priority', '?')}|{getattr(dec, 'salary_band', '?')})"
+                # 作息制度：51job 搜索卡片没有正文 → 结论是 UNKNOWN，不是「双休已验证」。
+                # 单独记一份，避免把「没查过」当成「查过没问题」。
+                schedule_verdict = getattr(dec, "schedule_verdict", "UNKNOWN")
             except Exception as e:
                 print(f"  [⚠️决策器异常] {c['title'][:30]}: {e}")
                 continue
@@ -394,7 +397,8 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
             # 单小时熔断（与 boss_apply 同约定：满了休息 30 分钟再继续）
             hourly_gate(HOURLY_CAP)
 
-            print(f"  [✅{c['title'][:30]}] | {c['salary']} | {c['company'][:15]}")
+            print(f"  [✅{c['title'][:30]}] | {c['salary']} | {c['company'][:15]}"
+                  f" | 制度:{schedule_verdict}")
             try:
                 state = click_apply_and_check(tab, c["jobId"])
             except Exception as e:
@@ -419,6 +423,9 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
                         verified=1, event_type="apply", event_error=None,
                         extra_payload={"jobId": c["jobId"], "area": c["area"],
                                        "button_state": state,
+                                       # UNKNOWN = 搜索卡片没有正文，作息根本没查过。
+                                       # 落库是为了让「没查」和「查过没问题」在数据里可分辨。
+                                       "schedule_verdict": schedule_verdict,
                                        "evidence": "51job按钮回执"},
                         gates=None, greeting_template_id=None,
                     )
