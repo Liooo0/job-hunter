@@ -26,7 +26,7 @@ from store import (
     ensure_migrated, migrate_legacy_logs, list_city_titles, company_applied_recently,
     record_application, count_applied_since,
 )
-from deep_filter import deep_filter, run_company_background_check
+from deep_filter import deep_filter, is_filtered, run_company_background_check
 from match_engine import explain_match
 from report import print_terminal_summary, generate_html
 
@@ -1119,8 +1119,12 @@ def _prepare_job_context(search_tab, city, keyword, title, company, salary,
         decision_trace.gate(tr, "smart_filter", "pass")
 
     # ── 深度筛选 v2 (2026-08-07)：标题党检测 + 实习薪资陷阱（本地，零成本）──
+    # 2026-09-20：原来这里写的是 `if deep_score == 0` —— 错。deep_filter 未命中规则时
+    # **原样返回入参 score**，所以 score_jd 已经判 0 分（标题命中排除词）的岗位在这里被
+    # 二次误判成「deep_filter 拦的」，真实原因被空串覆盖后落库。8/23 起 1048 条 SKIPPED
+    # 的 reason 就这么丢了。判据改用 deep_filter.is_filtered()。
     deep_score, deep_reason = deep_filter(company, title, desc, salary, score)
-    if deep_score == 0:
+    if is_filtered(deep_score, deep_reason):
         decision_trace.gate(tr, "deep_filter", f"rejected:{deep_reason}")
         print(f"  [🔴深度过滤] {company[:15]} | {title[:25]} | {salary} → {deep_reason}")
         _record_outcome(city, company, title, salary, keyword, score,
@@ -1146,7 +1150,8 @@ def _prepare_job_context(search_tab, city, keyword, title, company, salary,
             """, timeout=20)
         profile = run_company_background_check(company, city, _company_eval)
         prof_score, prof_reason = deep_filter(company, title, desc, salary, score, profile=profile)
-        if prof_score == 0:
+        # 同上一处：判据是 prof_reason，不是 prof_score == 0（见 deep_filter.is_filtered）。
+        if is_filtered(prof_score, prof_reason):
             decision_trace.gate(tr, "company_profile", f"rejected:{prof_reason}")
             print(f"  [🔴公司背调] {company[:15]} | {title[:25]} → {prof_reason}")
             _record_outcome(city, company, title, salary, keyword, score,

@@ -37,6 +37,7 @@ CATEGORIES = [
     ("liepin",           "猎聘熔断 (Liepin Bypass)"),
     ("salary_ceiling",   "30K 薪资上限 (Salary Ceiling)"),
     ("boss_last_mile",   "Boss 最后一公里 (Boss Last Mile)"),
+    ("skip_reason",      "跳过原因埋点 (Skip Reason)"),
 ]
 _LABEL_W = 39
 _SEP = "=" * 48
