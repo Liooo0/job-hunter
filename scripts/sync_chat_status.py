@@ -157,7 +157,7 @@ def _is_my_message(msg: str, my_texts: set) -> bool:
 
 
 def _is_hr_real_message(msg: str, my_texts: set) -> bool:
-    """HR 真实消息：不是我自己发的、不是系统占位、不是广告。"""
+    """HR 真实消息：不是我自己发的、不是系统占位、不是广告、不是我方口吻的复述。"""
     m = (msg or "").strip()
     if len(m) < 2:
         return False
@@ -165,7 +165,55 @@ def _is_hr_real_message(msg: str, my_texts: set) -> bool:
         return False
     if any(s in m for s in SYSTEM_CONTAINS):
         return False
+    if _SYSTEM_PLACEHOLDER_RE.search(m):
+        return False
+    # 2026-09-21：堵住「我方原话被摘要后回流，被当成 HR 消息」这个真实事故。
+    # 事故实例（09-19 慧博云通）：我方 09-18 发的是
+    #   「目前离职状态，随时能到岗，一周内就行。」
+    # 扫描侧却把「目前离职状态，10日内到岗」当成 HR 的话 → 生成了一条对着自己回答的消息
+    #   （「离职状态对得上，10天内到岗没问题。」）。
+    # 原文不完全一致 → 发送留痕与 8 字前缀匹配都兜不住，只能靠口吻识别。
+    if _looks_like_candidate_voice(m):
+        return False
     return True
+
+
+# ── 第一人称求职口吻（2026-09-21）──
+# 候选人的自我状态陈述：HR 不会用这些话描述自己。
+_CANDIDATE_VOICE_RES = (
+    re.compile(r"目前(已)?离职"),
+    re.compile(r"(随时|一周内|两周内|\d+\s*(天|周|日)内|尽快)[^。？！?，,]{0,6}到岗"),
+    re.compile(r"我的?期望薪资(是|为|在)"),
+    re.compile(r"我(做|搭|写|负责|落地)过"),
+    re.compile(r"我是(19|20)\d{2}届"),
+    re.compile(r"我的?(附件)?简历(发|已发|在下面|见附件)"),
+    re.compile(r"我可以考虑|我可以接受|我这边"),
+)
+# HR 问句特征：命中则不算我方口吻（防止把 HR 的正常提问误杀）。
+# ⚠️ 不要放裸「请」——候选人自己也会写「请查收」，一个字就把误判救回来（实测踩过）。
+_HR_VOICE_RES = (
+    re.compile(r"请问|麻烦(您)?|方便(吗|的话|了解一下|发)|了解一下吗|是吗|吗[？?~～]?$"),
+    re.compile(r"简历收到|我们(公司|这边|团队)|岗位(要求|职责|内容)|面试|薪资范围"),
+)
+# 系统占位/平台通知：既不是我说的，也不是 HR 说的 —— 一律不算 HR 回复。
+_SYSTEM_PLACEHOLDER_RE = re.compile(
+    r"对方已(查看|阅读|看过)|您正在与|您的简历(已被查看|已投递|已发送)|"
+    r"系统消息|消息已被对方拒收|该职位已下线"
+)
+
+
+def _looks_like_candidate_voice(msg: str) -> bool:
+    """这条消息像不像「我自己说的」？
+
+    判据：命中第一人称求职陈述 **且** 不含 HR 问句特征。
+    宁可不判（放行给人工看）也不误杀真 HR 消息 —— 所以是 and 关系。
+    """
+    m = (msg or "").strip()
+    if not m:
+        return False
+    if any(r.search(m) for r in _HR_VOICE_RES):
+        return False
+    return any(r.search(m) for r in _CANDIDATE_VOICE_RES)
 
 # 会话列表读取 JS（选择器来自 hr_auto_reply.py 里已验证的那套）
 READ_JS = r"""
