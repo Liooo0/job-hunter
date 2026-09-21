@@ -87,6 +87,30 @@ SPECIAL_APPROVAL_SIGNALS = [
 # ── 公司主体红线 ──
 COMPANY_REDLINES = ["人力资源", "劳务派遣", "劳务外包", "代招", "猎头服务"]
 
+# ── 公司级黑名单（2026-09-20 新增）──────────────────────────────────
+# 为什么需要它：COMPANY_REDLINES 靠"名字里含红线词"判定，而外包/人服/狼性销售类公司
+# 的注册名往往一个红线词都没有 —— 实测漏网：
+#   法本    103 条（2026-06-17 → 09-20，51job 上判 APPLIED 真投了）
+#   珍岛    162 条（2026-06-23 → 09-19，Boss 上侥幸 SKIP，未真投）
+# 用户明确要求排除：法本、珍岛。
+COMPANY_BLACKLIST = ["法本", "珍岛"]
+
+# 同一红线（人服/IT外包/狼性销售型）的典型主体，名字同样不含关键词。
+# ⚠️ 注意：不要把"慧博云通"加进来 —— 该公司 HR 正在与用户正常沟通。
+OUTSOURCING_COMPANIES = [
+    "外企德科",    # 人服（FESCO Adecco）
+    "中软国际",    # IT 外包
+    "软通动力",    # IT 外包
+    "博彦科技",    # IT 外包
+    "文思海辉",    # IT 外包
+    "中电金信",    # IT 外包
+    "人瑞人才",    # 人服/外包
+    "探迹",        # 销售型 SaaS（与珍岛同类）
+]
+
+# 公司黑名单总表：命中即 REJECT（对所有 line 生效）
+COMPANY_BLOCKLIST = COMPANY_BLACKLIST + OUTSOURCING_COMPANIES
+
 # ── 届别闸（2026-09-20 定稿）：拦校招/实习，放行合理应届 ──
 # 背景：platform_51job / platform_liepin 里原来各有一份内联正则 `[0-9]{2}届`，
 # 它会把用户自己的 25届 一起拦掉（用户 2025 届本科毕业，在两年择业期内，不是在校生）。
@@ -420,6 +444,12 @@ def _evaluate_job_core(company: str, title: str, desc: str, salary: str,
     # ── 3. 公司主体红线 ──
     if _has_any(company or "", COMPANY_REDLINES):
         return Decision("REJECT", reason=f"公司主体红线:{next(w for w in COMPANY_REDLINES if w in (company or ''))}")
+
+    # 公司级黑名单：名字不含红线词、但属于同类的主体（人服/IT外包/狼性销售型）
+    # 必须在主体红线之后、任何打分之前判定 —— 一票否决，对所有 line 生效。
+    if _has_any(company or "", COMPANY_BLOCKLIST):
+        _hit = next(w for w in COMPANY_BLOCKLIST if w in (company or ""))
+        return Decision("REJECT", reason=f"公司黑名单:{_hit}")
 
     # ── 4. 薪资分层 ──
     low = parse_salary_low(salary)
