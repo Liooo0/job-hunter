@@ -73,7 +73,9 @@ def chrome_lock(who: str, wait_seconds: int = 1800, max_minutes: float | None = 
             if not waited_logged:
                 print(f"  ⏳ Chrome 被占用（{_holder_info()}），等待中…")
                 waited_logged = True
-            time.sleep(5)
+            # 睡眠取「剩余时间」与 5s 的较小值：否则超时判定要等满一个 5s 周期才生效，
+            # wait_seconds 小的时候会明显超时（实测 wait_seconds=3 等了 5.0s）。
+            time.sleep(min(5.0, max(0.2, deadline - time.time())))
 
     # 写持有者信息（诊断用；失败不影响加锁）
     try:
@@ -138,7 +140,8 @@ def acquire(who: str, wait_seconds: int = 1800, max_minutes: float | None = None
             if not waited:
                 print(f"  ⏳ Chrome 被占用（{_holder_info()}），等待中…")
                 waited = True
-            time.sleep(5)
+            # 同 chrome_lock()：按剩余时间睡，避免超时判定被 5s 周期拖长。
+            time.sleep(min(5.0, max(0.2, deadline - time.time())))
 
     try:
         fh.seek(0); fh.truncate()
