@@ -140,6 +140,30 @@ def acquire(sessions: list, reason: str = "HR会话待人工审核") -> bool:
     return True
 
 
+def mark_send_failed(item_id: str, reason: str = "") -> bool:
+    """发送失败的条目落终态 send_failed —— 释放回复锁，但**不丢**草稿。
+
+    为什么需要（2026-09-23 实测）：
+      Boss 侧定位不到会话 → send_approved 失败 → 条目卡在 approved，
+      release_if_empty() 永远看到「还有待审」→ 投递被 REPLY_REVIEW_LOCK 无限挂住，
+      两个投递池当天轮次全部跳过。
+    设计取舍：不标 unsendable（那是"永远发不出去"），而是 send_failed ——
+    锁可以释放，条目仍留在队列里等人工重试。
+    """
+    data = _load_json(PENDING_FILE, [])
+    hit = False
+    for s in data:
+        if s.get("id") == item_id and s.get("status") in ("pending", "edited", "approved"):
+            s["status"] = "send_failed"
+            s["send_failed_reason"] = reason
+            s["send_failed_at"] = _now()
+            hit = True
+    if hit:
+        PENDING_FILE.write_text(
+            json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    return hit
+
+
 def release_if_empty() -> bool:
     """队列清空 → 释放锁。返回是否释放了锁。"""
     remaining = [s for s in _load_json(PENDING_FILE, [])
