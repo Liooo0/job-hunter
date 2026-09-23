@@ -3,5 +3,16 @@
   "_why": "本仓库的公开数据放 datasets/public/（见该目录 README），无需额外例外。",
   "declared_public": [],
   "extra_deny_paths": [],
-  "extra_allow_content": []
+  "extra_allow_content": [
+    "no-reply@apple.com",
+    "order_acknowledgment@apple.com",
+    "order_acknowledgment@email.apple.com",
+    "noreply@icloud.com.cn",
+    "no-reply@roblox.com",
+    "no-reply@accounts.google.com",
+    "noreply@m.xiaomi.com",
+    "10000@qq.com",
+    "system@successfactors.example.com",
+    "service@51job.example.com"
+  ]
 }

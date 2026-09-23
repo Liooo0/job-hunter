@@ -38,10 +38,44 @@ JOB_SUBJECT_KW = [
     'resume', 'recruit', 'job', '面试邀约', '在线测评', '笔试',
 ]
 # 明确排除（广告/通知类噪音）
-NOISE_KW = ['(AD)', '【AD】', '退订', 'newsletter', '周报', '优惠', '促销',
+# 2026-09-22：补全角 '（AD）' —— 原表只有半角 '(AD)'，而 51job 营销邮件用的是全角，
+# 结果「AI证书培训卖课」邮件被当成招聘邮件推给用户（凌晨 4:05 那次）。
+NOISE_KW = ['(AD)', '（AD）', '【AD】', '【广告】', '退订', 'newsletter', '周报', '优惠', '促销',
             '发票', 'receipt', '验证', 'verify', '安全提醒', '储存空间',
             'oaut', 'oauth', 'third-party', 'access to your']
+
+# 营销发件人特征（2026-09-22 新增）—— 招聘平台的营销/EDM 通道，不是招聘沟通
+MARKETING_SENDER = ['mkt@', 'marketing@', 'edm@', 'newsletter@', 'mailer@', '-mkt', 'mkt.']
+
+# ── 有截止时间的「申请未完成」提醒（2026-09-23 新增，最高优先级）──────────────
+# 为什么单列：这类邮件比面试邀请更急 —— 过期等于机会消失。
+# 实名事故：东亚银行的「请于今日完成你在东亚中国的职位」被静默丢弃；
+# 汇丰（HSBC）的同类提醒 9/11、9/14 各来一次，同样没被顶到用户面前。
+URGENT_PAT = ('申请未完成', '申请尚未完成', '请于今日完成', '今日完成', '完善申请',
+              '完成你的申请', '完成您在', '继续完成', '尚未完成')
+
+
+def is_urgent_mail(subject: str) -> bool:
+    """是不是「有截止时间的申请动作项」。"""
+    s = subject or ''
+    return any(p in s for p in URGENT_PAT)
+
+# 促销正文特征（2026-09-22 新增）—— 命中 2 个及以上才算广告，避免误杀正常邮件
+PROMO_BODY = ['添加老师', '领取补贴', '企微添加', '扫码添加', '关注微信公众号',
+              '不想再收到此类邮件', '立即查看', '下载前程无忧', '邀您投递简历',
+              '好机会别错过', '急招中']
 # 发件人黑名单（技术平台/电商/媒体 —— 这些域的"application/申请"不是求职申请）
+# 招聘放行表（2026-09-23 新增）—— 命中即视为招聘沟通，**优先于**黑名单与营销判定。
+# 为什么需要：银行/大厂的招聘系统常用 do_not_reply / noreply 发件人。
+# 实测被静默丢弃的两封：东亚银行「申请未完成」提醒
+# （BEAChinaRecruitment_do_not_reply@…）与 TÜV Rheinland 的投递确认 —— 用户只能自己去邮箱里发现。
+# 取舍：宁可偶有误放（银行营销信），也不能再丢真人 HR 信。
+RECRUIT_ALLOW = [
+    'recruit', 'recruitment', 'campus', 'talent', 'career', 'hr@', 'hr.', 'jobs@',
+    'zhaopin', 'successfactors', 'workday', '51job', 'liepin', 'zhipin',
+    'bea', 'bank', 'tuv', 'tüv',
+]
+
 SENDER_BLOCK = [
     'github.com', 'xiaomi', 'mimo', 'google.com', 'apple.com', 'icloud',
     'epicgames', 'roblox', 'commandcode', 'deepseek', 'openai', 'ikuuu',
@@ -116,8 +150,20 @@ def is_job_mail(subject, sender, body):
         return False, 'noise'
     f_low = sender.lower()
     # 发件人黑名单（技术平台/电商/媒体）
+    # 招聘放行优先（2026-09-23）：银行的招聘系统常用 do_not_reply 发件人，
+    # 不能因为发件人长得像"系统通知"就静默丢弃 —— 实测丢过东亚银行的「申请未完成」提醒。
+    if any(a in f_low for a in RECRUIT_ALLOW):
+        return True, 'recruit_allow'
     if any(b in f_low for b in SENDER_BLOCK):
         return False, 'sender_blocked'
+    # ── 营销/广告邮件拦截（2026-09-22 新增，必须放在 ATS 判定之前）──
+    # 起因：51job 的营销通道（mkt 与 quickjobs 两个子域）命中 ATS_DOMAINS 里的 '51job.com'，
+    # 于是「AI证书培训卖课」和「职位动态推送」被当成招聘邮件推给用户。
+    if any(m in f_low for m in MARKETING_SENDER):
+        return False, 'marketing_sender'
+    body_low = (body or "").lower()
+    if sum(1 for p in PROMO_BODY if p.lower() in body_low) >= 2:
+        return False, 'promo_body'
     # ATS/招聘平台域名 → 直接算招聘邮件
     if any(d in f_low for d in ATS_DOMAINS):
         return True, 'ATS发件人'
@@ -216,6 +262,15 @@ def main():
         if sys.stdout.isatty():
             print("📭 没有新的招聘邮件")
         return 0
+
+    # 最高优先级先顶出来：有截止时间的申请动作项，过期即作废（2026-09-23 新增）
+    urgent = [f for f in found if is_urgent_mail(f.get('subject', ''))]
+    if urgent:
+        print(f"⏰⏰ 有截止时间的申请待完成 {len(urgent)} 封 —— 今天就处理，过期即作废：")
+        for f in urgent:
+            print(f"   ⏰ {f.get('from', '')[:50]}")
+            print(f"      {f.get('subject', '')[:80]}")
+        print()
 
     print(f"📬 发现 {len(found)} 封招聘相关邮件：\n")
     for f in found:
