@@ -2,6 +2,23 @@
 
 > 与其广撒网，不如精准慢投：让 AI 读你的简历，只投匹配的岗位，并记录每一步的成败。
 
+<p align="center">
+  <b>🌐 AI 智能求职全链路套件 (Job Intelligence Suite)</b><br>
+  <a href="https://github.com/Liooo0/boss-zhipin-helper">🧩 浏览器扩展 (JD即时提炼/AI回复)</a>
+  &nbsp;•&nbsp;
+  <b>🎯 Job Hunter (规则引擎/精准拟真投递)</b>
+  &nbsp;•&nbsp;
+  <a href="https://github.com/Liooo0/jobintel-dashboard">📊 决策仪表盘 (3万+投递数据复盘)</a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Suite-Job_Intelligence-6366f1?style=flat-square" alt="Suite">
+  <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/Engine-Zero--LLM_Rule_Based-10b981?style=flat-square" alt="Rule Engine">
+  <img src="https://img.shields.io/badge/Automation-DrissionPage-ff69b4?style=flat-square" alt="DrissionPage">
+  <img src="https://img.shields.io/badge/License-MIT-orange?style=flat-square" alt="License">
+</p>
+
 这是一个 [Claude Code](https://claude.com/claude-code) 的 **skill**：读取简历、记住求职方向与底线，在招聘平台上完成「JD 解析 → 规则过滤 → 匹配打分 → 投递 → 失败追踪 → 数据复盘」的闭环。
 
 **设计原则：自动化提质，不追求量。** 匹配交给确定性的规则引擎，决策权始终在你手里。
@@ -15,12 +32,43 @@
 | 谁做决定？ | 规则层只决定"够不够格"，投不投、聊什么、接不接 offer 都是人 |
 | 靠谱吗？ | 作者自用跑过 **6,100+ 真实投递、34,000+ 条规则过滤、覆盖 2,700+ 家公司**（截至 2026-08 本机 SQLite 统计；本仓库不含任何个人投递数据） |
 
-## 工作流
+## 全链路工作流
 
-```
-简历 → 技能关键词抽取 → 每个 JD 命中加分 / 命中排除词归零
-     → 达到分数线才投 → 五维评估报告随投递落库 → 失败原因入库
-     → 数据复盘：什么岗位/城市/简历版本有效
+```mermaid
+flowchart LR
+    subgraph S1 ["1. 浏览与采集"]
+        Ext["🧩 BOSS助手扩展<br/>(Chrome MV3)"]
+        JD["各平台海量岗位<br/>(BOSS / 51job / 猎聘)"]
+        JD -.-> Ext
+    end
+
+    subgraph S2 ["2. Job Hunter 决策与投递引擎"]
+        Resume[("📄 个人简历 / 底线配置")]
+        Engine["⚙️ 确定性规则引擎<br/>(零Token / 纯Python / 毫秒级)"]
+        FiveD["📊 五维加权打分<br/>(技术30% 方向30% 经验15% 文化15% 地点10%)"]
+        Gate{"达到投递门槛?<br/>(默认 >= 80)"}
+        Bot["🤖 拟真慢投递<br/>(DrissionPage / 防风控 / 熔断)"]
+        Skip["🏷️ 归类跳过/失败原因<br/>(23种失败原因枚举)"]
+
+        JD --> Engine
+        Resume --> Engine
+        Engine --> FiveD --> Gate
+        Gate -- "达标" --> Bot
+        Gate -- "淘汰" --> Skip
+    end
+
+    subgraph S3 ["3. 数据回流与决策复盘"]
+        DB[("🗄️ 本地 SQLite 实验库<br/>(ab_experiment.db)")]
+        Dash["📊 JobIntel Dashboard<br/>(3万+ 投递记录只读分析)"]
+
+        Bot --> DB
+        Skip --> DB
+        DB --> Dash
+    end
+
+    style S2 fill:#f8fafc,stroke:#6366f1,stroke-width:2px
+    style Gate fill:#fef3c7,stroke:#f59e0b
+    style Bot fill:#dcfce7,stroke:#10b981
 ```
 
 - **JD 解析**：结构化解出岗位与关键词，评估依据可解释
@@ -37,7 +85,14 @@
 
 ```bash
 git clone https://github.com/Liooo0/job-hunter.git && cd job-hunter
+
+# 纯 Python 3 标准库直接运行（零三方依赖）：
 python3 match_engine.py "AI应用工程师" \
+  --desc "负责RAG知识库与Agent工作流开发，Python/FastAPI" \
+  --salary "15-25K" --city 深圳
+
+# 或使用 uv 单命令免配环境运行：
+uv run match_engine.py "AI应用工程师" \
   --desc "负责RAG知识库与Agent工作流开发，Python/FastAPI" \
   --salary "15-25K" --city 深圳
 ```
