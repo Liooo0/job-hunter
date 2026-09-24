@@ -12,6 +12,8 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/Liooo0/job-hunter/actions/workflows/ci.yml"><img src="https://github.com/Liooo0/job-hunter/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/Liooo0/job-hunter/actions/workflows/security.yml"><img src="https://github.com/Liooo0/job-hunter/actions/workflows/security.yml/badge.svg" alt="Security Scan"></a>
   <img src="https://img.shields.io/badge/Suite-Job_Intelligence-6366f1?style=flat-square" alt="Suite">
   <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/Engine-Zero--LLM_Rule_Based-10b981?style=flat-square" alt="Rule Engine">
