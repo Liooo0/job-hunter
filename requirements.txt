@@ -2,3 +2,7 @@
 # 以下依赖仅自动投递/HR 消息功能需要：
 DrissionPage>=4.0
 httpx
+# PyYAML：plan_router / quota_scheduler / relocation 三个模块直接 import yaml，
+# 且 tests/test_v5_core.py 也会 import 它。原先漏在本文件外 → CI 上
+# `ModuleNotFoundError: No module named 'yaml'`（16 个用例整个模块导入失败）。
+PyYAML>=6.0
