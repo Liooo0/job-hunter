@@ -840,7 +840,10 @@ class GuardEngine:
 
         # 覆盖度：声明了闸门依赖却什么都没扫 = 异常，必须红
         self.metrics["scan_unit_count"] = self.scan_unit_count
-        if self.pii_gate and self.scan_unit_count == 0:
+        # staged 模式下「0 个扫描单元」是常态（只删文件、只改二进制、只改路径），
+        # 判红会把正常的删除提交拦死 —— 那不是漏检。真正要防的是 head/worktree/
+        # release 这类全量模式「声明了闸门却什么都没扫到」。
+        if self.pii_gate and self.scan_unit_count == 0 and mode != "staged":
             self.findings.append(Finding(
                 layer="L0_GATE_CONFIG", severity="HIGH", category="GATE_CONFIG_EMPTY_SCAN",
                 target=f"mode={mode}",
