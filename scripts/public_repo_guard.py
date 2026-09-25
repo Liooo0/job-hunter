@@ -68,7 +68,7 @@ FILE_CLASSES = [
     ("backup",     r"(^|/)(backups?|归档|archive-data)/|\.(bak|backup|old|orig|tmp|dump)$", "deny",
      "备份/历史副本（业务数据）", False),
     ("log",        r"(^|/)logs?/|\.(log|out|err)$", "deny",
-     "日志（含房号/姓名/金额/HR对话）", False),
+     "日志文件（可能携带运行明细与交互数据）", False),
     # 只拦**数据文件**：代码模块也可能叫 export/（实测 lio-erp 的
     # src/rent_expert/export/csv_excel.py 是导出功能代码，被误拦）。
     ("export",     r"(^|/)(exports?|导出|receipts?|票据)/.*\.(csv|xlsx?|pdf|json|txt|jpe?g|png|zip|db)$"
@@ -119,7 +119,7 @@ ALLOW_PATH = [
 # ── 仓库级声明文件 .guardrc.json（随仓库走，review 可见）──
 # 引擎保持通用，**例外由各仓库显式声明**，而不是把某项目的目录布局硬编码进引擎。
 #   {
-#     "declared_public": [{"pattern": "^data/tap_page/", "reason": "打卡页静态页（无个人数据）"}],
+#     "declared_public": [{"pattern": "^data/public_page/", "reason": "静态页（无个人数据）"}],
 #     "extra_deny_paths": [{"pattern": "^seed/", "reason": "..."}],
 #     "extra_allow_content": ["PATTERN"]
 #   }
