@@ -25,3 +25,10 @@ jobs:
       # 所以可以把它作为合并门槛：非 0 必须让 CI 变红。
       - name: 全套测试（fresh clone 可复现）
         run: python -m unittest discover -s tests
+
+      # 闸门自身也是需要回归测试的代码：「干净仓库是绿的」不构成安全性结论，
+      # 唯一证据是「故意放违规内容 → 必然变红」。本用例集自带合成 canary 与夹具
+      # 密钥，不读仓库外词表、不依赖本机状态，约 1 秒；每条 FAIL 都断言到 finding
+      # 的归属（类别 + 目标文件），不只断言退出码。
+      - name: 安全闸门负向测试（违规输入必须变红）
+        run: python -m unittest tests.test_pii_gate_negative -v
