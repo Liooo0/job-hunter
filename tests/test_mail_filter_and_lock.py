@@ -62,6 +62,55 @@ class TestMailFilterDoesNotDropHR(unittest.TestCase):
         self.assertEqual(why, "recruit_allow")
 
 
+class TestPlatformMarketingNotTreatedAsHR(unittest.TestCase):
+    """平台自营 EDM 不是 HR 沟通（2026-09-25）。
+
+    背景：放行表为防丢银行/ATS 往来信而排在前面，副作用是招聘平台的营销邮件
+    也被放行 —— 实测 51job quickjobs 子域的「职位动态推送」（无 AD 标记、
+    标题写「与热招的行政/后勤职位要求高度一致」）被判成招聘邮件。
+    修法只拦「平台域 + 营销特征」的交集，真人 HR 与银行 ATS 一律不动。
+
+    夹具一律合成地址（RFC 2606 保留 TLD .test），保留判定 token（品牌 + 营销特征）。
+    """
+
+    _PROMO = [
+        # (说明, subject, sender)
+        ("51job 营销·职位动态推送(无 AD 标记)",
+         "@王先生，我们热招的行政/后勤职位与您的经历高度一致",
+         "前程无忧 <service@quickjobs.51job.test>"),
+        ("51job 营销·EDM 通道路由",
+         "王小满，被邀请参加AI证书培训，可领政府补贴",
+         "前程无忧(51Job) <mkt@51job.test>"),
+    ]
+
+    def test_platform_promo_mails_are_dropped(self):
+        for desc, subject, sender in self._PROMO:
+            with self.subTest(desc=desc):
+                ok, why = SM.is_job_mail(subject, sender, "邀您投递简历，职位急招中！立即查看。")
+                self.assertFalse(ok, f"平台营销邮件被当成招聘放行：{desc}（why={why}）")
+
+    def test_platform_real_recruitment_still_passes(self):
+        """反向保护：平台发的真招聘通知不能因为加这道闸被拦。"""
+        for subject, sender in [
+            ("【面试邀请】AI应用工程师", "前程无忧 <hr@51job.test>"),
+            ("您的简历已被查看", "BOSS直聘 <jobs@zhipin.test>"),
+        ]:
+            with self.subTest(sender=sender):
+                ok, why = SM.is_job_mail(subject, sender, "请尽快回复确认面试时间")
+                self.assertTrue(ok, f"平台真招聘通知被误拦：{sender}（why={why}）")
+
+    def test_bank_marketing_tradeoff_unchanged(self):
+        """已知取舍（原样保留）：银行/ATS 的营销信仍会放行。
+
+        这不是期望行为，而是"宁可偶有误放，也不能再丢真人 HR 信"的既定取舍。
+        用断言钉住它，防止将来有人为了"更干净"把放行表挪到后面 —— 那会重新
+        丢东亚银行那类 do_not_reply 的申请提醒。
+        """
+        ok, why = SM.is_job_mail("东亚中国 您的专属服务权益更新", "东亚银行 <marketing@bank.test>", "")
+        self.assertTrue(ok)
+        self.assertEqual(why, "recruit_allow")
+
+
 class TestUrgentDeadlineMails(unittest.TestCase):
     """有截止时间的申请动作项必须被单独识别（比面试邀请更急，过期即作废）。"""
 

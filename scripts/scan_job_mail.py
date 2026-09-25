@@ -83,6 +83,37 @@ SENDER_BLOCK = [
     'notion', 'vercel', 'cloudflare', 'microsoft',
 ]
 
+# ── 平台自营营销/EDM 通道（2026-09-25 新增，必须先于放行表判定）───────────────
+# 起因：放行表（RECRUIT_ALLOW）为防丢银行/ATS 的 do_not_reply 往来信而排在前面，
+# 代价是**招聘平台自己的营销邮件**也被放行 —— 实测 51job 的 quickjobs 子域
+# 「职位动态推送」（无 AD 标记、主题含「行政/后勤职位要求高度一致」）被判成招聘。
+# 只拦「平台域 + 营销特征」的交集：真人 HR、银行/ATS、平台招聘通知一律不动。
+# 反例保护：`<service@51job.example.com>` 发「【面试邀请】」必须继续放行。
+_PLATFORM_BRANDS = ('51job', 'zhipin', 'liepin', 'lagou', 'zhilian', 'jobui')
+_PROMO_LOCAL_MARKS = ('mkt', 'marketing', 'edm', 'newsletter', 'mailer', 'promo')
+_PROMO_SUBDOMAINS = ('quickjobs.',)
+
+
+def _sender_addr(sender: str) -> str:
+    """从 `名字 <addr@host>` / `addr@host` 里取出纯地址（小写）。"""
+    s = (sender or "").lower()
+    if "<" in s and ">" in s:
+        s = s[s.rfind("<") + 1: s.rfind(">")]
+    return s.strip()
+
+
+def is_platform_promo_sender(sender: str) -> bool:
+    """是不是招聘平台自营的营销/EDM 通道（不是 HR 沟通）。"""
+    addr = _sender_addr(sender)
+    if "@" not in addr:
+        return False
+    local, _, domain = addr.rpartition("@")
+    if not any(b in domain for b in _PLATFORM_BRANDS):
+        return False
+    if any(m in local for m in _PROMO_LOCAL_MARKS):
+        return True
+    return any(sub in domain for sub in _PROMO_SUBDOMAINS)
+
 
 def load_env():
     env = {}
@@ -150,6 +181,10 @@ def is_job_mail(subject, sender, body):
         return False, 'noise'
     f_low = sender.lower()
     # 发件人黑名单（技术平台/电商/媒体）
+    # 平台自营营销通道必须排在放行表之前（2026-09-25）：放行表含 '51job'/'zhipin' 等
+    # 宽词，会把平台自己的 EDM 一并放行；这两条路只能靠"平台域 + 营销特征"区分。
+    if is_platform_promo_sender(sender):
+        return False, 'platform_marketing_sender'
     # 招聘放行优先（2026-09-23）：银行的招聘系统常用 do_not_reply 发件人，
     # 不能因为发件人长得像"系统通知"就静默丢弃 —— 实测丢过东亚银行的「申请未完成」提醒。
     if any(a in f_low for a in RECRUIT_ALLOW):
