@@ -11,14 +11,18 @@
 """
 import json
 import sqlite3
+import tempfile
 import unittest
 from datetime import datetime
 from pathlib import Path
+from unittest import mock
 
 import platform_51job as p
 
 ROOT = Path(__file__).resolve().parent.parent
-DB = ROOT / 'ab_experiment.db'
+
+# 2026-09-25：原先这里还定义了 DB = ROOT/'ab_experiment.db' 并被 TestHourlyGate
+# 当生产库直连使用（干净检出必红）。该类已改为运行期自建临时库，本常量随之删除。
 
 
 # ── tab 桩件 ──
@@ -114,14 +118,55 @@ class TestTabGuard(unittest.TestCase):
 
 
 class TestHourlyGate(unittest.TestCase):
-    """单小时熔断：本小时已投 ≥ cap → 休息后继续。"""
+    """单小时熔断：本小时已投 ≥ cap → 休息后继续。
+
+    2026-09-25 改写：原先直连**生产库** `ab_experiment.db`（本机文件，不在仓库）
+    → 干净检出必定 `no such table: applications_v2`，而开发机上因为库里恰好有数据
+    所以是绿的。改为运行期自建临时库（用仓库自带 store.SCHEMA 建表），夹具数据
+    全部合成；两种环境结果完全一致。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        import store
+        cls._tmp = tempfile.TemporaryDirectory(prefix="v53db-")
+        cls.db = Path(cls._tmp.name) / "test.db"
+        con = sqlite3.connect(str(cls.db))
+        con.executescript(store.SCHEMA)
+        today = datetime.now().strftime('%Y-%m-%d')
+        rows = [
+            ("51job", f"{today}T08:05:00", "APPLIED"),
+            ("51job", f"{today}T08:20:00", "UNCERTAIN"),
+            ("51job", f"{today}T08:40:00", "VERIFIED"),
+            ("51job", f"{today}T09:10:00", "APPLIED"),
+            # 反向夹具：非计数状态 / 别的平台 / 空格分隔的脏数据，都不得被算进来
+            ("51job", f"{today}T08:50:00", "REJECTED"),
+            ("boss", f"{today}T08:55:00", "APPLIED"),
+            ("51job", f"{today} 08:59:00", "APPLIED"),
+        ]
+        con.executemany(
+            "INSERT INTO applications_v2 (platform, created_at, status, company, title, "
+            "city, salary, keyword, application_id, job_id, decision, applied_at, "
+            "updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            [(pl, ts, st, "某合成公司", "AI应用工程师", "深圳", "15-25K", "k",
+              f"{pl}-{ts}-{st}-{i}", f"job-{i}", "applied", ts, ts)
+             for i, (pl, ts, st) in enumerate(rows)])
+        con.commit()
+        con.close()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._tmp.cleanup()
 
     def setUp(self):
         p.HOURLY_REST_SEC = 0
+        # 把被测函数的 DB 指到临时库（原先它写死生产库路径）
+        self._patched = mock.patch.object(p, "DB_PATH", self.db)
+        self._patched.start()
+        self.addCleanup(self._patched.stop)
 
-    @staticmethod
-    def _sql_count(hour_prefix):
-        con = sqlite3.connect(str(DB))
+    def _sql_count(self, hour_prefix):
+        con = sqlite3.connect(str(self.db))
         n = con.execute(
             "SELECT COUNT(*) FROM applications_v2 WHERE platform='51job' "
             "AND substr(created_at,1,13)=? AND status IN ('UNCERTAIN','APPLIED','VERIFIED')",
@@ -129,11 +174,12 @@ class TestHourlyGate(unittest.TestCase):
         con.close()
         return n or 0
 
-    # ── 正例：与直接 SQL 完全对齐（今天 08 点真实投出过 57 条）──
+    # ── 正例：与直接 SQL 完全对齐（夹具里 08 点应恰好 3 条）──
     def test_matches_direct_sql_today(self):
         today = datetime.now().strftime('%Y-%m-%d')
-        for hh in ('08', '09', '10'):
+        for hh, want in (('08', 3), ('09', 1), ('10', 0)):
             prefix = f'{today}T{hh}'
+            self.assertEqual(want, self._sql_count(prefix), f'{prefix} 夹具自检')
             self.assertEqual(p.hourly_applied(prefix), self._sql_count(prefix),
                              f'{prefix} 统计应与 SQL 一致')
 
@@ -143,13 +189,14 @@ class TestHourlyGate(unittest.TestCase):
     def test_hour_prefix_uses_iso_T_separator(self):
         today = datetime.now().strftime('%Y-%m-%d')
         space_prefix = f'{today} 08'
-        self.assertNotIn(' ', datetime.now().strftime('%Y-%m-%dT%H'),
-                         '前缀必须是 T 分隔')
-        # 空格前缀必然查不到（证明两种写法不等价，防止有人改回空格）
+        self.assertNotIn(' ', datetime.now().strftime('%Y-%m-%dT%H'), '前缀必须是 T 分隔')
         self.assertEqual(len(space_prefix), 13)
-        if self._sql_count(f'{today}T08') > 0:
-            self.assertEqual(p.hourly_applied(space_prefix), 0,
-                             '空格前缀不应匹配到任何记录')
+        # 夹具里**确实**存在一条空格分隔的脏数据、且 T 前缀有 3 条 —— 说明两种写法
+        # 不等价，改回空格会让小时闸读到 1 条并漏掉 T 分隔的那 3 条
+        self.assertEqual(1, self._sql_count(space_prefix), '夹具自检：空格前缀只匹配脏数据')
+        self.assertEqual(3, self._sql_count(f'{today}T08'), '夹具自检：T 前缀 3 条')
+        self.assertEqual(p.hourly_applied(space_prefix), 1,
+                         '空格前缀不应匹配到 T 分隔的正式记录')
 
     # ── 反例：不含任何记录的整点 → 0（不串其它小时的数据）──
     def test_unrelated_hour_is_zero(self):
@@ -178,12 +225,24 @@ class TestSafetyConfig(unittest.TestCase):
         self.assertEqual(p.DAILY_LIMIT, 100)
 
     def test_load_safety_matches_config_json(self):
-        with open(ROOT / 'config.json', encoding='utf-8') as f:
-            cfg = json.load(f)
-        want = (cfg.get('safety') or {}).get('hourly_cap')
-        if want is not None:
-            self.assertEqual(p.load_safety().get('hourly_cap'), want,
-                             'load_safety 必须与 config.json 的 safety.hourly_cap 一致')
+        """safety.hourly_cap 必须被 load_safety 如实读出来。
+
+        2026-09-25 改写：原版读仓库根的 config.json（个人文件、.gitignore 掉），
+        干净检出必 FileNotFoundError。改为**运行时生成**一份临时配置并把
+        load_config 指过去：既不再依赖开发机状态，也仍然测的是同一条代码路径。
+        """
+        import shared
+        tmp = tempfile.TemporaryDirectory(prefix="v53cfg-")
+        self.addCleanup(tmp.cleanup)
+        cfg_file = Path(tmp.name) / "config.json"
+        cfg_file.write_text(json.dumps({"safety": {"hourly_cap": 7,
+                                                   "night_ban_start": 23,
+                                                   "night_ban_end": 7}}),
+                            encoding="utf-8")
+        fake = shared.load_config(skill_dir=Path(tmp.name))
+        with mock.patch.object(shared, "load_config", return_value=fake):
+            self.assertEqual(7, p.load_safety().get("hourly_cap"),
+                             "load_safety 必须如实反映 safety.hourly_cap")
 
     def test_load_safety_has_required_keys(self):
         s = p.load_safety()

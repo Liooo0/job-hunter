@@ -128,9 +128,15 @@ class TestVersioning(unittest.TestCase):
 
     def test_all_cases_reproducible(self):
         # 基准集可复现（防未来改权重把锚点岗位打乱而不自知）
+        #
+        # 2026-09-25：显式加 --defaults —— 基线的可比性取决于「用哪份配置」。
+        # 原来这个子进程会去吃本机 config.json（.gitignore 的个人文件），于是
+        # 同一份基线在干净检出上对不上（实测三项假漂移），而在作者机器上是绿的。
+        # 改成仓内默认配置后，任何机器、包括 CI，结果都一致。
         import subprocess
         r = subprocess.run(
-            [sys.executable, str(ROOT / "scripts" / "vscore_benchmark.py"), "--json"],
+            [sys.executable, str(ROOT / "scripts" / "vscore_benchmark.py"),
+             "--json", "--defaults"],
             capture_output=True, text=True, timeout=120)
         self.assertEqual(r.returncode, 0, r.stderr)
         out = json.loads(r.stdout)
