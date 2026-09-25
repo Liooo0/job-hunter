@@ -14,5 +14,12 @@
     "10000@qq.com",
     "system@successfactors.example.com",
     "service@51job.example.com"
-  ]
+  ],
+  "pii_gate": {
+    "_doc": "fail-closed 声明。local_only = 本机（非 CI）必须有明文词表；CI 里明文不存在，姓名维由仓内 keyed HMAC 哈希表 + Actions Secret 覆盖。任一路径缺失一律判红，不再出现「缺输入 → 静默 PASS」。",
+    "require_denylist": "local_only",
+    "require_hash_file": true,
+    "require_key": true,
+    "hash_file": ".github/pii-hashes.txt"
+  }
 }

@@ -23,17 +23,35 @@ jobs:
           python-version: '3.11'
 
       # 引擎为单例：下面四步都调用同一个 Rule Engine（脚本内不得再有第二套正则）
-      - name: L1+L2 全部被追踪文件（路径类别 + 内容）
-        run: python3 scripts/public_repo_guard.py --all
+      #
+      # 参数是 v2 引擎的 --mode。v1 的 --all / --worktree / --refs / --history 已废弃，
+      # 传旧参数会直接 argparse 报错（rc=2）—— 所以换引擎必须与这里同一个 PR 一起改。
+      #
+      # PII_HMAC_KEY 是 CI 侧「姓名维」的唯一输入：CI 里没有（也不该有）本机明文词表，
+      # 靠仓内 .github/pii-hashes.txt（只含 keyed HMAC）+ 这个 Secret 才能查姓名。
+      # 缺 Secret / 缺哈希表 / 词表更新但 digest 没重生成 → 引擎 fail-closed 判红。
+      - name: L1+L2 提交树（路径类别 + 内容）
+        env:
+          PII_HMAC_KEY: ${{ secrets.PII_HMAC_KEY }}
+        run: python3 scripts/public_repo_guard.py --mode head
 
       - name: L1+L2 工作区（含未追踪文件）
-        run: python3 scripts/public_repo_guard.py --worktree
-
-      - name: L3 所有 ref（分支 + tag）
-        run: python3 scripts/public_repo_guard.py --refs
+        env:
+          PII_HMAC_KEY: ${{ secrets.PII_HMAC_KEY }}
+        run: python3 scripts/public_repo_guard.py --mode worktree
 
       - name: L3 全历史（HEAD 干净 ≠ 历史干净）
-        run: python3 scripts/public_repo_guard.py --history
+        env:
+          PII_HMAC_KEY: ${{ secrets.PII_HMAC_KEY }}
+        run: python3 scripts/public_repo_guard.py --mode history
+
+      # v2 没有「只查 refs」的模式：remote_refs 只在 release / full 里跑，
+      # 故这一步用 release（= worktree + head + history + 媒体 + gitleaks + remote_refs）。
+      # 放在最后，让便宜的三步先失败。
+      - name: L3+L5+L6 refs / 媒体元数据 / 远端引用
+        env:
+          PII_HMAC_KEY: ${{ secrets.PII_HMAC_KEY }}
+        run: python3 scripts/public_repo_guard.py --mode release
 
       - name: 敏感路径是否进过历史
         run: |
@@ -50,12 +68,16 @@ jobs:
           fi
           echo "✅ 历史中无禁止类别路径"
 
-      - name: 服务端残留 ref 检查
+      - name: 服务端残留 ref 检查（告知项，已声明不阻断）
+        # 这是告知项，不是门禁：任何有过 PR 的公开仓库都必然存在 refs/pull/*，
+        # 若让它判红，流水线会永久红。真实风险只在于「已合并 PR 的 head 指向旧历史、
+        # 客户端删不掉」，处理途径是 GitHub 支持，不是卡住 CI。
         continue-on-error: true
         run: |
           git ls-remote origin 2>/dev/null | grep 'refs/pull' \
             && echo "⚠️ 存在 refs/pull/* —— 已合并 PR 的 head 可能指向旧历史（客户端删不掉）" \
             || echo "✅ 无 refs/pull/* 残留"
+          echo "ℹ️ 本步骤不阻断流水线（continue-on-error），结论仅作记录"
 
   secrets-scan:
     runs-on: ubuntu-latest
