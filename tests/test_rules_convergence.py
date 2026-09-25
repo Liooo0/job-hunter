@@ -671,11 +671,19 @@ class TestRateGates(unittest.TestCase):
                          "未达上限不得休息")
 
     def test_boss_quota_config_present(self):
+        """Boss 日限额必须存在且不超 150。
+
+        2026-09-25 改写：原版断言 `shared.load_config()["safety"]` 里直接有
+        normal_daily_cap —— 那是**个人 config.json** 的内容（.gitignore 掉的），
+        干净检出下 safety 为 {} 必然失败。而代码真正保证的是
+        `boss_apply.get_safety()` 的**有效值**（缺省补保守默认）。改为断言有效值：
+        既不再依赖个人文件，也仍然守住「日限额 ≤ 150」这条真实红线。
+        """
         import shared
-        cfg = shared.load_config()
-        safety = cfg.get("safety", {})
+        from boss_apply import get_safety
+        safety = get_safety(shared.load_config())
         self.assertIn("normal_daily_cap", safety)
-        self.assertLessEqual(int(safety.get("normal_daily_cap", 0)), 150,
+        self.assertLessEqual(int(safety["normal_daily_cap"]), 150,
                              "Boss 日限额不得超过 150")
 
 

@@ -215,15 +215,26 @@ class TestAnnualSalaryParsing(unittest.TestCase):
 
 
 class TestDisabilityJobRejection(unittest.TestCase):
-    """2026-09-10: 助残岗(残疾人专项)误投案例,加入排除词。"""
+    """2026-09-10: 助残岗(残疾人专项)误投案例,加入排除词。
 
-    def test_disability_keywords_in_config(self):
-        import json
-        from pathlib import Path as _P
-        cfg = json.load(open(_P(__file__).resolve().parent.parent / 'config.json'))
-        excl = cfg["exclude_keywords"]
-        for w in ["助残", "残疾人"]:
-            self.assertIn(w, excl)
+    2026-09-25 改写：原版直接读仓库根的 config.json（.gitignore 掉的个人文件）——
+    干净检出必 FileNotFoundError，而「fresh clone 默认不排除这类岗位」这件事
+    没有任何断言守着。改为断言**有效配置下的真实评分行为**，两种环境结果一致。
+    """
+
+    def test_default_config_excludes_disability_special_roles(self):
+        import shared
+        cfg = shared.load_config()          # 无 config.json 时即仓内默认配置
+        for title in ["AI应用工程师（残疾人专项）", "助残专员"]:
+            score, reason = shared.score_jd(title, "", config=cfg)
+            self.assertEqual(0, score, f"{title} 未被默认配置排除: {score} {reason}")
+
+    def test_keywords_present_in_default_exclusion_set(self):
+        import shared
+        excl = shared.FALLBACK_CONFIG["exclude_keywords"]
+        for w in ("助残", "残疾人"):
+            self.assertIn(w, excl,
+                          "默认排除词缺失 → fresh clone 会重新踩 2026-09-10 的误投")
 
 
 class TestPaySuffixSalaryParsing(unittest.TestCase):

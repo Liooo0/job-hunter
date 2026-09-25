@@ -17,6 +17,15 @@ from job_decision import evaluate_job, cohort_block_reason
 from store import record_application
 from notify import alert
 
+# ════════════════════════════════════════════════════════════════════
+# 运行数据库路径（本机文件，不进仓库）
+# ════════════════════════════════════════════════════════════════════
+# 2026-09-25 提取为模块级常量：原来两处各写一遍 `Path(__file__).parent /
+# 'ab_experiment.db'`，测试无法把它指到临时库上，于是测试只能读**生产库**
+# （本机文件、不在仓库）→ 干净检出必定 `no such table: applications_v2`。
+# 用常量之后测试可以 patch 它（见 tests/test_v53_51job_resilience.py）。
+DB_PATH = Path(__file__).parent / 'ab_experiment.db'
+
 
 def in_night_window() -> bool:
     """夜间禁投 22:00-8:00（与 boss_apply 同规则，封号红线）"""
@@ -141,7 +150,7 @@ def hourly_applied(hour_prefix: Optional[str] = None) -> int:
     import sqlite3
     hour_prefix = hour_prefix or datetime.now().strftime("%Y-%m-%dT%H")
     try:
-        con = sqlite3.connect(str(Path(__file__).parent / 'ab_experiment.db'))
+        con = sqlite3.connect(str(DB_PATH))
         n = con.execute(
             "SELECT COUNT(*) FROM applications_v2 WHERE platform='51job' "
             "AND substr(created_at,1,13)=? AND status IN ('UNCERTAIN','APPLIED','VERIFIED')",
@@ -527,7 +536,7 @@ def main():
     try:
         import sqlite3
         from datetime import date as _date
-        _con = sqlite3.connect(str(Path(__file__).parent / 'ab_experiment.db'))
+        _con = sqlite3.connect(str(DB_PATH))
         _today = _date.today().isoformat()
         today_applied = _con.execute(
             "SELECT COUNT(*) FROM applications_v2 WHERE platform='51job' "
