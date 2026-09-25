@@ -10,7 +10,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
       - name: 语法编译检查 + 模块导入冒烟
         run: |
           python -m compileall -q . -x 'archive/'
           python -c "import failure_tracking; import shared; print('import ok')"
+
+      - name: 安装依赖
+        run: python -m pip install --quiet -r requirements.txt
+
+      # ⚠️ 这一步此前**不存在**：CI 只做语法编译 + 导入冒烟，一条测试都不跑。
+      # 后果是「测试写了」≠「CI 执行了」——测试回归可以照样合并。
+      # 现在 fresh clone 可复现（不依赖本机 config.json / ab_experiment.db），
+      # 所以可以把它作为合并门槛：非 0 必须让 CI 变红。
+      - name: 全套测试（fresh clone 可复现）
+        run: python -m unittest discover -s tests
