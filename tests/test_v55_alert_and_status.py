@@ -215,9 +215,22 @@ class TestWeixinChannel(unittest.TestCase):
         os.environ["JOBHUNTER_WEIXIN_TARGET"] = "o9cq123@im.wechat"
         self.assertEqual(notify._weixin_target(), "weixin:o9cq123@im.wechat")
         os.environ.pop("JOBHUNTER_WEIXIN_TARGET")
-        # 没配环境变量时回落 Hermes 网关自己的 .env（本机已配好，应当读得到）
-        self.assertTrue(notify._weixin_target().startswith("weixin:o9cq"),
-                        "应能从 ~/.hermes/.env 的 WEIXIN_ALLOWED_USERS 读到 uid")
+        # 没配环境变量时回落 Hermes 网关自己的 .env。
+        # 2026-09-25：不再读本机真实的 ~/.hermes/.env（CI/别人机器上没有它，
+        # 实测这就是 CI 变红的那条）。改为运行期造一个临时 .env 并把
+        # notify.HERMES_ENV 指过去 —— 测的仍是同一条回落逻辑，但结果与机器无关。
+        tmp = tempfile.TemporaryDirectory(prefix="hermesenv-")
+        self.addCleanup(tmp.cleanup)
+        env_file = Path(tmp.name) / ".env"
+        env_file.write_text("WEIXIN_ALLOWED_USERS=o9cqTESTUID@im.wechat\n",
+                            encoding="utf-8")
+        with mock.patch.object(notify, "HERMES_ENV", env_file):
+            self.assertTrue(notify._weixin_target().startswith("weixin:o9cq"),
+                            "应能从 Hermes 网关的 .env 的 WEIXIN_ALLOWED_USERS 读到 uid")
+        # 反向：文件不存在时必须安静返回空串（绝不猜、绝不群发）
+        with mock.patch.object(notify, "HERMES_ENV", Path(tmp.name) / "nope.env"):
+            self.assertEqual("", notify._weixin_target(),
+                             "没有配置来源时必须是空串")
 
     def test_weixin_success_short_circuits(self):
         os.environ["JOBHUNTER_WEIXIN_TARGET"] = "weixin:aaaa@im.wechat"
