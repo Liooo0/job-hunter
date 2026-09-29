@@ -28,8 +28,8 @@ SKILL_DIR = Path(__file__).parent
 # 2026-09-12 切换：opencode-go 中转余额不足（401 CreditsError），改用用户主力通道 commandcode。
 #   可用环境变量覆盖：JOBHUNTER_LLM_BASE_URL / JOBHUNTER_LLM_MODEL / JOBHUNTER_LLM_KEY_ENV
 BASE_URL = os.getenv("JOBHUNTER_LLM_BASE_URL", "https://api.commandcode.ai/provider/v1")
-MODEL = os.getenv("JOBHUNTER_LLM_MODEL", "deepseek/deepseek-v4-flash")
-MAX_TOKENS = int(os.getenv("JOBHUNTER_LLM_MAX_TOKENS", "1500"))  # deepseek-v4-flash 是推理模型，预算含 reasoning_tokens，给太小会 content 空
+MODEL = os.getenv("JOBHUNTER_LLM_MODEL", "deepseek/deepseek-flash")
+MAX_TOKENS = int(os.getenv("JOBHUNTER_LLM_MAX_TOKENS", "1500"))  # deepseek-flash 是推理模型，预算含 reasoning_tokens，给太小会 content 空
 MAX_TOKENS_RETRY = 4000  # 首次被 reasoning 吃光时自动加预算重试
 
 # 按优先级尝试的 key 名（前者失效自动回退）
@@ -347,7 +347,7 @@ def _find_chat_tab(page):
                 print(f"⚠️ 接管聊天 tab 失败: {e}")
                 break
     try:
-        tab = page.new_tab("https://www.zhipin.com/web/geek/chat")
+        tab = page.new_tab("https://www.zhipin.com/web/geek/chat", background=True)  # 后台建标签：不把窗口顶到用户屏幕
         _t.sleep(6)
         return tab
     except Exception as e:

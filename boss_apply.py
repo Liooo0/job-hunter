@@ -487,6 +487,75 @@ def _looks_disconnected(e) -> bool:
     return any(k in s for k in ("连接", "断开", "disconnect", "websocket", "connection"))
 
 
+# ── CDP 级 tab 工具（2026-09-24 补）──────────────────────────────
+# 事故：DrissionPage 的 get_tab()/tab_ids 遍历在「renderer 久置卡死」的标签页上
+# 会无限阻塞 —— 当天 boss 两轮在 _pick_boss_tab 枚举阶段卡死 8 分钟+，根因是
+# 用户闲鱼 tab 卡死把整轮拖挂（实测 get_tab 在卡死 tab 上永不返回）。
+# hr_auto_reply 2026-09-16 已用「CDP HTTP 枚举 + 卡死先 reload 救活」方案修过
+# 同类问题；这里对齐移植到 boss。
+
+
+def _cdp_target_pages() -> list:
+    """取 Chrome 的 page 目标列表（HTTP /json/list，走 browser 进程，不碰 renderer）。"""
+    import urllib.request as _url
+    try:
+        with _url.urlopen("http://127.0.0.1:9223/json/list", timeout=5) as r:
+            return json.load(r)
+    except Exception as e:
+        print(f"  ⚠️ 取 Chrome 目标列表失败: {e}")
+        return []
+
+
+def _cdp_raw_call(ws, mid: int, method: str, params: dict = None, wait: float = 6):
+    """裸 CDP 调用（自带超时），用来判断某个 tab 的 renderer 是不是卡死了。"""
+    try:
+        ws.send(json.dumps({"id": mid, "method": method, "params": params or {}}))
+    except Exception as e:
+        return {"_err": repr(e)[:80]}
+    end = time.time() + wait
+    while time.time() < end:
+        try:
+            ws.settimeout(max(0.3, end - time.time()))
+            raw = ws.recv()
+        except Exception as e:
+            return {"_err": repr(e)[:80]}
+        try:
+            msg = json.loads(raw)
+        except Exception:
+            continue
+        if msg.get("id") == mid:
+            return msg
+    return {"_timeout": True}
+
+
+def _revive_tab_if_hung(t: dict) -> bool:
+    """tab renderer 卡死时用 Page.reload 救活（同 hr_auto_reply 方案）。
+
+    Page.reload 由 browser 进程处理，卡死的 renderer 也能收到 → 实测有效。
+    返回 True 表示这个 tab 现在可以用了。
+    """
+    import websocket
+    try:
+        ws = websocket.create_connection(t["webSocketDebuggerUrl"], timeout=8,
+                                         suppress_origin=True)
+    except Exception:
+        return False
+    try:
+        alive = _cdp_raw_call(ws, 9001, "Runtime.evaluate",
+                              {"expression": "1", "returnByValue": True}, wait=5)
+        if alive.get("result"):
+            return True
+        print(f"  ♻️ tab 卡死，reload 救活: {(t.get('url') or '')[:50]}")
+        _cdp_raw_call(ws, 9002, "Page.reload", {"ignoreCache": False}, wait=5)
+    finally:
+        try:
+            ws.close()
+        except Exception:
+            pass
+    time.sleep(8)
+    return True
+
+
 def _pick_boss_tab(page, url):
     """按 Boss 页面特征选择唯一投递工作 tab。找不到唯一 → 返回 None（调用方 STOP，不猜）。
 
@@ -499,13 +568,16 @@ def _pick_boss_tab(page, url):
       >1 个匹配 → None（不猜哪个是对的，人工处理）
     """
     try:
+        # 2026-09-24：枚举改用 CDP HTTP（get_tab 对 renderer 卡死的 tab 会无限阻塞）；
+        # 候选 tab 先探活/救活再交给 DrissionPage 接管。
         matches = []
-        for tid in list(page.tab_ids):
+        for tgt in _cdp_target_pages():
+            u = tgt.get("url") or ""
+            if tgt.get("type") != "page" or "zhipin.com" not in u or "/web/geek/chat" in u:
+                continue
+            _revive_tab_if_hung(tgt)
             try:
-                t = page.get_tab(tid)
-                u = t.url or ""
-                if "zhipin.com" in u and "/web/geek/chat" not in u:
-                    matches.append(t)
+                matches.append(page.get_tab(tgt["id"]))
             except Exception:
                 continue
         if len(matches) == 0:
@@ -513,7 +585,7 @@ def _pick_boss_tab(page, url):
             # 2026-09-05：投递工作 tab 用完即弃，正常态可能只剩 chat tab；
             # 0 匹配不该 STOP，新建即可（登录态是 profile 级，新 tab 不掉登录）。
             try:
-                tab = page.new_tab(url)
+                tab = page.new_tab(url, background=True)  # 后台建标签：不把窗口顶到用户屏幕
                 time.sleep(5 + random.uniform(0, 2))
                 print("  ℹ️ 无现成工作 tab，已新建")
                 return tab
@@ -548,18 +620,22 @@ def _recover_search_tab(page, search_tab, url):
         return search_tab
     except Exception:
         pass
-    # 2) page 里找现存的 zhipin tab（不新建，保登录态）
-    for tid in list(page.tab_ids):
+    # 2) page 里找现存的 zhipin 工作 tab（不新建，保登录态）
+    #    2026-09-24：枚举改 CDP HTTP + 先救活卡死 tab（get_tab 枚举会挂）。
+    for tgt in _cdp_target_pages():
+        u2 = tgt.get("url") or ""
+        if tgt.get("type") != "page" or "zhipin.com" not in u2 or "/web/geek/chat" in u2:
+            continue
         try:
-            t = page.get_tab(tid)
-            if "zhipin.com" in (t.url or ""):
-                t.get(url)
-                time.sleep(4 + random.uniform(0, 3))
-                return t
+            _revive_tab_if_hung(tgt)
+            t = page.get_tab(tgt["id"])
+            t.get(url)
+            time.sleep(4 + random.uniform(0, 3))
+            return t
         except Exception:
             continue
     # 3) 兜底：新建（可能丢登录态，但优于一直用死引用）
-    new_tab = page.new_tab(url)
+    new_tab = page.new_tab(url, background=True)  # 后台建标签：不把窗口顶到用户屏幕
     time.sleep(4 + random.uniform(0, 3))
     return new_tab
 
@@ -584,7 +660,7 @@ def _reset_after_apply(page, search_tab, search_url):
         try:
             search_tab.get(search_url)
         except Exception:
-            search_tab = page.new_tab(search_url)
+            search_tab = page.new_tab(search_url, background=True)  # 后台建标签：不把窗口顶到用户屏幕
         time.sleep(3 + random.uniform(0, 2))
         return search_tab
     try:
@@ -808,14 +884,18 @@ def _send_greeting_via_chat(page, search_tab, company: str, greeting: str) -> tu
     chat_tab = None
     created = False
     try:
-        for tid in list(page.tab_ids):
-            t = page.get_tab(tid)
-            if "web/geek/chat" in (t.url or ""):
-                chat_tab = t
+        # 2026-09-24：枚举改 CDP HTTP + 先救活卡死 tab（get_tab 枚举会挂）。
+        for tgt in _cdp_target_pages():
+            if tgt.get("type") == "page" and "web/geek/chat" in (tgt.get("url") or ""):
+                _revive_tab_if_hung(tgt)
+                try:
+                    chat_tab = page.get_tab(tgt["id"])
+                except Exception:
+                    chat_tab = None
                 break
         created = chat_tab is None
         if created:
-            chat_tab = page.new_tab("https://www.zhipin.com/web/geek/chat")
+            chat_tab = page.new_tab("https://www.zhipin.com/web/geek/chat", background=True)  # 后台建标签：不把窗口顶到用户屏幕
         else:
             chat_tab.get("https://www.zhipin.com/web/geek/chat")
         time.sleep(4 + random.uniform(0, 2))
@@ -1045,7 +1125,10 @@ def _prepare_job_context(search_tab, city, keyword, title, company, salary,
     # + 实习/公司主体红线。deterministic，零 LLM。
     try:
         from job_decision import evaluate_job
-        jd = evaluate_job(company, title, desc, salary, city=city, cfg=cfg)
+        # 方向闸（2026-09-23）：搜索词是游戏向（游戏/玩家）时，标题必须含游戏锚点。
+        # 与 platform_51job 同一处规则，避免各平台各写一份（收敛到 job_decision）。
+        _dir = "game" if any(k in (keyword or "") for k in ("游戏", "玩家")) else None
+        jd = evaluate_job(company, title, desc, salary, city=city, cfg=cfg, direction=_dir)
         if jd.action == "REJECT":
             decision_trace.gate(tr, "job_decision", f"rejected:{jd.reason}")
             print(f"  [🚫决策器] {company[:15]} | {title[:25]} | {salary} → {jd.reason}")
@@ -1411,7 +1494,7 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
         try:
             search_tab.get(search_url)
         except Exception:
-            search_tab = page.new_tab(search_url)
+            search_tab = page.new_tab(search_url, background=True)  # 后台建标签：不把窗口顶到用户屏幕
         time.sleep(4)
     else:
         record_login_ok()
@@ -1888,6 +1971,7 @@ def main():
         _ck = {"done_combos": [], "last_done": "TTL_RESET", "total_applied_this_round": 0}
         reply_lock.save_checkpoint(dict(_ck))
     _lock_halt = False  # 锁触发后跳出城市外层，整轮收工
+    _lock_warned = False  # 待审回复只告警一次，不刷屏（2026-09-24）
 
     for city in cities:
         if not city.strip():
@@ -1906,8 +1990,14 @@ def main():
             if (city, keyword) in _done_combos:
                 print(f"\n  ⏭️ [断点恢复] 跳过已完成: {city}×{keyword}")
                 continue
-            # ── 回复审核锁检查（每个任务边界，最迟一个关键词后生效）──
-            if reply_lock.is_locked():
+            # ── 回复审核锁检查（2026-09-24 改：**不再暂停投递**）──
+            # 用户定稿「所有车道均可通行，不要把所有平台放在一个池子里」：
+            #   有待审 HR 回复 ≠ 停投。回复走回复的车道（人工审核→发送），
+            #   投递走投递的车道，两者互不阻塞。
+            # 旧行为 = v5 第十二条「回复优先级 > 投递」硬停。实测 9/23 19:33 入队 6 条
+            #   → 9/24 上午整轮 0 投（8:00 轮被锁挡死），代价太大，已废弃。
+            # 需要临时回到旧行为：export REPLY_LOCK_HALTS_APPLY=1
+            if reply_lock.is_locked() and os.environ.get("REPLY_LOCK_HALTS_APPLY") == "1":
                 # 已完成 = 断点已有 + 本轮已跑完的 + 当前城市里排在此关键词之前的
                 _done_now = set(_done_combos)
                 for _c in cities[:cities.index(city)]:
@@ -1922,11 +2012,16 @@ def main():
                     "total_applied_this_round": total_applied,
                 })
                 print(f"\n  🔒 [REPLY_REVIEW_LOCK] 检测到待审核 HR 回复 — "
-                      f"自动投递在 {city}×{keyword} 前暂停")
-                print(f"     回复优先级 > 投递（v5 第十二条）。断点已保存，"
-                      f"运行 python3 reply_lock.py review 审核后自动恢复")
+                      f"自动投递在 {city}×{keyword} 前暂停（REPLY_LOCK_HALTS_APPLY=1 手动开启）")
                 _lock_halt = True
                 break
+            if reply_lock.is_locked() and not _lock_warned:
+                _pending_n = len([x for x in reply_lock.pending()
+                                  if x.get("status") == "pending"])
+                print(f"\n  ⚠️ 有 {_pending_n} 条 HR 回复待审核 —— "
+                      f"按「所有车道均可通行」继续投递，不中断")
+                print(f"     回复请另行审核：python3 reply_lock.py review")
+                _lock_warned = True
             # ── 夜间禁投实时检查（跨过 22:00 就停，不恋战）──
             if in_night_window(_safety):
                 print(f"\n  🌙 已进入夜间禁投时段 ({_safety['night_ban_start']}:00-{_safety['night_ban_end']}:00)，停止今天的投递")
@@ -1971,13 +2066,16 @@ def main():
             # ── 跨进程每日硬熔断 → daily_limit_reached 层级（正常结束，不改 kill switch）──
             # 2026-08-16 A5.1：跑满上限是"正常状态机结束"，不是异常。只结束当天任务，
             # 不写 kill switch / 暂停锁，明天自动恢复。只有连续失败/风控信号才关全局开关。
-            today_total = count_applied_since(datetime.now().strftime("%Y-%m-%dT00:00:00"))
+            today_total = count_applied_since(datetime.now().strftime("%Y-%m-%dT00:00:00"),
+                                              platform="boss")
             if today_total >= SAFETY_DAILY_CAP:
                 print(f"\n  🔚 [daily_limit_reached] 今日已投 {today_total} 份 ≥ 上限 {SAFETY_DAILY_CAP}（跨进程统计）")
                 print(f"    正常结束今日任务 — kill switch 未动，明日自动恢复")
                 break
 
-            hour_count = count_applied_since(datetime.now().strftime("%Y-%m-%dT%H:00:00"))
+            # 2026-09-22：只数 Boss 自己的量（用户定稿「各平台分开算，不共用一个池子」）。
+            hour_count = count_applied_since(datetime.now().strftime("%Y-%m-%dT%H:00:00"),
+                                             platform="boss")
             # ── 单小时熔断 → hour_limit_reached 层级（暂停当前任务，不改 kill switch）──
             # 2026-08-16 A5.1：分段 sleep，可被 Ctrl+C/SIGTERM 提前打断，不阻塞退出
             if hour_count >= HOURLY_CAP:

@@ -194,15 +194,24 @@ class TestGuardsWiring(unittest.TestCase):
 
 
 class TestWeixinChannel(unittest.TestCase):
-    """微信（iLink）通道：默认走它，失败自动降级到 wxpusher。"""
+    """微信（iLink）通道：作为飞书不可用时的备用通道，再降级到 WxPusher。"""
 
     def setUp(self):
-        for k in ("JOBHUNTER_ALERT_CHANNEL", "JOBHUNTER_WEIXIN_TARGET",
-                  "JOBHUNTER_ALERT_DISABLED", "JOBHUNTER_HERMES_BIN"):
+        for k in ("JOBHUNTER_ALERT_CHANNEL", "JOBHUNTER_FEISHU_TARGET",
+                  "JOBHUNTER_WEIXIN_TARGET", "JOBHUNTER_ALERT_DISABLED",
+                  "JOBHUNTER_HERMES_BIN", "JOBHUNTER_LARK_BIN"):
             os.environ.pop(k, None)
         self.addCleanup(lambda: [os.environ.pop(k, None) for k in (
-            "JOBHUNTER_ALERT_CHANNEL", "JOBHUNTER_WEIXIN_TARGET",
-            "JOBHUNTER_ALERT_DISABLED", "JOBHUNTER_HERMES_BIN")])
+            "JOBHUNTER_ALERT_CHANNEL", "JOBHUNTER_FEISHU_TARGET",
+            "JOBHUNTER_WEIXIN_TARGET", "JOBHUNTER_ALERT_DISABLED",
+            "JOBHUNTER_HERMES_BIN", "JOBHUNTER_LARK_BIN")])
+        # Repository tests must not inherit the developer's private machine identity.
+        self._identity = mock.patch.object(notify, "FEISHU_IDENTITY_FILE", Path("/nonexistent/feishu-identity.json"))
+        self._identity.start()
+        self.addCleanup(self._identity.stop)
+        self._hermes_env = mock.patch.object(notify, "HERMES_ENV", Path("/nonexistent/hermes.env"))
+        self._hermes_env.start()
+        self.addCleanup(self._hermes_env.stop)
         import tempfile
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -210,6 +219,12 @@ class TestWeixinChannel(unittest.TestCase):
             p = mock.patch.object(notify, name, Path(self._tmp.name) / attr)
             p.start()
             self.addCleanup(p.stop)
+        # Verify Hermes env fallback with a synthetic fixture, not private machine config.
+        hermes_env_patch = mock.patch.object(
+            notify, "HERMES_ENV", Path(self._tmp.name) / "hermes.env"
+        )
+        hermes_env_patch.start()
+        self.addCleanup(hermes_env_patch.stop)
 
     def test_target_prefers_env_then_hermes_env(self):
         os.environ["JOBHUNTER_WEIXIN_TARGET"] = "o9cq123@im.wechat"

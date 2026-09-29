@@ -294,6 +294,59 @@ def _has_any(text: str, words) -> bool:
     return any(w in text for w in words)
 
 
+# ── 岗位方向闸（2026-09-23 用户定稿）──────────────────────────────────
+# 起因：51job 的搜索是**模糊匹配** —— 用「游戏内容运营」搜出来的实际是
+#   小红书媒介专员（深圳华谊酒业 8千-1.2万）
+#   小红书内容运营（安莉芳 9千-1.5万）
+#   新媒体运营主管（小红书+抖音方向）（深圳华谊酒业 1.2-1.5万）
+#   新媒体运营（工作室）（深圳广电 1-1.1万）
+#   海外 KOL 运营专员 ×2（八位堂 1.2-1.8万）
+# 而决策层原来只看薪资/作息/主体，**不看「这岗到底是不是那一路的」**，
+# 于是 2026-09-23 12:26–12:29 那一轮把这 7 条泛营销岗当成游戏线投了。
+# 用户原话：「这不符合我们的筛选条件啊。」
+#
+# 两道闸（都放在薪资判定之前 —— 方向不对，钱再多也不是目标岗）：
+#   1) 泛营销/媒介闸（对所有 line 生效）：标题命中营销媒介词、且不含游戏锚点 → 拒。
+#      保留游戏锚点是刻意的：「游戏新媒体运营」属于游戏行业岗位，不该被误杀。
+#   2) 方向闸（只在 direction="game" 的轮次生效）：搜索词是游戏向时，标题必须含游戏锚点。
+MEDIA_MARKETING_TOKENS = (
+    "小红书", "媒介", "kol", "达人", "带货", "主播", "mcn", "直播", "短视频",
+    "新媒体", "公众号", "私域", "投放", "信息流", "seo", "账号矩阵", "抖音号", "视频号",
+)
+GAME_TITLE_ANCHORS = (
+    "游戏", "手游", "端游", "页游", "网游", "电竞", "玩家", "二次元",
+    "棋牌", "游戏化", "游戏社区", "游戏平台", "独立游戏", "主机游戏",
+)
+
+
+def title_direction_block(title: str, direction: Optional[str] = None) -> Optional[str]:
+    """岗位方向闸。返回拦截原因；返回 None 表示方向这一条不拦。
+
+    注意：None 只表示「方向规则不合并」，薪资/制度/主体/届别各闸照常生效。
+    """
+    t = title or ""
+    tl = t.lower()
+    media = next((w for w in MEDIA_MARKETING_TOKENS if w in tl), None)
+    is_game = any(a in t for a in GAME_TITLE_ANCHORS)
+    if media and not is_game:
+        return f"泛营销/媒介岗→非目标方向:{media}"
+    if direction == "game" and not is_game:
+        return "A池方向闸:标题不含游戏→非游戏岗"
+    return None
+
+
+def round_direction(keywords) -> Optional[str]:
+    """整轮搜索词 → 轮次方向（2026-09-23 用户定稿）。
+
+    为什么按**整轮**判、不按单个关键词判：A 池（游戏线）的关键词里混着
+    「活动运营」这种泛词（不含"游戏"）—— 逐词判的话，从那个词进来的泛运营岗
+    （市场运营经理 / 站外品牌运营 / reddit社区运营…）依然漏网。
+    只要整轮里出现游戏向的词，这一轮就按 game 判。
+    """
+    return "game" if any(("游戏" in (k or "") or "玩家" in (k or ""))
+                         for k in (keywords or [])) else None
+
+
 def cohort_block_reason(title: str) -> Optional[str]:
     """届别闸。返回拦截原因；返回 None 表示「届别规则不阻断」。
 
@@ -306,12 +359,17 @@ def cohort_block_reason(title: str) -> Optional[str]:
     hit = next((w for w in COHORT_REJECT_WORDS if w in t), None)
     if hit:
         return f"届别闸:{hit}"
-    # 岗位明确接受我们这一届（应届生/往届可投/经验不限…）→ 解除「届别过晚」
-    if _has_any(t, COHORT_ALLOW_WORDS):
-        return None
+    # 具体届别信号**优先于**泛放行词（2026-09-29 修）。
+    # 原顺序是「放行词先 return None」→ 「27届应届生」「2027届毕业生」这类标题里
+    # 只要带「应届生」就被提前放行，实测真投出去过（09-22 51job「数据分析师（27届应届生）」
+    # 落库 APPLIED）。放行词是**泛词**，届别年份是**具体信号** —— 具体压泛，才符合口径：
+    # 「27届及以后」= 不是我们这一届，拒；「2025届/2026届/两年内」照旧放行。
     m = COHORT_FUTURE_RE.search(t)
     if m:
         return f"届别闸:届别过晚({m.group(0)})"
+    # 岗位明确接受我们这一届（应届生/往届可投/经验不限…）→ 解除「届别过晚」
+    if _has_any(t, COHORT_ALLOW_WORDS):
+        return None
     return None
 
 
@@ -355,7 +413,8 @@ def schedule_verdict(title: str, desc: str) -> str:
 def evaluate_job(company: str, title: str, desc: str, salary: str,
                  city: str = "", cfg=None,
                  parsed_signals: Optional[dict] = None,
-                 line: str = "ai") -> Decision:
+                 line: str = "ai",
+                 direction: Optional[str] = None) -> Decision:
     """确定性岗位裁决（对外入口）。
 
     与 _evaluate_job_core 的区别只有一个：**统一补上作息制度的判定结果**。
@@ -367,7 +426,7 @@ def evaluate_job(company: str, title: str, desc: str, salary: str,
     让复核的人看到「远程岗要求自备设备」这类风险面。
     """
     d = _evaluate_job_core(company, title, desc, salary, city, cfg,
-                           parsed_signals, line)
+                           parsed_signals, line, direction)
     d.schedule_verdict = schedule_verdict(title, desc)
     d.risk_flags = scam_guard.weak_flags(company, title, desc)
     return d
@@ -376,7 +435,8 @@ def evaluate_job(company: str, title: str, desc: str, salary: str,
 def _evaluate_job_core(company: str, title: str, desc: str, salary: str,
                        city: str = "", cfg=None,
                        parsed_signals: Optional[dict] = None,
-                       line: str = "ai") -> Decision:
+                       line: str = "ai",
+                       direction: Optional[str] = None) -> Decision:
     """确定性岗位裁决。
 
     parsed_signals: 模型/解析层提供的结构化信号（可选）：
@@ -450,6 +510,12 @@ def _evaluate_job_core(company: str, title: str, desc: str, salary: str,
     if _has_any(company or "", COMPANY_BLOCKLIST):
         _hit = next(w for w in COMPANY_BLOCKLIST if w in (company or ""))
         return Decision("REJECT", reason=f"公司黑名单:{_hit}")
+
+    # ── 3.5 岗位方向闸（2026-09-23 新增）──
+    # 必须在薪资判定之前：方向不对的岗位，钱再多也不是目标岗（用户 09-23 原话）。
+    _dir_reason = title_direction_block(title, direction)
+    if _dir_reason:
+        return Decision("REJECT", reason=_dir_reason)
 
     # ── 4. 薪资分层 ──
     low = parse_salary_low(salary)

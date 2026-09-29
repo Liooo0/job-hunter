@@ -5,7 +5,7 @@
 规则全平台统一: 底薪≥8K / 薪资≤60K / 排除销售标注狼性实习
 独立限额: 50/天 (不占Boss的150)
 """
-import argparse, json, time, random, sys
+import argparse, json, time, random, sys, os
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
@@ -96,7 +96,7 @@ def click_apply_and_check(tab, href, page=None):
     wait = 60 + random.uniform(0, 15)
     print(f"    ⏳ 猎聘限速等待 {wait:.0f}s ...")
     time.sleep(wait)
-    detail_tab = page.new_tab(clean) if page is not None else None
+    detail_tab = page.new_tab(clean, background=True) if page is not None else None  # 后台建标签：不把窗口顶到用户屏幕
     if detail_tab is not None:
         work = detail_tab
     else:
@@ -209,7 +209,10 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
             reason = ""
             block = False
             try:
-                dec = evaluate_job(c["company"] or "", c["title"], "", c["salary"], city=city)
+                # 方向闸（2026-09-23）：与 platform_51job / boss_apply 同一处规则。
+                _dir = "game" if any(k in (keyword or "") for k in ("游戏", "玩家")) else None
+                dec = evaluate_job(c["company"] or "", c["title"], "", c["salary"],
+                                   city=city, direction=_dir)
                 if getattr(dec, "action", None) == "REJECT":
                     reason = getattr(dec, "reason", "L2拒绝")
                     block = True
@@ -340,24 +343,32 @@ def main():
         alert("chrome_down", "猎聘无法连接 Chrome，本轮没投出去",
               f"端口 {PORT} 连不上：{e}", level="error", throttle=1800)
         return
-    tab = page.new_tab("about:blank")
+    tab = page.new_tab("about:blank", background=True)  # 后台建标签：不把窗口顶到用户屏幕
     seen = set()
     today_applied = 0
     total_a = total_s = 0
+    _lock_warned = False  # 待审回复只告警一次，不刷屏（2026-09-24）
     try:
         for city in cities:
             if today_applied >= DAILY_LIMIT: break
             for kw in keywords:
                 if today_applied >= DAILY_LIMIT: break
-                # ── 回复审核锁（v5 第十二条：回复 > 投递）——2026-09-18 补，此前只有 Boss 查 ──
-                if reply_lock.is_locked():
+                # ── 回复审核锁（2026-09-24 改：**不再暂停投递**）──
+                # 用户定稿「所有车道均可通行、各平台分开算」。有待审回复 ≠ 停投。
+                # 需要临时回到旧行为：export REPLY_LOCK_HALTS_APPLY=1
+                if reply_lock.is_locked() and os.environ.get("REPLY_LOCK_HALTS_APPLY") == "1":
                     print(f"\n  🔒 [REPLY_REVIEW_LOCK] 检测到待审核 HR 回复 — "
-                          f"猎聘在 {city}×{kw} 前暂停本轮投递")
+                          f"猎聘在 {city}×{kw} 前暂停本轮投递（REPLY_LOCK_HALTS_APPLY=1 手动开启）")
                     alert("reply_lock_block", f"猎聘因待审 HR 回复暂停（{city}×{kw}）",
-                          "有待审核的 HR 回复时暂停自动投递（v5 第十二条，设计行为）。\n"
+                          "有待审核的 HR 回复时暂停自动投递。\n"
                           "审核：python3 reply_lock.py review ；审完自动恢复。",
                           level="info", throttle=3600)
                     return
+                if reply_lock.is_locked() and not _lock_warned:
+                    _n = len([x for x in reply_lock.pending() if x.get("status") == "pending"])
+                    print(f"\n  ⚠️ 有 {_n} 条 HR 回复待审核 —— "
+                          f"按「所有车道均可通行」继续投递，不中断")
+                    _lock_warned = True
                 try:
                     a, s = run_city_keyword(page, tab, city, kw, count, seen, today_applied)
                     total_a += a; total_s += s; today_applied += a

@@ -57,14 +57,22 @@ class TestCohortGate(unittest.TestCase):
         for title in ("2027届本/硕应届毕业生", "27届校招生", "2028届毕业生", "35届"):
             self.assertIsNotNone(JD.cohort_block_reason(title), f"{title} 应被届别闸拦")
 
-    def test_allow_words_take_precedence_over_the_year_regex(self):
-        """优先级如实记录：§3.2 把 ALLOW 定义成「解除届别阻断」，所以它连年份一并解除。
+    def test_future_year_beats_generic_allow_word(self):
+        """具体届别信号优先于泛放行词（2026-09-29 用户明令改）。
 
-        「2031届应届生」因此**不**被届别闸拦 —— 这是任务书字面语义（ALLOW 解除阻断），
-        不是实现漏洞。真正兜底的是排在最前面的身份词（校招/实习/管培生），
-        校招语境的实际写法基本都会被那一层拦下（见下一个用例）。
+        旧行为：任务书 §3.2 把 ALLOW 定义成「解除届别阻断」，于是只要标题带
+        「应届生」，「2031届应届生」也被放行 —— 当时的用例甚至写明「这不是实现漏洞」。
+        实测代价：51job 真把「数据分析师（27届应届生）」投了出去（09-22 落库 APPLIED）。
+
+        用户 2026-09-29 定调：「27 届及以后 = 不是我们这一届，拒」，泛词不能解除
+        具体未来届别。用户自己的届别（25/2025/26/2026/两年内）照旧放行。
         """
-        self.assertIsNone(JD.cohort_block_reason("2031届应届生"))
+        for title in ("27届应届生", "2027届应届生", "2031届应届生", "2029届本科应届生"):
+            self.assertIsNotNone(JD.cohort_block_reason(title), f"{title} 应被届别闸拦")
+        # 自己这一届 + 泛放行词：照旧放行
+        for title in ("应届生", "2025届应届生", "26届应届生", "2026届应届生", "两年内毕业生"):
+            self.assertIsNone(JD.cohort_block_reason(title), f"{title} 不该被届别闸拦")
+        # 身份词（校招/实习）依旧最硬
         self.assertIsNotNone(JD.cohort_block_reason("2031届校园招聘"))
 
     def test_campus_and_intern_rejected(self):
@@ -272,6 +280,9 @@ class TestScheduleInquiryTriggers(unittest.TestCase):
         """HR 说不合适时，不该反过来问人家部门作息。"""
         self.assertFalse(SI.is_substantive("不好意思，您的经历和我们岗位不太匹配"))
         self.assertFalse(SI.is_substantive("感谢关注，该岗位已招满"))
+        # 2026-09-29 实测事故：「不招了」类婉拒曾漏网，被误判实质回复、误挂制度问询
+        self.assertFalse(SI.is_substantive("我们已经不招了哦"))
+        self.assertFalse(SI.is_substantive("这个岗位我们已经不招了"))
 
     def test_inquiry_text_has_no_politeness_filler(self):
         for bad in ("您好", "感谢您", "希望能有机会", "期待与您"):

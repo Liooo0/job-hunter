@@ -293,22 +293,34 @@ def record_event(
     conn.close()
 
 
-def count_applied_since(start_iso: str, include_uncertain: bool = True) -> int:
+def count_applied_since(start_iso: str, include_uncertain: bool = True,
+                        platform: str | None = None) -> int:
     """统计某时刻之后发生的投递动作数（跨进程熔断用）。
 
     include_uncertain=True 时把 UNCERTAIN 也计入（会话已打开即视为产生过动作）。
 
-    ★ 2026-09-15 修正：原来只认 decision IN ('applied','uncertain')，**漏了 51job 的
-      decision='ALLOW'** —— 于是 Boss 的小时闸/日闸看不到 51job 的投递，两平台各算各的，
-      实测某小时合计冲到 70+ 条（远超「单小时≤15」的风控红线）。
-      现在合并三态，闸门统一按「全平台合计」计数。
+    platform=指定平台名时只统计该平台；None = 全平台合计。
+
+    ★ 2026-09-22 用户定稿：**各平台额度分开算，不共用一个池子**。
+      起因：Boss 的小时闸/日闸此前用「全平台合计」，51job 白天投满 100 条后，
+      Boss 的日闸（150）被吃掉大半、小时闸直接被占满 —— Boss 连续多天零出量。
+      现在 Boss 传 platform="boss"，各平台各算各的，谁也别挡谁。
+      （2026-09-15 那次「合计 70+ 条」的教训仍在：改动后单平台内的小时闸照常生效。）
     """
     states = "('applied','uncertain','ALLOW')" if include_uncertain else "('applied','ALLOW')"
     conn = _conn()
-    n = conn.execute(
-        f"SELECT COUNT(*) AS c FROM applications_v2 WHERE decision IN {states} AND applied_at >= ?",
-        (start_iso,),
-    ).fetchone()["c"]
+    if platform:
+        n = conn.execute(
+            f"SELECT COUNT(*) AS c FROM applications_v2 WHERE decision IN {states} "
+            f"AND applied_at >= ? AND platform = ?",
+            (start_iso, platform),
+        ).fetchone()["c"]
+    else:
+        n = conn.execute(
+            f"SELECT COUNT(*) AS c FROM applications_v2 WHERE decision IN {states} "
+            f"AND applied_at >= ?",
+            (start_iso,),
+        ).fetchone()["c"]
     conn.close()
     return n
 

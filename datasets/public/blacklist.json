@@ -1,0 +1,72 @@
+[
+  {
+    "name": "法本",
+    "type": "blacklist",
+    "reason": "IT外包服务类企业",
+    "exported_at": "2026-09-28T22:02:19",
+    "source_version": "59928b0"
+  },
+  {
+    "name": "珍岛",
+    "type": "blacklist",
+    "reason": "销售型SaaS类企业",
+    "exported_at": "2026-09-28T22:02:19",
+    "source_version": "59928b0"
+  },
+  {
+    "name": "外企德科",
+    "type": "outsourcing",
+    "reason": "人力资源服务与外包企业",
+    "exported_at": "2026-09-28T22:02:19",
+    "source_version": "59928b0"
+  },
+  {
+    "name": "中软国际",
+    "type": "outsourcing",
+    "reason": "IT外包服务企业",
+    "exported_at": "2026-09-28T22:02:19",
+    "source_version": "59928b0"
+  },
+  {
+    "name": "软通动力",
+    "type": "outsourcing",
+    "reason": "IT外包服务企业",
+    "exported_at": "2026-09-28T22:02:19",
+    "source_version": "59928b0"
+  },
+  {
+    "name": "博彦科技",
+    "type": "outsourcing",
+    "reason": "IT外包服务企业",
+    "exported_at": "2026-09-28T22:02:19",
+    "source_version": "59928b0"
+  },
+  {
+    "name": "文思海辉",
+    "type": "outsourcing",
+    "reason": "IT外包服务企业",
+    "exported_at": "2026-09-28T22:02:19",
+    "source_version": "59928b0"
+  },
+  {
+    "name": "中电金信",
+    "type": "outsourcing",
+    "reason": "IT外包服务企业",
+    "exported_at": "2026-09-28T22:02:19",
+    "source_version": "59928b0"
+  },
+  {
+    "name": "人瑞人才",
+    "type": "outsourcing",
+    "reason": "人力资源服务与外包企业",
+    "exported_at": "2026-09-28T22:02:19",
+    "source_version": "59928b0"
+  },
+  {
+    "name": "探迹",
+    "type": "outsourcing",
+    "reason": "销售型SaaS类企业",
+    "exported_at": "2026-09-28T22:02:19",
+    "source_version": "59928b0"
+  }
+]
