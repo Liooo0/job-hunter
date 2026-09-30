@@ -14,7 +14,7 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).parent))
 from DrissionPage import ChromiumPage
 from job_decision import evaluate_job, cohort_block_reason, round_direction
-from store import record_application
+from store import record_application, company_applied_recently
 from notify import alert
 
 # ════════════════════════════════════════════════════════════════════
@@ -501,7 +501,7 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied, direc
 
     if "login" in (tab.url or "").lower():
         print("⚠️ 未登录 51job")
-        alert("login", "51job 未登录，本轮投递作废",
+        alert("51job:login", "51job 未登录，本轮投递作废",
               "浏览器里的 51job 登录态掉了，需要手动登录后重跑。\n"
               "在本轮修复前，这种情况是静默的。", level="error", throttle=0)
         return applied, skipped, tab
@@ -555,10 +555,33 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied, direc
                 return applied, skipped, tab
             seen.add(c["jobId"])
 
+            # ── 同公司去重（跨批次，防短时间内重复投同公司触发风控）──
+            comp = c.get("company") or ""
+            t = c["title"] or ""
+            _safety = load_safety()
+            _ddays = int(_safety.get("dedup_days", 7) or 0)
+            if _ddays > 0 and comp and company_applied_recently(city, comp, _ddays, platform="51job"):
+                skipped += 1
+                dedup_reason = f"同公司{_ddays}天内已投(去重)"
+                print(f"  [🔁去重] {comp[:15]} | {t[:25]} — {_ddays}天内已投过该公司，跳过")
+                try:
+                    record_application(
+                        platform="51job", city=city, company=comp,
+                        title=t, salary=c.get("salary") or "", keyword=keyword,
+                        score=0, resume_version="E", decision="skipped",
+                        status="SKIPPED", reason=f"dedup_skip:{dedup_reason}"[:80],
+                        verified=0, event_type="dedup_skip", event_error=None,
+                        extra_payload={"jobId": c.get("jobId"), "area": c.get("area", ""),
+                                       "dedup_days": _ddays},
+                        gates=None, greeting_template_id=None,
+                    )
+                except Exception as e:
+                    print(f"    ⚠️ 去重落库失败: {e}")
+                continue
+
             # 届别闸：拦校招/实习/届别过晚，放行合理应届（2026-09-20 收敛）
             # 规则实现在 job_decision.cohort_block_reason，本平台不再自带一份正则
             # —— 原来那份 `[0-9]{2}届` 会把用户自己的 25届 一起拦掉。
-            t = c["title"] or ""
             _cohort = cohort_block_reason(t)
             if _cohort:
                 skipped += 1
@@ -657,7 +680,7 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied, direc
                     print(f"    ⚠️ 落库失败: {e}")
                 if FOREIGN_HITS["round"] >= FOREIGN_ABORT_PER_ROUND:
                     print("  🛑 本轮站外跳转次数达上限，中止本轮（不再给站外页任何机会）")
-                    alert("foreign_site_stop", "51job 本轮多次跳站外页，已中止本轮",
+                    alert("51job:foreign_site_stop", "51job 本轮多次跳站外页，已中止本轮",
                           "站外岗位已拉黑、以后不再点击。若反复出现，检查卡片链接规则。",
                           level="warn", throttle=3600)
                     return applied, skipped, tab
@@ -751,7 +774,7 @@ def main():
     _allowed, _kreason = kill_switch_check()
     if not _allowed:
         print(f"⛔ kill switch 生效中，本轮 51job 不投递：{_kreason}")
-        alert("kill_switch_block", "kill switch 生效中，51job 本轮未投递",
+        alert("51job:kill_switch_block", "kill switch 生效中，51job 本轮未投递",
               f"原因：{_kreason}\n恢复：python3 boss_apply.py --kill-off",
               level="warn", throttle=1800)
         return
@@ -769,7 +792,7 @@ def main():
         page = ChromiumPage(PORT)
     except Exception as e:
         print(f"❌ Chrome 未连接(端口{PORT}): {e}")
-        alert("chrome_down", "51job 无法连接 Chrome，本轮没投出去",
+        alert("51job:chrome_down", "51job 无法连接 Chrome，本轮没投出去",
               f"端口 {PORT} 连不上：{e}\n先确认调试端口的 Chrome 起着。",
               level="error", throttle=1800)
         return
@@ -801,7 +824,7 @@ def main():
         print(f"📊 今日已投 {today_applied}/{DAILY_LIMIT} 条(DB统计)")
         if today_applied >= DAILY_LIMIT:
             print("🛑 今日额度已满，退出")
-            alert("quota_full", f"51job 今日额度已满（{today_applied}/{DAILY_LIMIT}）",
+            alert("51job:quota_full", f"51job 今日额度已满（{today_applied}/{DAILY_LIMIT}）",
                   "这是正常收工，不用处理。", level="info", throttle=43200)
             return
     except Exception as e:
@@ -832,7 +855,7 @@ def main():
                 if reply_lock.is_locked() and os.environ.get("REPLY_LOCK_HALTS_APPLY") == "1":
                     print(f"\n  🔒 [REPLY_REVIEW_LOCK] 检测到待审核 HR 回复 — "
                           f"51job 在 {city}×{kw} 前暂停本轮投递（REPLY_LOCK_HALTS_APPLY=1 手动开启）")
-                    alert("reply_lock_block", f"51job 因待审 HR 回复暂停（{city}×{kw}）",
+                    alert("51job:reply_lock_block", f"51job 因待审 HR 回复暂停（{city}×{kw}）",
                           "有待审核的 HR 回复时暂停自动投递。\n"
                           "审核：python3 reply_lock.py review ；审完自动恢复。",
                           level="info", throttle=3600)
@@ -847,7 +870,7 @@ def main():
                 tab = ensure_tab(page, tab)
                 if tab is None:
                     print("  🛑 tab 无法恢复，本轮收工")
-                    alert("tab_lost", "51job 页面 tab 反复重建失败，本轮提前收工",
+                    alert("51job:tab_lost", "51job 页面 tab 反复重建失败，本轮提前收工",
                           "连续 3 次无法恢复页面，剩下的城市/关键词全部空转作废。",
                           level="warn", throttle=0)
                     fatal = True

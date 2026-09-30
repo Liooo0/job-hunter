@@ -30,17 +30,45 @@ class TestNotify(unittest.TestCase):
     def test_throttle_mechanism(self):
         """验证 30 分钟节流机制：同 key 重复调用被拦截，防轰炸生效。"""
         key = "test_throttle_key"
-        # 第一次允许发送
+        # 第一次允许发送（纯判断不写盘）
         self.assertTrue(notify._should_send(key, throttle=1800))
+        # 渠道成功发送后记录状态
+        notify._record_sent(key)
         # 立即第二次调用应被节流拦截
         self.assertFalse(notify._should_send(key, throttle=1800))
         # 另外一个 key 不受影响
         self.assertTrue(notify._should_send("another_key", throttle=1800))
 
+    @patch("notify._send_feishu")
+    @patch("notify._send_weixin")
+    @patch("notify._send_wxpusher")
+    def test_failed_send_does_not_advance_cooldown(self, mock_wxpusher, mock_weixin, mock_feishu):
+        """验证所有渠道发送失败时：不写盘，不推进 cooldown，允许后续安全重试。"""
+        mock_feishu.return_value = False
+        mock_weixin.return_value = False
+        mock_wxpusher.return_value = False
+
+        key = "fail_retry_key"
+        # 发送失败
+        ok = notify.alert(key, "失败通知", "正文", throttle=1800)
+        self.assertFalse(ok)
+
+        # 状态文件不应记录该 key，_should_send 依然返回 True
+        self.assertTrue(notify._should_send(key, throttle=1800))
+
+        # 随后的重试在渠道恢复后能成功发出
+        mock_feishu.return_value = True
+        ok2 = notify.alert(key, "重试通知", "正文", throttle=1800)
+        self.assertTrue(ok2)
+
+        # 成功发出后，状态已被记录，进入冷却期
+        self.assertFalse(notify._should_send(key, throttle=1800))
+
     def test_throttle_zero_always_passes(self):
         """验证 throttle=0（如紧急熔断 kill_switch）每次都允许发送。"""
         key = "kill_switch"
         self.assertTrue(notify._should_send(key, throttle=0))
+        notify._record_sent(key)
         self.assertTrue(notify._should_send(key, throttle=0))
 
     @patch("notify._send_feishu")

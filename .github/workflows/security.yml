@@ -62,7 +62,7 @@ jobs:
           # 「当前被追踪的 data/* 必须为 0」由 --all 那一步强制，不需要历史检查重复承担。
           bad=$(git log --all --diff-filter=A --name-only --format="" \
                 | sort -u \
-                | grep -iE 'sent_replies/|pending_replies/|reply_pending|my_profile|^data/my_profile|receipts/|\.env$|\.db$|backups?/|publish_dashboard/index|config.*\.bak' || true)
+                | grep -iE 'sent_replies/|pending_replies/|reply_pending|my_profile|^data/my_profile|receipts/|\.env$|\.db$|backups?/|publish_dashboard/index|config.*\.bak|(boss|51job|liepin)-.*-log\.json|dry_run_plan\.json' || true)
           if [ -n "$bad" ]; then
             echo "❌ 敏感路径出现在历史中："; echo "$bad"; exit 1
           fi

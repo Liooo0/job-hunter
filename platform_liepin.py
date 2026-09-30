@@ -13,7 +13,7 @@ from urllib.parse import quote
 sys.path.insert(0, str(Path(__file__).parent))
 from DrissionPage import ChromiumPage
 from job_decision import evaluate_job, cohort_block_reason
-from store import record_application
+from store import record_application, company_applied_recently
 from notify import alert
 
 # 猎聘 dqs 城市码(2026-09-10 实测: URL 用 &dqs= 而非 &city=, 否则返回全国异地岗)
@@ -24,6 +24,18 @@ CITY_CODES = {
 }
 DAILY_LIMIT = 20  # 2026-09-11: 猎聘风控敏感(详情页有强限速),宁少勿封
 PORT = 9223
+
+
+def load_safety() -> dict:
+    """读取 config.json 的 safety 块。"""
+    defaults = {"hourly_cap": 10, "night_ban_start": 22, "night_ban_end": 8, "dedup_days": 7}
+    try:
+        from shared import load_config
+        cfg = load_config()
+        defaults.update(cfg.get("safety") or {})
+    except Exception:
+        pass
+    return defaults
 
 # ── 通道总开关（2026-09-20）──
 # False = 彻底熔断：main() 第一句就返回，不启动浏览器、不校验会话、不做账号登录、
@@ -196,9 +208,32 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
                 break
             seen.add(c["jobId"])
 
+            # ── 同公司去重（跨批次，防短时间内重复投同公司触发风控）──
+            comp = c.get("company") or ""
+            t = c["title"] or ""
+            _safety = load_safety()
+            _ddays = int(_safety.get("dedup_days", 7) or 0)
+            if _ddays > 0 and comp and company_applied_recently(city, comp, _ddays, platform="liepin"):
+                skipped += 1
+                dedup_reason = f"同公司{_ddays}天内已投(去重)"
+                print(f"  [🔁去重] {comp[:15]} | {t[:25]} — {_ddays}天内已投过该公司，跳过")
+                try:
+                    record_application(
+                        platform="liepin", city=city, company=comp,
+                        title=t, salary=c.get("salary") or "", keyword=keyword,
+                        score=0, resume_version="E", decision="skipped",
+                        status="SKIPPED", reason=f"dedup_skip:{dedup_reason}"[:80],
+                        verified=0, event_type="dedup_skip", event_error=None,
+                        extra_payload={"jobId": c.get("jobId"), "area": c.get("area", ""),
+                                       "dedup_days": _ddays},
+                        gates=None, greeting_template_id=None,
+                    )
+                except Exception as e:
+                    print(f"    ⚠️ 去重落库失败: {e}")
+                continue
+
             # 届别闸：拦校招/实习/届别过晚，放行合理应届（2026-09-20 收敛）
             # 规则实现在 job_decision.cohort_block_reason，本平台不再自带一份正则。
-            t = c["title"] or ""
             _cohort = cohort_block_reason(t)
             if _cohort:
                 skipped += 1
@@ -328,7 +363,7 @@ def main():
     _allowed, _kreason = kill_switch_check()
     if not _allowed:
         print(f"⛔ kill switch 生效中，本轮猎聘不投递：{_kreason}")
-        alert("kill_switch_block", "kill switch 生效中，猎聘本轮未投递",
+        alert("liepin:kill_switch_block", "kill switch 生效中，猎聘本轮未投递",
               f"原因：{_kreason}\n恢复：python3 boss_apply.py --kill-off",
               level="warn", throttle=1800)
         return
@@ -340,7 +375,7 @@ def main():
         page = ChromiumPage(PORT)
     except Exception as e:
         print(f"❌ Chrome 未连接(端口{PORT}): {e}")
-        alert("chrome_down", "猎聘无法连接 Chrome，本轮没投出去",
+        alert("liepin:chrome_down", "猎聘无法连接 Chrome，本轮没投出去",
               f"端口 {PORT} 连不上：{e}", level="error", throttle=1800)
         return
     tab = page.new_tab("about:blank", background=True)  # 后台建标签：不把窗口顶到用户屏幕
@@ -359,7 +394,7 @@ def main():
                 if reply_lock.is_locked() and os.environ.get("REPLY_LOCK_HALTS_APPLY") == "1":
                     print(f"\n  🔒 [REPLY_REVIEW_LOCK] 检测到待审核 HR 回复 — "
                           f"猎聘在 {city}×{kw} 前暂停本轮投递（REPLY_LOCK_HALTS_APPLY=1 手动开启）")
-                    alert("reply_lock_block", f"猎聘因待审 HR 回复暂停（{city}×{kw}）",
+                    alert("liepin:reply_lock_block", f"猎聘因待审 HR 回复暂停（{city}×{kw}）",
                           "有待审核的 HR 回复时暂停自动投递。\n"
                           "审核：python3 reply_lock.py review ；审完自动恢复。",
                           level="info", throttle=3600)

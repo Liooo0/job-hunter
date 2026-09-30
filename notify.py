@@ -104,7 +104,7 @@ def _log(line: str) -> None:
 
 
 def _should_send(key: str, throttle: int) -> bool:
-    """节流判断：同 key 在 throttle 秒内只推一次。throttle<=0 表示不节流。"""
+    """节流判断：同 key 在 throttle 秒内只推一次。throttle<=0 表示不节流。纯判断，不写状态。"""
     if throttle <= 0:
         return True
     try:
@@ -115,13 +115,21 @@ def _should_send(key: str, throttle: int) -> bool:
     last = float(state.get(key, 0) or 0)
     if now - last < throttle:
         return False
-    state[key] = now
+    return True
+
+
+def _record_sent(key: str) -> None:
+    """记录发送成功时间戳用于后续节流。仅在渠道实际发送成功后调用。"""
+    try:
+        state = json.loads(STATE_FILE.read_text(encoding="utf-8")) if STATE_FILE.exists() else {}
+    except Exception:
+        state = {}
+    state[key] = time.time()
     try:
         STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
         STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
     except Exception:
         pass
-    return True
 
 
 def _feishu_target() -> str:
@@ -291,34 +299,42 @@ def alert(key: str, title: str, content: str = "", level: str = "warn",
 
     channel = os.environ.get("JOBHUNTER_ALERT_CHANNEL", "feishu").strip().lower()
 
+    sent = False
     try:
         # 1. 优先飞书通道
         if channel in ("feishu", "both", "all"):
             try:
                 if _send_feishu(full_title, body):
-                    return True
+                    sent = True
             except Exception as e:
                 _log(f"[feishu-exception] {key} | {e}")
-            _log(f"[fallback] {key} | 飞书通道失败，尝试备用通道")
+            if not sent:
+                _log(f"[fallback] {key} | 飞书通道失败，尝试备用通道")
 
         # 2. 次选微信通道
-        if channel in ("weixin", "both", "all") or channel == "feishu":
+        if not sent and (channel in ("weixin", "both", "all") or channel == "feishu"):
             try:
                 if _send_weixin(full_title, body):
-                    return True
+                    sent = True
             except Exception as e:
                 _log(f"[weixin-exception] {key} | {e}")
-            _log(f"[fallback] {key} | 微信通道失败，改走 wxpusher")
+            if not sent:
+                _log(f"[fallback] {key} | 微信通道失败，改走 wxpusher")
 
         # 3. 兜底 WxPusher
-        try:
-            return _send_wxpusher(key, full_title, body)
-        except Exception as e:
-            _log(f"[wxpusher-exception] {key} | {e}")
-            return False
+        if not sent:
+            try:
+                if _send_wxpusher(key, full_title, body):
+                    sent = True
+            except Exception as e:
+                _log(f"[wxpusher-exception] {key} | {e}")
     except Exception as e:
         _log(f"[alert-top-exception] {key} | {e}")
-        return False
+        sent = False
+
+    if sent:
+        _record_sent(key)
+    return sent
 
 
 def main() -> int:

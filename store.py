@@ -343,7 +343,9 @@ def company_applied_recently(city: str, company: str, days: int, platform: str =
     conn = _conn()
     row = conn.execute(
         """SELECT 1 AS x FROM applications_v2
-           WHERE platform=? AND city=? AND company_norm=? AND decision IN ('applied','uncertain') AND applied_at >= ?
+           WHERE platform=? AND city=? AND company_norm=?
+             AND (decision IN ('applied','uncertain','ALLOW') OR status IN ('APPLIED','VERIFIED','UNCERTAIN'))
+             AND applied_at >= ?
            LIMIT 1""",
         (platform, city, cn, cutoff),
     ).fetchone()

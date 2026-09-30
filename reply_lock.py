@@ -159,8 +159,7 @@ def mark_send_failed(item_id: str, reason: str = "") -> bool:
             s["send_failed_at"] = _now()
             hit = True
     if hit:
-        PENDING_FILE.write_text(
-            json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        _dump(PENDING_FILE, data)
     return hit
 
 

@@ -85,8 +85,8 @@ FILE_CLASSES = [
      "数据库文件（业务数据/持久化存储）", False),
     ("backup", r"(^|/)(backups?|归档|archive-data)/|\.(bak|backup|old|orig|tmp|dump)$", "deny",
      "备份/副本文件（业务数据历史副本）", False),
-    ("log", r"(^|/)logs?/|\.(log|out|err)$", "deny",
-     "日志文件（可能携带运行明细与交互数据）", False),
+    ("log", r"(^|/)logs?/|\.(log|out|err)$|(^|/)(boss|51job|liepin)-.*-log\.json$|(^|/)dry_run_plan\.json$", "deny",
+     "日志与运行计划文件（可能携带运行明细与交互数据）", False),
     ("export", r"(^|/)(exports?|导出|receipts?|票据)/.*\.(csv|xlsx?|pdf|json|txt|jpe?g|png|zip|db)$|(^|/)(receipts?|票据)/", "deny",
      "导出明细或票据凭单（真实业务数据）", False),
     ("secret", r"(^|/)\.env(\.|$)|\.(pem|key|p12|pfx)$|(^|/)id_(rsa|ed25519)|credential|secret|token\.json$", "deny",
@@ -268,10 +268,33 @@ class GuardEngine:
         self._load_denylist()
         self._load_pii_gate()
 
+    @staticmethod
+    def _unquote_git_path(line: str) -> str:
+        """还原 git core.quotepath 默认输出的 C 风格引号路径（含八进制转义）。"""
+        s = line.strip()
+        if len(s) >= 2 and s.startswith('"') and s.endswith('"'):
+            body = s[1:-1]
+            out = bytearray()
+            i = 0
+            while i < len(body):
+                if body[i] == "\\" and i + 3 < len(body) and body[i + 1] in "01234567":
+                    out.append(int(body[i + 1:i + 4], 8))
+                    i += 4
+                else:
+                    out.append(ord(body[i]))
+                    i += 1
+            try:
+                return out.decode("utf-8")
+            except UnicodeDecodeError:
+                return s
+        return s
+
     def _run_git(self, args: List[str]) -> str:
         try:
+            # core.quotepath=false：中文等非 ASCII 路径不再被转成 "path\346\267..."
+            # 否则 history 路径扫描的正则整段失配（中文日志名会漏报）。
             res = subprocess.run(
-                ["git", "-C", self.repo_path] + args,
+                ["git", "-c", "core.quotepath=false", "-C", self.repo_path] + args,
                 capture_output=True,
                 text=True,
                 errors="replace",
@@ -650,7 +673,34 @@ class GuardEngine:
                                 evidence=f"{name} <{redact(email)}>"
                             ))
 
-        # 2. 全量历史 diff 快速增量行扫描（覆盖历史添加后删除的敏感内容）
+        # 2. 扫描历史新增文件路径（覆盖历史添加后被删除的违规文件）
+        added_files_log = self._run_git(["log", "--all", "--diff-filter=A", "--name-only", "--format=commit %h"])
+        cur_commit_path = "initial"
+        seen_hist_paths = set()
+        for line in added_files_log.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith("commit "):
+                cur_commit_path = line.split()[1][:8]
+            else:
+                rel_path = self._unquote_git_path(line)
+                key = (cur_commit_path, rel_path)
+                if key in seen_hist_paths:
+                    continue
+                seen_hist_paths.add(key)
+                cls, verdict, why, scan = self.classify_file(rel_path)
+                if verdict == "deny":
+                    self.findings.append(Finding(
+                        layer="L3_HISTORY",
+                        severity="HIGH",
+                        category="PROHIBITED_PATH",
+                        target=f"hist:{cur_commit_path}:{rel_path}",
+                        detail=f"历史提交包含违规路径 ({why})",
+                        evidence=rel_path
+                    ))
+
+        # 3. 全量历史 diff 快速增量行扫描（覆盖历史添加后删除的敏感内容）
         diff_output = self._run_git(["log", "--all", "-p", "-U0", "--diff-filter=ACMR"])
         cur_commit = "initial"
         cur_file = ""
@@ -660,16 +710,16 @@ class GuardEngine:
             elif line.startswith("diff --git "):
                 parts = line.split(" b/")
                 if len(parts) == 2:
-                    cur_file = parts[1].strip()
+                    cur_file = self._unquote_git_path(parts[1].strip())
             elif line.startswith("+++ b/"):
-                cur_file = line[6:].strip()
+                cur_file = self._unquote_git_path(line[6:].strip())
             elif line.startswith("+") and not line.startswith("+++") and cur_file:
                 added_text = line[1:]
                 ext = os.path.splitext(cur_file)[1].lower()
                 if not VENDOR_PATH.search(cur_file) and ext not in BINARY_EXTENSIONS:
                     self.scan_content_string(f"hist:{cur_commit}:{cur_file}", added_text, layer="L3_HISTORY")
 
-        # 3. 扫描历史 Commit Message 中的 PII
+        # 4. 扫描历史 Commit Message 中的 PII
         for term in self.denylist:
             if not term:
                 continue

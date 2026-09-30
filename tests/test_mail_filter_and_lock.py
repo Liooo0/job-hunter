@@ -172,6 +172,23 @@ class TestSendFailedReleasesLock(unittest.TestCase):
     def test_unknown_id_is_noop(self):
         self.assertFalse(RL.mark_send_failed("NOPE", "x"))
 
+    def test_mark_send_failed_uses_atomic_dump(self):
+        """P1-3 回归：验证 mark_send_failed 改用 _dump 原子写，不留 tmp 碎文件，写盘完整。"""
+        from unittest.mock import patch
+        with patch.object(RL, "_dump", wraps=RL._dump) as mock_dump:
+            ok = RL.mark_send_failed("R1", "会话异常")
+            self.assertTrue(ok)
+            mock_dump.assert_called_once()
+            args, _ = mock_dump.call_args
+            self.assertEqual(args[0], RL.PENDING_FILE)
+
+        # 验证原子写之后，临时文件不存在且主文件可完整解析
+        tmp_file = RL.PENDING_FILE.with_suffix(RL.PENDING_FILE.suffix + ".tmp")
+        self.assertFalse(tmp_file.exists())
+        data = json.loads(RL.PENDING_FILE.read_text(encoding="utf-8"))
+        r1 = next(s for s in data if s["id"] == "R1")
+        self.assertEqual(r1["status"], "send_failed")
+
 
 if __name__ == "__main__":
     unittest.main()

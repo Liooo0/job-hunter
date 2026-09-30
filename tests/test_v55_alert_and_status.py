@@ -162,7 +162,7 @@ class TestPlatformStatusContract(unittest.TestCase):
     def test_alerts_wired_into_entrypoints(self):
         for name, keys in (
             ("boss_apply.py", ("boss_risk", "boss_login", "slowdown_stop", "kill_switch")),
-            ("platform_51job.py", ("login", "chrome_down", "tab_lost")),
+            ("platform_51job.py", ("51job:login", "51job:chrome_down", "51job:tab_lost")),
         ):
             src = self._source(name)
             for k in keys:
