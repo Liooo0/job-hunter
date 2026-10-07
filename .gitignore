@@ -100,3 +100,6 @@ scripts/apply51_*.py
 
 # Agent 审计状态目录（永不入库）
 .agent-state/
+
+# 本地私有测试样本（禁止入库）
+tests/test_mail_filter_0922.py
