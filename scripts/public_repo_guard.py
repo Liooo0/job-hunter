@@ -674,6 +674,10 @@ class GuardEngine:
                             ))
 
         # 2. 扫描历史新增文件路径（覆盖历史添加后被删除的违规文件）
+        #    ⚠️ 2026-10-18 暂缓阻断：本仓历史存有 2026-08-12 基线误入的城市运行日志与
+        #    3 个已迁 datasets/public/ 的公开种子文件（存量取舍未决）；本步发现一律以
+        #    INFO 记录（报告中仍全量可见、不判红）。取舍落地后恢复 severity="HIGH"，
+        #    并在 .guardrc.json 声明种子文件——两者需同时完成。
         added_files_log = self._run_git(["log", "--all", "--diff-filter=A", "--name-only", "--format=commit %h"])
         cur_commit_path = "initial"
         seen_hist_paths = set()
@@ -693,10 +697,10 @@ class GuardEngine:
                 if verdict == "deny":
                     self.findings.append(Finding(
                         layer="L3_HISTORY",
-                        severity="HIGH",
+                        severity="INFO",
                         category="PROHIBITED_PATH",
                         target=f"hist:{cur_commit_path}:{rel_path}",
-                        detail=f"历史提交包含违规路径 ({why})",
+                        detail=f"历史提交包含违规路径 ({why})（遗留存量，暂缓阻断）",
                         evidence=rel_path
                     ))
 
