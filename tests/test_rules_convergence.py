@@ -724,8 +724,12 @@ class TestLiepinBypass(unittest.TestCase):
         # 阻断块必须直接 return
         self.assertTrue(any(isinstance(s, ast.Return) for s in first.body),
                         "熔断分支必须直接 return，不能只是打印警告")
-        # 后面才允许 import config
-        self.assertIsInstance(main.body[1], ast.Import)
+        # 2026-10-17：死导入 `import config` 已按 V5.6 补丁删除（原锚点随之更新）——
+        # 熔断块之后的第二句必须是「无副作用语句」（赋值/导入），不得是直接开动作的
+        # 表达式调用（拉 Chrome / 取锁必须再往后）。
+        second = main.body[1]
+        self.assertNotIsInstance(second, ast.Expr, "熔断后第一句不得直接开动作")
+        self.assertNotIn("ChromePage", ast.unparse(second))
 
     def test_main_returns_without_touching_browser(self):
         import platform_liepin as PLP

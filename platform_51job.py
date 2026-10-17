@@ -796,7 +796,7 @@ def main():
               f"端口 {PORT} 连不上：{e}\n先确认调试端口的 Chrome 起着。",
               level="error", throttle=1800)
         return
-    sweep_stale_tabs(page)          # 先清僵尸页，再开自己的投递页
+    sweep_stale_tabs(keep=None)     # 先清僵尸页，再开自己的投递页（v5.6：原传 page 对象与 tab_id 比较恒不匹配，改为显式 keep=None）
     # 站外红线（2026-09-29）：历史遗留的应届生网/校招页，开跑前先清干净（用户明令）
     FOREIGN_HITS["round"] = 0
     _n_legacy = close_foreign_tabs()

@@ -144,8 +144,11 @@ class TestPlatformStatusContract(unittest.TestCase):
         锚点随实现更新，但校验的成功分支语义不变。
         """
         src = self._source("platform_liepin.py")
-        guard = 'if "已申请" in state or "已投递" in state or state.startswith("CLICKED"):'
+        # V5.6（2026-10-17）：成功回执锚点收紧为 'CLICKED:' —— 该前缀只在点击后经
+        # 二次确认（页面出现「已投递/已沟通」）才返回；'CLICKED_UNCONFIRMED' 落失败分支。
+        guard = 'if "已申请" in state or "已投递" in state or state.startswith("CLICKED:"):'
         self.assertIn(guard, src)
+        self.assertIn("CLICKED_UNCONFIRMED", src)
         branch = self._strip_comments(src.rsplit(guard, 1)[1][:1500])
         self.assertIn('status="APPLIED"', branch, "猎聘成功分支必须写 APPLIED")
         self.assertIn("verified=1", branch)

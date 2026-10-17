@@ -90,6 +90,7 @@ function El(tag, opts) {
 El.prototype.getBoundingClientRect = function () { return this._rect; };
 El.prototype.appendChild = function (c) { c.parentElement = this; this.children.push(c); return c; };
 El.prototype.querySelectorAll = function (sel) { return qsa(sel, this); };
+El.prototype.querySelector = function (sel) { return qsa(sel, this)[0] || null; };
 
 function _matchOne(el, sel) {
     sel = sel.trim();
@@ -243,6 +244,44 @@ var R = {};
     R.case5_flat_scrollTop = flat.scrollTop;
 })();
 
+// ── 用例 8（V5.6）：伪发送键过滤 —— 「发送简历/交换微信」不得被当成真发送键 ──
+(function () {
+    var body = freshBody();
+    var panel = new El('div', { cls: 'dialog-wrap' });
+    var ed = new El('div', { attrs: { contenteditable: 'true' } });
+    var badBtn = new El('button', { cls: 'btn', text: '发送简历' });
+    var wechatBtn = new El('button', { cls: 'btn', text: '交换微信' });
+    var goodBtn = new El('button', { cls: 'btn-send', text: '发送' });
+    panel.appendChild(ed);
+    panel.appendChild(badBtn);
+    panel.appendChild(wechatBtn);
+    panel.appendChild(goodBtn);
+    body.appendChild(panel);
+    R.case8_bad = _jhIsRealSendBtn(badBtn);
+    R.case8_wechat = _jhIsRealSendBtn(wechatBtn);
+    R.case8_good = _jhIsRealSendBtn(goodBtn);
+})();
+
+// ── 用例 9（V5.7 收口）：会话新鲜度判定 _jhTimeToday ──
+(function () {
+    var body = freshBody();
+    function mk(timeText) {
+        var li = new El('li', {});
+        var nb = new El('div', { cls: 'name-box', text: '某先生某公司招聘专员' });
+        var tm = new El('span', { cls: 'time', text: timeText });
+        li.appendChild(nb);
+        li.appendChild(tm);
+        body.appendChild(li);
+        return nb;
+    }
+    R.case9_hm = _jhTimeToday(mk('10:31'));
+    R.case9_now = _jhTimeToday(mk('刚刚'));
+    R.case9_min_ago = _jhTimeToday(mk('3分钟前'));
+    R.case9_old = _jhTimeToday(mk('09/19'));
+    R.case9_yday = _jhTimeToday(mk('昨天'));
+    R.case9_empty = _jhTimeToday(mk(''));
+})();
+
 console.log(JSON.stringify(R));
 """
 
@@ -251,6 +290,7 @@ def _run_node_cases() -> dict:
     """把生产 JS 字符串喂给 node + DOM 桩，返回各用例观测值。"""
     src = (_DOM_STUB
            + "\n// ───── 生产代码（直接取自 boss_apply，不是复刻）─────\n"
+           + BA._JS_FRESH_HELPERS
            + BA._JS_CHAT_INPUT
            + BA._JS_SCROLL_CHAT_LIST
            + "\n// ───── 用例 ─────\n"
@@ -382,6 +422,24 @@ class TestChatInputResolver(unittest.TestCase):
         """没有溢出的祖先容器不许被设 scrollTop（避免瞎滚页面）。"""
         self.assertEqual(self.r["case5_flat_scrollTop"], 0)
 
+    def test_pseudo_send_buttons_are_rejected(self):
+        """V5.6：伪发送键（发送简历/交换微信）必须被拒，真发送键（发送/btn-send）通过。"""
+        self.assertIs(self.r["case8_bad"], False,
+                      "「发送简历」被当成真发送键 → 招呼语会点错按钮留在输入框")
+        self.assertIs(self.r["case8_wechat"], False,
+                      "「交换微信」被当成真发送键")
+        self.assertIs(self.r["case8_good"], True,
+                      "「发送」(btn-send) 是唯一合法的发送键，不得被过滤误杀")
+
+    def test_session_freshness_check(self):
+        """V5.7 收口：会话新鲜度 —— 当天标签放行；日期型/昨天/空 一律拒绝。"""
+        self.assertIs(self.r["case9_hm"], True, "HH:MM（当天）应放行")
+        self.assertIs(self.r["case9_now"], True, "「刚刚」应放行")
+        self.assertIs(self.r["case9_min_ago"], True, "「N分钟前」应放行")
+        self.assertIs(self.r["case9_old"], False, "「09/19」是旧会话，必须拒绝")
+        self.assertIs(self.r["case9_yday"], False, "「昨天」必须拒绝")
+        self.assertIs(self.r["case9_empty"], False, "读不到时间 → 保守拒绝")
+
 
 class TestSendVerdictTable(unittest.TestCase):
     """契约：验证返回值的判定表（与 tests/test_p0.py 同源，这里补上带诊断的返回格式）。"""
@@ -428,9 +486,64 @@ class TestExistingLogWording(unittest.TestCase):
 
     def test_no_pii_in_new_js(self):
         """新加的 JS 里不许出现真实手机号/邮箱（PII 红线）。"""
-        for blob in (BA._JS_CHAT_INPUT, BA._JS_SCROLL_CHAT_LIST):
+        for blob in (BA._JS_CHAT_INPUT, BA._JS_SCROLL_CHAT_LIST,
+                     BA._JS_SCROLL_CHAT_TOP, BA._JS_FILL_CHAT_SEARCH, BA._JS_FRESH_HELPERS):
             self.assertIsNone(re.search(r"1[3-9]\d{9}", blob))
             self.assertIsNone(re.search(r"[\w.+-]+@[\w-]+\.[\w.]+", blob))
+
+
+class TestV56ThreePatchStructure(unittest.TestCase):
+    """V5.6 四合一补丁结构断言（2026-10-17）：reset 不再删节点 / 真发送键过滤 / 回顶滚动 / 定位策略。"""
+
+    JH_CATEGORY = "boss_last_mile"
+    JH_NEW = True
+
+    def test_reset_no_longer_removes_vue_nodes(self):
+        """_reset_after_apply 不得再对 op-btn-chat/contenteditable/textarea 做 .remove()。"""
+        tab = _CapturingTab([None])
+        tab.url = "https://www.zhipin.com/web/geek/job?query=x&city=101280600"
+        with mock.patch("boss_apply.time.sleep"):
+            BA._reset_after_apply(mock.Mock(), tab, tab.url)
+        self.assertTrue(tab.scripts, "reset 未发出任何 run_js")
+        js = tab.scripts[0]
+        self.assertIn("data-jh-stale", js, "缺 stale 诊断标记")
+        self.assertNotIn(".remove", js, "reset 还在删 DOM 节点 —— Vue vnode 会脱钩（事故根因）")
+
+    def test_send_path_uses_real_send_button_filter(self):
+        """填充/验证两段 JS 都要带 _jhIsRealSendBtn；共享块里含伪发送键过滤词。"""
+        tab = _CapturingTab(["SENT_CLICKED", "cleared"])
+        with mock.patch("boss_apply.time.sleep"):
+            BA._fill_and_send(tab, "你好")
+        self.assertEqual(len(tab.scripts), 2)
+        for i, js in enumerate(tab.scripts):
+            self.assertIn("_jhIsRealSendBtn", js, f"第 {i + 1} 段 JS 缺真发送键过滤")
+        self.assertIn("发送简历", BA._JS_CHAT_INPUT)
+        self.assertIn("微信", BA._JS_CHAT_INPUT)
+
+    def test_scroll_top_warmup_and_constant(self):
+        """预热仍是 3 次（兼容 test_p0 FakeTab）：前 2 次到底、第 3 次回顶。"""
+        self.assertIn("_jhScrollTop", BA._JS_SCROLL_CHAT_TOP)
+        self.assertIn("p.scrollTop = 0", BA._JS_SCROLL_CHAT_TOP)
+        self.assertNotIn("offsetParent", BA._JS_SCROLL_CHAT_TOP)
+        src = Path(BA.__file__).read_text(encoding="utf-8")
+        self.assertIn("_JS_SCROLL_CHAT_TOP if _i == 2 else _JS_SCROLL_CHAT_LIST", src)
+
+    def test_locate_priorities_and_diag(self):
+        """定位优先级：全名取最顶（hf[0]）/ 词干放宽 / 搜索框兜底；诊断字段在。"""
+        src = Path(BA.__file__).read_text(encoding="utf-8")
+        self.assertIn("clicked:full:", src)
+        self.assertIn("all.indexOf(hits[0]) <= 2", src)
+        self.assertIn("_JS_FILL_CHAT_SEARCH", src)
+        self.assertIn("send_mode", BA.LAST_SEND_DIAG)
+        self.assertIn("verify_state", BA.LAST_SEND_DIAG)
+
+    def test_stale_guard_present(self):
+        """V5.7 收口结构：旧会话硬闸与条件B核验都要在（防误发进大厂旧会话）。"""
+        src = Path(BA.__file__).read_text(encoding="utf-8")
+        for token in ("stale|full|", "stale|stem|", "skipped_stale_session",
+                      "_jhTimeToday", "_JS_CLICK_NB_INDEX", "_JS_PANEL_JOB_TITLE",
+                      "verified_stale", "_JS_FRESH_HELPERS"):
+            self.assertIn(token, src, f"缺收口标记: {token}")
 
 
 if __name__ == "__main__":
