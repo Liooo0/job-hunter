@@ -141,8 +141,12 @@ class TestReplyLock(unittest.IsolatedAsyncioTestCase):
         # no active send_safely invocation in main/watch paths
         self.assertNotIn("send_safely(results)", src)
         self.assertNotIn("send_safely(new_results", src)
-        # --send backdoor must be refused
-        self.assertIn("已按 v5 第十二条拆除", src)
+        # 2026-10-17 同步：2026-10-08 用户授权「自动直发」后，发送唯一出口改为
+        # auto_send_pending（reply_lock auto_approve → send_approved），旧
+        # 「已按 v5 第十二条拆除」措辞已随授权修订，锚点更新为新契约。
+        self.assertIn("auto_send_pending", src)
+        self.assertIn("2026-10-08", src)
+        self.assertIn("auto_approve", src)
 
 
 if __name__ == "__main__":
