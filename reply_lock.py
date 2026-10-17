@@ -6,6 +6,7 @@
     回复 HR/Boss 的优先级 > 自动投递。
     生成回复可以自动化，发送回复必须人工确认。
     待审核回复存在期间，任何自动投递 worker 一律不得发送简历。
+    ——2026-10-08 用户修订：发送改为授权直发（auto_approve）；「回复优先于投递」与全部护栏不变。
 
 架构位置：Scheduler / Orchestrator 层的确定性锁。
 LLM 只负责理解上下文和起草回复；本模块负责"暂停投递、排队审核、
@@ -159,8 +160,7 @@ def mark_send_failed(item_id: str, reason: str = "") -> bool:
             s["send_failed_at"] = _now()
             hit = True
     if hit:
-        PENDING_FILE.write_text(
-            json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        _dump(PENDING_FILE, data)
     return hit
 
 
@@ -242,6 +242,22 @@ def approve(sid: str, confirm_phrase: str) -> tuple[bool, str]:
     _update(sid, status="approved", confirmed_at=_now())
     record("hr_replies_confirmed")
     return True, f"[{sid}] 已批准，待发送"
+
+
+def auto_approve(sid: str, actor: str = "auto-cron") -> tuple[bool, str]:
+    """自动批准（2026-10-08 用户授权：cron 无人值守场景不再走人工『确认』）。
+
+    只对 pending/edited 条目生效；留痕 confirmed_by=actor。发送仍走唯一出口
+    send_approved（节流/护栏/失败标记全套保留）。
+    """
+    s = _find(sid)
+    if not s:
+        return False, f"未找到待审核条目 {sid}"
+    if s.get("status") not in ("pending", "edited"):
+        return False, f"[{sid}] 状态={s.get('status')}，不在待审状态，跳过"
+    _update(sid, status="approved", confirmed_at=_now(), confirmed_by=actor)
+    record("hr_replies_auto_confirmed")
+    return True, f"[{sid}] 已自动批准（{actor}）"
 
 
 def reject(sid: str, note: str = "") -> tuple[bool, str]:

@@ -303,6 +303,54 @@ class PiiGateNegativeTest(unittest.TestCase):
         self.assertEqual(self._git("status", "--porcelain", cwd=outer).stdout,
                          status_before, "外层仓库的工作区被夹具改动了")
 
+    # ── 用例 8：日志与计划文件分类判定（P0-1 回归）───────────────
+    def test_8_log_and_plan_paths_classified_deny(self):
+        eng = PRG.GuardEngine(repo_path=str(self.root))
+        deny_samples = [
+            "boss-hangzhou-log.json",
+            "boss-shenzhen-log.json",
+            "51job-shenzhen-log.json",
+            "dry_run_plan.json",
+        ]
+        for p in deny_samples:
+            cls, verdict, why, scan = eng.classify_file(p)
+            self.assertEqual(verdict, "deny", f"{p} 应该被判定为 deny，实际判定为 {verdict}")
+
+        public_samples = [
+            "README.md",
+            "source.py",
+            "config.example.json",
+        ]
+        for p in public_samples:
+            cls, verdict, why, scan = eng.classify_file(p)
+            self.assertEqual(verdict, "public", f"{p} 应该被判定为 public，实际判定为 {verdict}")
+
+    # ── 用例 9：工作区/HEAD 出现日志文件必须拦截（P0-1 回归）────
+    def test_9_log_file_in_head_fails_gate(self):
+        self._write_content("clean.txt", CLEAN_BODY)
+        self._write_content("boss-hangzhou-log.json", "{\"log\": 1}\n")
+        self._write_hashfile()
+        self._commit("add log")
+        findings, cats, targets = self._run("head")
+        self.assertIn("PROHIBITED_PATH", cats, f"HEAD 中的日志文件未被 PROHIBITED_PATH 拦截: {cats}")
+        self.assertTrue(any("boss-hangzhou-log.json" in f.target for f in findings),
+                        f"违规目标未包含 boss-hangzhou-log.json: {targets}")
+
+    # ── 用例 10：历史中添加过但后来删除的日志文件必须拦截（P0-1 回归）
+    def test_10_log_file_in_history_fails_gate(self):
+        self._write_content("clean.txt", CLEAN_BODY)
+        self._write_content("dry_run_plan.json", "{\"plan\": 1}\n")
+        self._write_hashfile()
+        self._commit("commit with plan")
+        # 后来删除了该文件
+        self._git("rm", "-q", "dry_run_plan.json")
+        self._git("-c", "user.email=t@example.test", "-c", "user.name=t",
+                  "commit", "-qm", "delete plan")
+        findings, cats, targets = self._run("history")
+        self.assertIn("PROHIBITED_PATH", cats, f"历史提交中的已删计划文件未被 PROHIBITED_PATH 拦截: {cats}")
+        self.assertTrue(any("dry_run_plan.json" in f.target for f in findings),
+                        f"历史违规目标未包含 dry_run_plan.json: {targets}")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

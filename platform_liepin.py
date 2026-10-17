@@ -5,7 +5,7 @@
 规则全平台统一: 底薪≥8K / 薪资≤60K / 排除销售标注狼性实习
 独立限额: 50/天 (不占Boss的150)
 """
-import argparse, json, time, random, sys
+import argparse, json, time, random, sys, os
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
@@ -13,7 +13,7 @@ from urllib.parse import quote
 sys.path.insert(0, str(Path(__file__).parent))
 from DrissionPage import ChromiumPage
 from job_decision import evaluate_job, cohort_block_reason
-from store import record_application
+from store import record_application, company_applied_recently, count_applied_since
 from notify import alert
 
 # 猎聘 dqs 城市码(2026-09-10 实测: URL 用 &dqs= 而非 &city=, 否则返回全国异地岗)
@@ -24,6 +24,68 @@ CITY_CODES = {
 }
 DAILY_LIMIT = 20  # 2026-09-11: 猎聘风控敏感(详情页有强限速),宁少勿封
 PORT = 9223
+
+
+def load_safety() -> dict:
+    """读取 config.json 的 safety 块。"""
+    defaults = {"hourly_cap": 10, "night_ban_start": 22, "night_ban_end": 8, "dedup_days": 7}
+    try:
+        from shared import load_config
+        cfg = load_config()
+        defaults.update(cfg.get("safety") or {})
+    except Exception:
+        pass
+    return defaults
+
+
+def in_night_window() -> bool:
+    """夜间禁投（读 config.json safety 块，缺省 22:00-8:00，与 boss_apply 同规则）。
+
+    V5.6（2026-10-17）：猎聘原先完全没接夜禁与小时闸 —— 开通道前必须补齐。
+    """
+    s = load_safety()
+    try:
+        start = int(s.get("night_ban_start", 22) or 22)
+        end = int(s.get("night_ban_end", 8) or 8)
+    except Exception:
+        start, end = 22, 8
+    h = datetime.now().hour
+    if start < end:
+        return start <= h < end
+    return h >= start or h < end
+
+
+def hourly_applied() -> int:
+    """本小时猎聘已投条数（跨进程，查 DB；created_at 是 ISO 的 T 分隔格式）。"""
+    import sqlite3
+    hour_prefix = datetime.now().strftime("%Y-%m-%dT%H")
+    try:
+        con = sqlite3.connect(str(Path(__file__).parent / "ab_experiment.db"))
+        n = con.execute(
+            "SELECT COUNT(*) FROM applications_v2 WHERE platform='liepin' "
+            "AND substr(created_at,1,13)=? AND status IN ('UNCERTAIN','APPLIED','VERIFIED')",
+            (hour_prefix,)).fetchone()[0]
+        con.close()
+        return n or 0
+    except Exception:
+        return 0
+
+
+def hourly_gate(cap: int = None) -> None:
+    """本小时达上限 → 休息 30 分钟（与 boss_apply/51job 同款分段 sleep）。"""
+    try:
+        cap = int(cap if cap is not None else (load_safety().get("hourly_cap", 10) or 10))
+    except Exception:
+        cap = 10
+    if not cap:
+        return
+    n = hourly_applied()
+    if n < cap:
+        return
+    print(f"\n  🕐 [hour_limit_reached] 本小时已投 {n} 条 ≥ {cap}，暂停 30 分钟防风控")
+    for _ in range(1800 // 5):
+        time.sleep(5)
+    print(f"  ▶️ 休息结束，继续（本小时 {hourly_applied()}/{cap}）")
 
 # ── 通道总开关（2026-09-20）──
 # False = 彻底熔断：main() 第一句就返回，不启动浏览器、不校验会话、不做账号登录、
@@ -96,7 +158,7 @@ def click_apply_and_check(tab, href, page=None):
     wait = 60 + random.uniform(0, 15)
     print(f"    ⏳ 猎聘限速等待 {wait:.0f}s ...")
     time.sleep(wait)
-    detail_tab = page.new_tab(clean) if page is not None else None
+    detail_tab = page.new_tab(clean, background=True) if page is not None else None  # 后台建标签：不把窗口顶到用户屏幕
     if detail_tab is not None:
         work = detail_tab
     else:
@@ -131,7 +193,12 @@ def click_apply_and_check(tab, href, page=None):
 
 
 def _find_and_click(work):
-    """在详情页找投递按钮点击。猎聘真按钮文案='投简历'(A.btn-minor)"""
+    """在详情页找投递按钮点击。猎聘真按钮文案='投简历'(A.btn-minor)。
+
+    V5.6（2026-10-17）：点击回执 ≠ 投递成功 —— 点击后必须校验按钮/页面真的变为
+    「已投递/已沟通」才算命中（返回原 'CLICKED:xxx'）；未确认返回
+    'CLICKED_UNCONFIRMED:xxx'（走失败分支，不再把"点过"当"投成功"）；风控弹窗 → 'RISK:...'。
+    """
     state = work.run_js("""
         var sels = 'button, a, div[class*="btn"], span[class*="btn"]';
         var targets = ['投简历', '投递简历', '立即投递', '申请职位', '立即沟通'];
@@ -150,6 +217,30 @@ def _find_and_click(work):
         var isDetail = /职位描述|岗位职责|任职要求|工作职责|岗位要求|职位信息|工作内容|薪资|经验要求/.test(body);
         return 'NO_BTN:' + (isDetail ? 'detail_page' : 'not_detail') + '|' + document.title.slice(0, 40);
     """)
+    if str(state or "").startswith("CLICKED"):
+        # V5.6：等一下再看按钮/页面是否真的变「已投递/已沟通」；宁落失败不报假成功
+        time.sleep(3)
+        try:
+            confirm = work.run_js("""
+                var body = document.body.innerText;
+                if (body.indexOf('已投递') > -1 || body.indexOf('已沟通') > -1) return 'CONFIRMED';
+                var modals = document.querySelectorAll('.modal, [class*="dialog"], [class*="popup"], [class*="toast"]');
+                for (var m of modals) {
+                    if (m.offsetParent !== null) {
+                        var t = (m.innerText || '').trim();
+                        if (t && /上限|频繁|限制|无法|异常|失败/.test(t)) return 'RISK:' + t.slice(0, 60);
+                    }
+                }
+                return 'NO_CONFIRM';
+            """)
+        except Exception:
+            confirm = ""
+        confirm = str(confirm or "")
+        if confirm.startswith("RISK:"):
+            return confirm
+        if confirm == "CONFIRMED":
+            return state
+        return "CLICKED_UNCONFIRMED:" + str(state).split(":", 1)[-1][:40]
     time.sleep(4)
     return state
 
@@ -194,11 +285,39 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
         for idx, c in enumerate(pending):
             if applied >= count or today_applied >= DAILY_LIMIT:
                 break
+            # V5.6：夜间禁投（封号红线）+ 单小时熔断（与 boss_apply/51job 同规）
+            if in_night_window():
+                print("  🌙 夜间禁投，停止本轮")
+                return applied, skipped
+            hourly_gate()
             seen.add(c["jobId"])
+
+            # ── 同公司去重（跨批次，防短时间内重复投同公司触发风控）──
+            comp = c.get("company") or ""
+            t = c["title"] or ""
+            _safety = load_safety()
+            _ddays = int(_safety.get("dedup_days", 7) or 0)
+            if _ddays > 0 and comp and company_applied_recently(city, comp, _ddays, platform="liepin"):
+                skipped += 1
+                dedup_reason = f"同公司{_ddays}天内已投(去重)"
+                print(f"  [🔁去重] {comp[:15]} | {t[:25]} — {_ddays}天内已投过该公司，跳过")
+                try:
+                    record_application(
+                        platform="liepin", city=city, company=comp,
+                        title=t, salary=c.get("salary") or "", keyword=keyword,
+                        score=0, resume_version="E", decision="skipped",
+                        status="SKIPPED", reason=f"dedup_skip:{dedup_reason}"[:80],
+                        verified=0, event_type="dedup_skip", event_error=None,
+                        extra_payload={"jobId": c.get("jobId"), "area": c.get("area", ""),
+                                       "dedup_days": _ddays},
+                        gates=None, greeting_template_id=None,
+                    )
+                except Exception as e:
+                    print(f"    ⚠️ 去重落库失败: {e}")
+                continue
 
             # 届别闸：拦校招/实习/届别过晚，放行合理应届（2026-09-20 收敛）
             # 规则实现在 job_decision.cohort_block_reason，本平台不再自带一份正则。
-            t = c["title"] or ""
             _cohort = cohort_block_reason(t)
             if _cohort:
                 skipped += 1
@@ -209,7 +328,10 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
             reason = ""
             block = False
             try:
-                dec = evaluate_job(c["company"] or "", c["title"], "", c["salary"], city=city)
+                # 方向闸（2026-09-23）：与 platform_51job / boss_apply 同一处规则。
+                _dir = "game" if any(k in (keyword or "") for k in ("游戏", "玩家")) else None
+                dec = evaluate_job(c["company"] or "", c["title"], "", c["salary"],
+                                   city=city, direction=_dir)
                 if getattr(dec, "action", None) == "REJECT":
                     reason = getattr(dec, "reason", "L2拒绝")
                     block = True
@@ -253,7 +375,7 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied):
             # 2026-09-19 修正：猎聘走的是 _find_and_click，成功回执是 'CLICKED:投简历'，
             # 而 51job 的 click_apply_and_check 才返回「已申请/已投递」。
             # 原来这里只认后者 → 每一次真实投递都落进 else 失败分支（猎聘长期 0 入库的第一个因）。
-            if "已申请" in state or "已投递" in state or state.startswith("CLICKED"):
+            if "已申请" in state or "已投递" in state or state.startswith("CLICKED:"):
                 applied += 1
                 today_applied += 1
                 try:
@@ -305,7 +427,6 @@ def main():
         print("⏭️ 猎聘通道已熔断（LIEPIN_ENABLED=False），本轮不投递")
         return
 
-    import config
     args = sys.argv[1:]
     cities = ["深圳", "广州", "杭州", "成都"]
     keywords = ["AI应用工程师", "AI实施", "AI解决方案", "AI Agent", "AI智能体", "大模型应用", "LLM应用", "RPA开发"]
@@ -325,7 +446,7 @@ def main():
     _allowed, _kreason = kill_switch_check()
     if not _allowed:
         print(f"⛔ kill switch 生效中，本轮猎聘不投递：{_kreason}")
-        alert("kill_switch_block", "kill switch 生效中，猎聘本轮未投递",
+        alert("liepin:kill_switch_block", "kill switch 生效中，猎聘本轮未投递",
               f"原因：{_kreason}\n恢复：python3 boss_apply.py --kill-off",
               level="warn", throttle=1800)
         return
@@ -337,27 +458,40 @@ def main():
         page = ChromiumPage(PORT)
     except Exception as e:
         print(f"❌ Chrome 未连接(端口{PORT}): {e}")
-        alert("chrome_down", "猎聘无法连接 Chrome，本轮没投出去",
+        alert("liepin:chrome_down", "猎聘无法连接 Chrome，本轮没投出去",
               f"端口 {PORT} 连不上：{e}", level="error", throttle=1800)
         return
-    tab = page.new_tab("about:blank")
+    tab = page.new_tab("about:blank", background=True)  # 后台建标签：不把窗口顶到用户屏幕
     seen = set()
-    today_applied = 0
+    # V5.6：启动时从 DB 读当日已投数（跨轮累计受控；count_applied_since 走平台过滤）
+    today_applied = count_applied_since(datetime.now().strftime("%Y-%m-%dT00:00:00"), platform="liepin")
+    print(f"📊 今日已投 {today_applied}/{DAILY_LIMIT} 条(DB统计)")
     total_a = total_s = 0
+    _lock_warned = False  # 待审回复只告警一次，不刷屏（2026-09-24）
     try:
         for city in cities:
             if today_applied >= DAILY_LIMIT: break
             for kw in keywords:
                 if today_applied >= DAILY_LIMIT: break
-                # ── 回复审核锁（v5 第十二条：回复 > 投递）——2026-09-18 补，此前只有 Boss 查 ──
-                if reply_lock.is_locked():
+                if in_night_window():
+                    print("  🌙 夜间禁投，本轮收工")
+                    return
+                # ── 回复审核锁（2026-09-24 改：**不再暂停投递**）──
+                # 用户定稿「所有车道均可通行、各平台分开算」。有待审回复 ≠ 停投。
+                # 需要临时回到旧行为：export REPLY_LOCK_HALTS_APPLY=1
+                if reply_lock.is_locked() and os.environ.get("REPLY_LOCK_HALTS_APPLY") == "1":
                     print(f"\n  🔒 [REPLY_REVIEW_LOCK] 检测到待审核 HR 回复 — "
-                          f"猎聘在 {city}×{kw} 前暂停本轮投递")
-                    alert("reply_lock_block", f"猎聘因待审 HR 回复暂停（{city}×{kw}）",
-                          "有待审核的 HR 回复时暂停自动投递（v5 第十二条，设计行为）。\n"
+                          f"猎聘在 {city}×{kw} 前暂停本轮投递（REPLY_LOCK_HALTS_APPLY=1 手动开启）")
+                    alert("liepin:reply_lock_block", f"猎聘因待审 HR 回复暂停（{city}×{kw}）",
+                          "有待审核的 HR 回复时暂停自动投递。\n"
                           "审核：python3 reply_lock.py review ；审完自动恢复。",
                           level="info", throttle=3600)
                     return
+                if reply_lock.is_locked() and not _lock_warned:
+                    _n = len([x for x in reply_lock.pending() if x.get("status") == "pending"])
+                    print(f"\n  ⚠️ 有 {_n} 条 HR 回复待审核 —— "
+                          f"按「所有车道均可通行」继续投递，不中断")
+                    _lock_warned = True
                 try:
                     a, s = run_city_keyword(page, tab, city, kw, count, seen, today_applied)
                     total_a += a; total_s += s; today_applied += a

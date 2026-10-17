@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import random
+import re
 import signal
 import sys
 import time
@@ -403,6 +404,96 @@ def generate_greeting(title: str, desc: str, company: str = "") -> str:
     return generate_greeting_with_meta(title, desc, company)[0]
 
 
+# ── V5.6 双轨招呼语（2026-10-17 四合一补丁）────────────────────────────
+# 高分岗（五维 ≥75）且有 DEEPSEEK_API_KEY 时，用 DeepSeek 生成一句定制破冰语；
+# 生成后必须过 provenance 双闸（数字闸 + 技术栈声明闸）。任一环节不满足 →
+# 100% 退回确定性 T1/T2/T3 模板 —— 零 LLM 的兜底路径永远在，模型/网络挂了不影响投递。
+_GREETING_CORPUS = {"corpus": None}
+
+
+def _greeting_corpus():
+    """源事实语料（与 scripts/check_reply_drafts.py 同源：简历 + 项目 README + GitHub 清单）。"""
+    if _GREETING_CORPUS["corpus"] is None:
+        corpus = {}
+        try:
+            import importlib.util
+            _p = SKILL_DIR / "scripts" / "check_reply_drafts.py"
+            _spec = importlib.util.spec_from_file_location("_crd_greeting", str(_p))
+            _mod = importlib.util.module_from_spec(_spec)
+            _spec.loader.exec_module(_mod)
+            corpus = _mod.load_corpus() or {}
+        except Exception:
+            try:
+                _r = Path.home() / "projects" / "resume-kami" / "resume-E-ai-delivery.html"
+                if _r.exists():
+                    corpus["resume"] = _r.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                pass
+        _GREETING_CORPUS["corpus"] = corpus
+    return _GREETING_CORPUS["corpus"]
+
+
+def _greeting_passes_provenance(text: str) -> bool:
+    """provenance 双闸核验；任何异常/缺语料 → False（退回模板，宁可保守）。"""
+    try:
+        import provenance as pv
+        corpus = _greeting_corpus()
+        if not corpus:
+            return False
+        num = pv.gate_outgoing_text(text, corpus)
+        tech = pv.check_tech_claims(text, corpus)
+        return not num.get("blocked") and not tech.get("unsupported")
+    except Exception:
+        return False
+
+
+def _llm_greeting_deepseek(title: str, desc: str, company: str, timeout: int = 25) -> str:
+    """DeepSeek 定制一句招呼语；未配置/失败返回空串（调用方回退模板）。"""
+    key = os.environ.get("DEEPSEEK_API_KEY")
+    if not key:
+        return ""
+    base = (os.environ.get("DEEPSEEK_BASE_URL") or "https://api.deepseek.com").rstrip("/")
+    url = base + "/chat/completions" if base.endswith("/v1") else base + "/v1/chat/completions"
+    prompt = (
+        "你在帮一位求职者写发给招聘者的第一条招呼语。要求：35-70 个汉字；"
+        "直给、不客套，不要以「您好/感谢」开头；不出现任何数字、薪资、年限、规模；"
+        "不声称具体技术栈名词或项目名；结合岗位职责说一句匹配点；最后用一句轻量问句收尾。"
+        "只输出招呼语正文，不要引号。\n"
+        f"岗位：{title}\n公司：{company}\n岗位描述节选：{(desc or '')[:600]}"
+    )
+    payload = json.dumps({
+        "model": "deepseek-chat",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.7, "max_tokens": 300,
+    }).encode("utf-8")
+    try:
+        import urllib.request
+        req = urllib.request.Request(
+            url, data=payload,
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        text = ((data.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+        text = " ".join(str(text).split()).strip().strip('"“”')
+        return text[:200]
+    except Exception:
+        return ""
+
+
+def generate_greeting_v56(title: str, desc: str, company: str = "", five_dim_score: int = 0) -> tuple:
+    """V5.6 双轨招呼语：高分岗 LLM 定制（过双闸）；否则/失败 100% 退回确定性模板。"""
+    base, tid = generate_greeting_with_meta(title, desc, company)
+    try:
+        if int(five_dim_score or 0) < 75:
+            return base, tid
+        cand = _llm_greeting_deepseek(title, desc, company)
+        if cand and _greeting_passes_provenance(cand):
+            return cand, tid + "+llm"
+    except Exception:
+        pass
+    return base, tid
+
+
 # CITY_CODES 已统一到 shared.py（P2-T6），本文件从 shared 导入。
 
 
@@ -487,6 +578,75 @@ def _looks_disconnected(e) -> bool:
     return any(k in s for k in ("连接", "断开", "disconnect", "websocket", "connection"))
 
 
+# ── CDP 级 tab 工具（2026-09-24 补）──────────────────────────────
+# 事故：DrissionPage 的 get_tab()/tab_ids 遍历在「renderer 久置卡死」的标签页上
+# 会无限阻塞 —— 当天 boss 两轮在 _pick_boss_tab 枚举阶段卡死 8 分钟+，根因是
+# 用户闲鱼 tab 卡死把整轮拖挂（实测 get_tab 在卡死 tab 上永不返回）。
+# hr_auto_reply 2026-09-16 已用「CDP HTTP 枚举 + 卡死先 reload 救活」方案修过
+# 同类问题；这里对齐移植到 boss。
+
+
+def _cdp_target_pages() -> list:
+    """取 Chrome 的 page 目标列表（HTTP /json/list，走 browser 进程，不碰 renderer）。"""
+    import urllib.request as _url
+    try:
+        with _url.urlopen("http://127.0.0.1:9223/json/list", timeout=5) as r:
+            return json.load(r)
+    except Exception as e:
+        print(f"  ⚠️ 取 Chrome 目标列表失败: {e}")
+        return []
+
+
+def _cdp_raw_call(ws, mid: int, method: str, params: dict = None, wait: float = 6):
+    """裸 CDP 调用（自带超时），用来判断某个 tab 的 renderer 是不是卡死了。"""
+    try:
+        ws.send(json.dumps({"id": mid, "method": method, "params": params or {}}))
+    except Exception as e:
+        return {"_err": repr(e)[:80]}
+    end = time.time() + wait
+    while time.time() < end:
+        try:
+            ws.settimeout(max(0.3, end - time.time()))
+            raw = ws.recv()
+        except Exception as e:
+            return {"_err": repr(e)[:80]}
+        try:
+            msg = json.loads(raw)
+        except Exception:
+            continue
+        if msg.get("id") == mid:
+            return msg
+    return {"_timeout": True}
+
+
+def _revive_tab_if_hung(t: dict) -> bool:
+    """tab renderer 卡死时用 Page.reload 救活（同 hr_auto_reply 方案）。
+
+    Page.reload 由 browser 进程处理，卡死的 renderer 也能收到 → 实测有效。
+    返回 True 表示这个 tab 现在可以用了。
+    """
+    import websocket
+    try:
+        ws = websocket.create_connection(t["webSocketDebuggerUrl"], timeout=8,
+                                         suppress_origin=True)
+    except Exception:
+        return False
+    try:
+        alive = _cdp_raw_call(ws, 9001, "Runtime.evaluate",
+                              {"expression": "1", "returnByValue": True}, wait=5)
+        if alive.get("result"):
+            return True
+        print(f"  ♻️ tab 卡死，reload 救活: {(t.get('url') or '')[:50]}")
+        _cdp_raw_call(ws, 9002, "Page.reload", {"ignoreCache": False}, wait=5)
+    finally:
+        try:
+            ws.close()
+        except Exception:
+            pass
+    time.sleep(8)
+    return True
+
+
 def _pick_boss_tab(page, url):
     """按 Boss 页面特征选择唯一投递工作 tab。找不到唯一 → 返回 None（调用方 STOP，不猜）。
 
@@ -499,13 +659,16 @@ def _pick_boss_tab(page, url):
       >1 个匹配 → None（不猜哪个是对的，人工处理）
     """
     try:
+        # 2026-09-24：枚举改用 CDP HTTP（get_tab 对 renderer 卡死的 tab 会无限阻塞）；
+        # 候选 tab 先探活/救活再交给 DrissionPage 接管。
         matches = []
-        for tid in list(page.tab_ids):
+        for tgt in _cdp_target_pages():
+            u = tgt.get("url") or ""
+            if tgt.get("type") != "page" or "zhipin.com" not in u or "/web/geek/chat" in u:
+                continue
+            _revive_tab_if_hung(tgt)
             try:
-                t = page.get_tab(tid)
-                u = t.url or ""
-                if "zhipin.com" in u and "/web/geek/chat" not in u:
-                    matches.append(t)
+                matches.append(page.get_tab(tgt["id"]))
             except Exception:
                 continue
         if len(matches) == 0:
@@ -513,7 +676,7 @@ def _pick_boss_tab(page, url):
             # 2026-09-05：投递工作 tab 用完即弃，正常态可能只剩 chat tab；
             # 0 匹配不该 STOP，新建即可（登录态是 profile 级，新 tab 不掉登录）。
             try:
-                tab = page.new_tab(url)
+                tab = page.new_tab(url, background=True)  # 后台建标签：不把窗口顶到用户屏幕
                 time.sleep(5 + random.uniform(0, 2))
                 print("  ℹ️ 无现成工作 tab，已新建")
                 return tab
@@ -548,18 +711,22 @@ def _recover_search_tab(page, search_tab, url):
         return search_tab
     except Exception:
         pass
-    # 2) page 里找现存的 zhipin tab（不新建，保登录态）
-    for tid in list(page.tab_ids):
+    # 2) page 里找现存的 zhipin 工作 tab（不新建，保登录态）
+    #    2026-09-24：枚举改 CDP HTTP + 先救活卡死 tab（get_tab 枚举会挂）。
+    for tgt in _cdp_target_pages():
+        u2 = tgt.get("url") or ""
+        if tgt.get("type") != "page" or "zhipin.com" not in u2 or "/web/geek/chat" in u2:
+            continue
         try:
-            t = page.get_tab(tid)
-            if "zhipin.com" in (t.url or ""):
-                t.get(url)
-                time.sleep(4 + random.uniform(0, 3))
-                return t
+            _revive_tab_if_hung(tgt)
+            t = page.get_tab(tgt["id"])
+            t.get(url)
+            time.sleep(4 + random.uniform(0, 3))
+            return t
         except Exception:
             continue
     # 3) 兜底：新建（可能丢登录态，但优于一直用死引用）
-    new_tab = page.new_tab(url)
+    new_tab = page.new_tab(url, background=True)  # 后台建标签：不把窗口顶到用户屏幕
     time.sleep(4 + random.uniform(0, 3))
     return new_tab
 
@@ -567,10 +734,11 @@ def _recover_search_tab(page, search_tab, url):
 def _reset_after_apply(page, search_tab, search_url):
     """R2 同页续投：清掉上一份投递在页面上的残留状态，替代整页 reload。
 
-    整页刷新原来保证的"干净初始态"，用最小 DOM 操作等价复现（只删节点，不点任何按钮）：
-      1. 残留聊天输入框/会话 → 移除节点（防下一轮 _chat_signal 误判、招呼语误发进上一会话）
-      2. 残留职位详情文本   → 清空（防 score_jd 读到上一岗位 JD）
-      3. 残留"立即沟通"按钮 → 移除（防误点到上一岗位的沟通入口）
+    v5.6（2026-10-17 四合一补丁）：**删除对 .op-btn-chat / [contenteditable="true"] /
+    textarea 的 .remove()** —— 外部移除会让 Vue 的 vnode 与真实 DOM 脱钩，整页导航前
+    按钮/输入框系统性不再挂载（「每个关键词首条可点、其后全部无信号」的根因）。
+    改为：只关闭残留浮层弹窗（防招呼语误发进上一会话）+ 给 .op-btn-chat 打
+    data-jh-stale="1" 诊断标记（不删除、不写文本，保住 Vue 渲染链）。
     卡片列表本身不动：外层循环靠 seen_titles 游标跳过已处理卡片，滚动位置/懒加载全保留。
     仅当 tab 已被导航离开搜索页时才回退为整页加载（等价旧自愈路径，属罕见分支）。
     返回可继续使用的 search_tab。
@@ -584,25 +752,23 @@ def _reset_after_apply(page, search_tab, search_url):
         try:
             search_tab.get(search_url)
         except Exception:
-            search_tab = page.new_tab(search_url)
+            search_tab = page.new_tab(search_url, background=True)  # 后台建标签：不把窗口顶到用户屏幕
         time.sleep(3 + random.uniform(0, 2))
         return search_tab
     try:
         search_tab.run_js("""
-            var eds = document.querySelectorAll('[contenteditable="true"]');
-            for (var i = 0; i < eds.length; i++) {
-                if (eds[i].offsetParent !== null) eds[i].remove();
-            }
-            var tas = document.querySelectorAll('textarea');
-            for (var j = 0; j < tas.length; j++) {
-                if (tas[j].offsetParent !== null) tas[j].remove();
-            }
-            var b = document.querySelector('.op-btn-chat');
-            if (b) b.remove();
-            var d1 = document.querySelector('.job-detail-body');
-            if (d1) d1.textContent = '';
-            var d2 = document.querySelector('.job-sec-text');
-            if (d2) d2.textContent = '';
+            (function() {
+                var closeBtns = document.querySelectorAll(
+                    '.chat-dialog .close, .greet-boss-dialog .close, .dialog-wrap .close, [class*="chat-modal"] [class*="close"]'
+                );
+                for (var i = 0; i < closeBtns.length; i++) {
+                    if (closeBtns[i].offsetParent !== null) {
+                        try { closeBtns[i].click(); } catch (e) {}
+                    }
+                }
+                var b = document.querySelector('.op-btn-chat');
+                if (b) b.setAttribute('data-jh-stale', '1');
+            })();
         """)
     except Exception:
         pass
@@ -717,14 +883,22 @@ function _jhInChatScope(el) {
     }
     return false;
 }
+function _jhIsRealSendBtn(b) {
+    // V5.6（2026-10-17）：只认真正的消息发送键 —— 拦掉「发送简历/交换微信/电话/名片/附件/表情/常用语」
+    // 这类伪发送按钮（Boss 聊天页顶部工具栏的「发送简历」排在底部发送键之前，旧逻辑会优先点中它）。
+    if (!b || !_jhVisible(b) || b.disabled) return false;
+    var t = String(b.textContent || '').trim();
+    var c = String((b.className || '') + ' ' + ((b.getAttribute && b.getAttribute('class')) || '')).toLowerCase();
+    if (/简历|微信|电话|名片|附件|表情|常用语/.test(t)) return false;
+    if (c.indexOf('resume') > -1 || c.indexOf('wechat') > -1 || c.indexOf('exchange') > -1) return false;
+    return (t === '发送' || t.toLowerCase() === 'send' || c.indexOf('btn-send') > -1);
+}
 function _jhNearSend(el) {
     var p = el;
     for (var d = 0; d < 6 && p; d++, p = p.parentElement) {
         var cands = p.querySelectorAll('button, a, [role="button"], [class*="send"], [class*="btn"]');
         for (var i = 0; i < cands.length; i++) {
-            var t = String(cands[i].textContent || '').trim();
-            var c = String(cands[i].className || '').toLowerCase();
-            if (t.indexOf('发送') > -1 || c.indexOf('send') > -1) return true;
+            if (_jhIsRealSendBtn(cands[i])) return true;
         }
     }
     return false;
@@ -770,6 +944,109 @@ function _jhScrollList() {
 _jhScrollList();
 """
 
+# ── 会话列表回顶部（V5.6，2026-10-17）──
+# 新触发的会话在列表最顶部（scrollTop=0），而 _JS_SCROLL_CHAT_LIST 会把内部滚动容器
+# 滚到底 —— 虚拟列表会把顶部节点卸载，「刚点的会话」反而不在 DOM 里 → not_found。
+# 预热滚动改为「前 2 次到底（加载全量）+ 第 3 次回顶（命中新品）」，见 _send_greeting_via_chat。
+# ── V5.7 收口：会话新鲜度辅助函数（独立常量——会话定位 JS 与单测都要用，避免散落副本）──
+_JS_FRESH_HELPERS = r"""
+function _jhTimeText(nb) {
+    // V5.7 收口：取会话行的时间标签文本（读不到给空串）
+    var li = null;
+    if (nb.closest) { li = nb.closest('li'); }
+    if (!li) {
+        var p = nb.parentElement;
+        for (var d = 0; d < 4 && p; d++, p = p.parentElement) {
+            if (p.tagName === 'LI') { li = p; break; }
+        }
+        if (!li) li = nb.parentElement;
+    }
+    var t = li ? li.querySelector('.time') : null;
+    return t ? String(t.textContent || '').trim() : '';
+}
+function _jhTimeToday(nb) {
+    // V5.7 收口：会话新鲜度 —— 只认当天时间标签（刚刚 / HH:MM / N分钟前）;
+    // 日期型（09/19）、昨天/前天/星期、读不到 → 一律 false（宁漏勿误发进旧会话）。
+    var s = _jhTimeText(nb);
+    if (!s) return false;
+    if (/[\/\-]|昨天|前天|星期|周[一二三四五六日]/.test(s)) return false;
+    if (/^\d{1,2}:\d{2}$/.test(s)) return true;
+    return /刚刚|分钟前|小时前|秒前/.test(s);
+}
+"""
+
+_JS_SCROLL_CHAT_TOP = r"""
+function _jhScrollTop() {
+    try { window.scrollTo(0, 0); } catch (e) {}
+    var seen = [];
+    var anchors = document.querySelectorAll('.name-box, .chat-user, li');
+    for (var i = 0; i < anchors.length; i++) {
+        var p = anchors[i].parentElement;
+        for (var d = 0; d < 8 && p; d++, p = p.parentElement) {
+            if (seen.indexOf(p) > -1) continue;
+            if (p.clientHeight > 100 && p.scrollHeight > p.clientHeight + 40) {
+                seen.push(p);
+                p.scrollTop = 0;
+            }
+        }
+    }
+    return seen.length;
+}
+_jhScrollTop();
+"""
+
+# ── 左侧会话搜索框填充（V5.6 第三优先级；原生 setter + input 事件，避免 React 受控值不触发过滤）──
+_JS_FILL_CHAT_SEARCH = r"""
+(function() {
+    var q = __Q__;
+    var box = null;
+    var cands = document.querySelectorAll('.chat-search input, input.boss-search-input, input[placeholder*="搜索"]');
+    for (var i = 0; i < cands.length; i++) {
+        if (cands[i].tagName === 'INPUT') { box = cands[i]; break; }
+    }
+    if (!box) return 'no_box';
+    try {
+        var setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+        setter.call(box, q);
+        box.dispatchEvent(new Event('input', { bubbles: true }));
+        return 'filled:' + q;
+    } catch (e) { return 'ERR:' + e.message; }
+})();
+"""
+
+# ── V5.7 收口：旧会话核验（条件 B）—— 按索引点击 name-box / 读右侧面板职位名 ──
+_JS_CLICK_NB_INDEX = r"""
+(function() {
+    var lis = document.querySelectorAll('li');
+    var out = [];
+    for (var i = 0; i < lis.length; i++) {
+        var nb = lis[i].querySelector('.name-box');
+        if (nb) out.push(nb);
+    }
+    var target = out[__I__];
+    if (!target) return 'no_box';
+    target.click();
+    return 'clicked';
+})();
+"""
+
+_JS_PANEL_JOB_TITLE = r"""
+(function() {
+    var sels = ['.position-name', '.job-title', '[class*="position-name"]',
+                '[class*="job-title"]', '.chat-conversation .position', '.message-content .job'];
+    for (var i = 0; i < sels.length; i++) {
+        var es = document.querySelectorAll(sels[i]);
+        for (var j = 0; j < es.length; j++) {
+            if (es[j].offsetParent !== null) {
+                var t = String(es[j].textContent || '').trim();
+                if (t) return t.slice(0, 80);
+            }
+        }
+    }
+    return '';
+})();
+"""
+
 
 def _chat_signal(tab) -> str:
     """验证点击"立即沟通"后的会话状态信号。
@@ -784,7 +1061,7 @@ def _chat_signal(tab) -> str:
         r = tab.run_js("(function() {" + _JS_CHAT_INPUT + """
                 if (_jhChatInput()) return 'input';
                 var b = document.querySelector('.op-btn-chat');
-                if (b && (b.classList.contains('is-disabled') || /已沟通/.test(b.textContent || ''))) return 'already';
+                if (b && (b.classList.contains('is-disabled') || /已沟通|继续沟通/.test(b.textContent || ''))) return 'already';
                 var panel = document.querySelector('.chat-panel, .chat-detail, .chat-container, [class*="chat-detail"]');
                 if (panel && _jhVisible(panel)) return 'panel';
                 return '';
@@ -800,35 +1077,45 @@ def _chat_opened(tab) -> bool:
     return _chat_signal(tab) in ("input", "panel", "already")
 
 
-def _send_greeting_via_chat(page, search_tab, company: str, greeting: str) -> tuple[bool, str]:
+def _send_greeting_via_chat(page, search_tab, company: str, greeting: str, title: str = "") -> tuple[bool, str]:
     """Boss 新版"立即沟通"不弹输入框：去聊天页找目标会话补发招呼语。
 
     返回 (是否已验证发出, 说明)。找不到会话/发送未验证 → False（保守判 UNCERTAIN）。
+    V5.7 收口（2026-10-17）：点击前增加「会话新鲜度」硬闸 —— 候选必须在前 3 位且
+    时间标签为当天（刚刚/HH:MM/N分钟前），否则不点直改走条件 B（点开后右侧面板职位名
+    前 4 字与本次岗位匹配才允许填发）；两条都不过 → skipped_stale_session 放弃补发，
+    防把招呼语发进大厂旧 HR 会话（字节/华为等多会话公司实测风险）。
     """
     chat_tab = None
     created = False
     try:
-        for tid in list(page.tab_ids):
-            t = page.get_tab(tid)
-            if "web/geek/chat" in (t.url or ""):
-                chat_tab = t
+        # 2026-09-24：枚举改 CDP HTTP + 先救活卡死 tab（get_tab 枚举会挂）。
+        for tgt in _cdp_target_pages():
+            if tgt.get("type") == "page" and "web/geek/chat" in (tgt.get("url") or ""):
+                _revive_tab_if_hung(tgt)
+                try:
+                    chat_tab = page.get_tab(tgt["id"])
+                except Exception:
+                    chat_tab = None
                 break
         created = chat_tab is None
         if created:
-            chat_tab = page.new_tab("https://www.zhipin.com/web/geek/chat")
+            chat_tab = page.new_tab("https://www.zhipin.com/web/geek/chat", background=True)  # 后台建标签：不把窗口顶到用户屏幕
         else:
             chat_tab.get("https://www.zhipin.com/web/geek/chat")
         time.sleep(4 + random.uniform(0, 2))
-        # 滚动让会话列表加载完（滚的是列表自己的滚动容器，见 _JS_SCROLL_CHAT_LIST）
-        for _ in range(3):
+        # 滚动让会话列表加载完：前 2 次滚到底（加载全量），第 3 次回顶部 ——
+        # V5.6：新触发的会话在列表顶部，留在底部会因虚拟列表卸载顶部节点而找不到。
+        for _i in range(3):
             try:
-                chat_tab.run_js(_JS_SCROLL_CHAT_LIST)
+                chat_tab.run_js(_JS_SCROLL_CHAT_TOP if _i == 2 else _JS_SCROLL_CHAT_LIST)
             except Exception:
                 pass
             time.sleep(0.6)
 
         search = (company or "")[:8]
         r = "not_found"
+        stale_hit = False
         # ── v5.2 发送链路诊断修复（2026-08-31）：Boss 会话列表显示【HR姓名+公司】，
         #    公司全称常与岗位表不一致（"中国平安"→"平安人寿"、"华为技术有限公司"→"华为"）。
         #    旧逻辑 indexOf(整串前8字) 必然 not_found → 全军 UNCERTAIN。
@@ -841,17 +1128,22 @@ def _send_greeting_via_chat(page, search_tab, company: str, greeting: str) -> tu
         _grams = _C2(search[i:i+2] for i in range(len(search)-1))
         _stems = [g for g, _ in sorted(_grams.items(), key=lambda kv: (-kv[1], search.index(kv[0])))
                   if g not in _GENERIC]
-        # 会话可能延迟出现：最多重试 3 次，每次多滚一点
+        # 会话可能延迟出现：最多重试 3 次；
+        # V5.6 定位策略：① 全名（前8字）互 contain → 取列表最顶部（最新）一条
+        # （同公司多会话——字节/华为——不再因"唯一性"失败）；② 词干命中（唯一，或
+        # 多命中但最顶一条在前 3 条内 = 刚创建的那条）；③ attempt>=1 起用左侧搜索框
+        # （原生 setter 驱动）过滤列表再找。
         for attempt in range(3):
             if attempt:
                 time.sleep(3)
                 try:
-                    chat_tab.run_js(_JS_SCROLL_CHAT_LIST)
+                    chat_tab.run_js(_JS_FILL_CHAT_SEARCH.replace("__Q__", json.dumps(search[:4])))
                 except Exception:
                     pass
                 time.sleep(1)
             r = chat_tab.run_js(f"""
                 (function() {{
+                    {_JS_FRESH_HELPERS}
                     var stems = {json.dumps(_stems)};
                     var full = {json.dumps(search)};
                     var lis = document.querySelectorAll('li');
@@ -863,24 +1155,75 @@ def _send_greeting_via_chat(page, search_tab, company: str, greeting: str) -> tu
                         }}
                         return out;
                     }}
-                    // 词干逐个尝试：只接受【唯一命中】，多命中说明词太泛 → 换下一个
-                    for (var s = 0; s < stems.length; s++) {{
-                        var hits = boxes().filter(function(nb) {{
-                            return (nb.textContent || '').indexOf(stems[s]) > -1;
-                        }});
-                        if (hits.length === 1) {{ hits[0].click(); return 'clicked:stem:' + stems[s]; }}
-                    }}
-                    // 兜底：整名前8字与列表互 contain，同样要求唯一
-                    var hf = boxes().filter(function(nb) {{
+                    var all = boxes();
+                    // 优先级1（V5.6）：全名互 contain → 取最顶部（最新）一条
+                    var hf = all.filter(function(nb) {{
                         var t = (nb.textContent || '').trim();
                         return t.length >= 2 && (t.indexOf(full) > -1 || full.indexOf(t) > -1);
                     }});
-                    if (hf.length === 1) {{ hf[0].click(); return 'clicked:full'; }}
+                    if (hf.length >= 1) {{
+                        var pk = hf[0], pkIdx = all.indexOf(pk);
+                        // V5.7 收口：前 3 位 且 当天时间标签 才允许直点（防误发进大厂旧会话）
+                        if (pkIdx <= 2 && _jhTimeToday(pk)) {{
+                            pk.click();
+                            return 'clicked:full:' + (hf.length > 1 ? 'top_of_' + hf.length : 'unique');
+                        }}
+                        return 'stale|full|' + pkIdx + '|' + _jhTimeText(pk);
+                    }}
+                    // 优先级2：词干；唯一命中，或多次命中但最顶一条在前3条内
+                    for (var s = 0; s < stems.length; s++) {{
+                        var hits = all.filter(function(nb) {{
+                            return (nb.textContent || '').indexOf(stems[s]) > -1;
+                        }});
+                        if (hits.length === 1 || (hits.length > 1 && all.indexOf(hits[0]) <= 2)) {{
+                            var pk2 = hits[0], pk2Idx = all.indexOf(pk2);
+                            if (pk2Idx <= 2 && _jhTimeToday(pk2)) {{
+                                pk2.click();
+                                return 'clicked:stem:' + stems[s];
+                            }}
+                            return 'stale|stem|' + pk2Idx + '|' + stems[s] + '|' + _jhTimeText(pk2);
+                        }}
+                    }}
                     return 'not_found';
                 }})();
             """)
             if str(r).startswith("clicked"):
                 break
+            if str(r).startswith("stale|"):
+                stale_hit = True
+                # ── V5.7 条件B：点开旧候选，核对右侧面板职位名（前 4 字）再决定 ──
+                _p = str(r).split("|")
+                try:
+                    _idx = int(_p[2])
+                except Exception:
+                    _idx = -1
+                _clicked_ok = False
+                if _idx >= 0:
+                    try:
+                        _clicked_ok = str(chat_tab.run_js(
+                            _JS_CLICK_NB_INDEX.replace("__I__", str(_idx))) or "").startswith("clicked")
+                    except Exception:
+                        _clicked_ok = False
+                _ptitle = ""
+                if _clicked_ok:
+                    time.sleep(2.0)
+                    try:
+                        _ptitle = str(chat_tab.run_js(_JS_PANEL_JOB_TITLE) or "")
+                    except Exception:
+                        _ptitle = ""
+                _cur = re.sub(r"\s+", "", title or "")
+                if _clicked_ok and len(_cur) >= 4 and _cur[:4] in re.sub(r"\s+", "", _ptitle):
+                    r = "clicked:verified_stale"
+                    break
+                continue
+        if stale_hit and not str(r).startswith("clicked"):
+            # 宁漏勿误发：命中旧会话且核验不过 → 放弃补发，不进行任何填发动作
+            if created:
+                try:
+                    chat_tab.close()
+                except Exception:
+                    pass
+            return False, "聊天页命中旧会话、未通过新鲜度/职位核验(skipped_stale_session)"
         time.sleep(2 + random.uniform(0, 1))
         ok = _fill_and_send(chat_tab, greeting)
         if created:
@@ -897,12 +1240,21 @@ def _send_greeting_via_chat(page, search_tab, company: str, greeting: str) -> tu
         return False, f"聊天页补发异常:{str(e)[:60]}"
 
 
+# ── V5.6 发送链路诊断（与 _fill_and_send 配套；未验证时随 verify_note 落库）──
+LAST_SEND_DIAG = {"send_mode": "", "verify_state": ""}
+
+
 def _fill_and_send(tab, greeting: str) -> bool:
     """填充招呼语并发送，验证输入框清空/会话关闭。返回 True=已验证发出。
 
     2026-09-20：填充与验证改为共用同一套输入框定位（_jhChatInput），
     不再出现「填进 A 元素、去验 B 元素」。见 _JS_CHAT_INPUT 上方说明。
+    V5.6（2026-10-17 四合一补丁）：填充后补发 input 事件同步 Vue 状态；发送键改用
+    _jhIsRealSendBtn 过滤（拦「发送简历/交换微信」等伪发送键）且只在聊天容器内查找；
+    点击 + Enter 双保险；结果记入 LAST_SEND_DIAG，未验证时随 verify_note 落库。
     """
+    LAST_SEND_DIAG["send_mode"] = ""
+    LAST_SEND_DIAG["verify_state"] = ""
     try:
         r = tab.run_js(f"""
             (function() {{
@@ -917,24 +1269,27 @@ def _fill_and_send(tab, greeting: str) -> bool:
                 }} else {{
                     document.execCommand('selectAll', false, null);
                     document.execCommand('insertText', false, {json.dumps(greeting)});
+                    ed.dispatchEvent(new Event('input', {{bubbles: true}}));
                 }}
                 var cur = ed.tagName === 'TEXTAREA' ? ed.value : ed.textContent;
                 if (!cur || !cur.trim()) return 'EMPTY_AFTER_FILL';
-                var btns = document.querySelectorAll('button, a, span[role="button"]');
-                for (var b of btns) {{
-                    var t = (b.textContent || '').trim();
-                    var cls = (b.className || '') + ' ' + (b.getAttribute('class') || '');
-                    if ((t === '发送' || t.indexOf('发送') > -1 || cls.indexOf('send') > -1)
-                        && _jhVisible(b) && !b.disabled) {{
-                        b.click();
-                        return 'SENT_CLICKED';
+                // V5.6：只在聊天容器内找真发送键（_jhIsRealSendBtn 拦「发送简历/交换微信」类伪按钮）
+                var scope = ed.closest('.chat-conversation, .chat-editor, .chat-container, .chat-panel, .dialog-wrap, [class*="chat-detail"]') || ed.parentElement || document;
+                var clicked = false;
+                var cands = scope.querySelectorAll('button, a, span[role="button"], [class*="send"], [class*="btn"]');
+                for (var i = 0; i < cands.length; i++) {{
+                    if (_jhIsRealSendBtn(cands[i])) {{
+                        cands[i].click();
+                        clicked = true;
+                        break;
                     }}
                 }}
+                // 点击后再派发 Enter 双保险（输入框已被清空时 Enter 是空操作）
                 ed.dispatchEvent(new KeyboardEvent('keydown', {{
                     key: 'Enter', code: 'Enter', keyCode: 13, which: 13,
                     bubbles: true, cancelable: true
                 }}));
-                return 'ENTER_KEY';
+                return clicked ? 'SENT_CLICKED' : 'ENTER_KEY';
             }})();
         """, as_expr=True)
         time.sleep(2 + random.uniform(0, 1))
@@ -944,6 +1299,7 @@ def _fill_and_send(tab, greeting: str) -> bool:
 
     if r is None:
         return False
+    LAST_SEND_DIAG["send_mode"] = str(r)
     if r in ("NO_INPUT", "EMPTY_AFTER_FILL"):
         return False
     # 验证：输入框已清空 = 发出；输入框已消失 = 会话关闭（同样视为发出）。
@@ -962,6 +1318,7 @@ def _fill_and_send(tab, greeting: str) -> bool:
     if state is None:
         return False
     s = str(state)
+    LAST_SEND_DIAG["verify_state"] = s
     if s.startswith("has_text"):
         print(f"    ⚠️ 发送未验证：输入框仍有残留 → {s}（清空后才是发出去的判据）")
         return False
@@ -1045,7 +1402,10 @@ def _prepare_job_context(search_tab, city, keyword, title, company, salary,
     # + 实习/公司主体红线。deterministic，零 LLM。
     try:
         from job_decision import evaluate_job
-        jd = evaluate_job(company, title, desc, salary, city=city, cfg=cfg)
+        # 方向闸（2026-09-23）：搜索词是游戏向（游戏/玩家）时，标题必须含游戏锚点。
+        # 与 platform_51job 同一处规则，避免各平台各写一份（收敛到 job_decision）。
+        _dir = "game" if any(k in (keyword or "") for k in ("游戏", "玩家")) else None
+        jd = evaluate_job(company, title, desc, salary, city=city, cfg=cfg, direction=_dir)
         if jd.action == "REJECT":
             decision_trace.gate(tr, "job_decision", f"rejected:{jd.reason}")
             print(f"  [🚫决策器] {company[:15]} | {title[:25]} | {salary} → {jd.reason}")
@@ -1210,20 +1570,47 @@ def _prepare_job_context(search_tab, city, keyword, title, company, salary,
 
     ctx["passed_min_score"] = True
 
-    # 检查是否已达沟通上限
-    btn_disabled = search_tab.run_js(
-        'var b=document.querySelector(".op-btn-chat"); return b ? b.classList.contains("is-disabled") : false;'
-    )
-    if btn_disabled:
+    # ── V5.6：沟通按钮三态检查（missing / already / ready）──
+    # 按钮缺失不再默认放行（旧代码 b=null → 返回 False 放行 → 点击空操作 → 连环 FAILED）；
+    # missing 先等 1.2s 重试一次，仍 missing 记 btn_missing_skip 跳过（等面板渲染切换）。
+    def _chat_btn_state():
+        try:
+            return str(search_tab.run_js(
+                'var b=document.querySelector(".op-btn-chat"); '
+                'if(!b) return "missing"; '
+                'var t=(b.textContent||""); '
+                'if (b.classList.contains("is-disabled") || /已沟通|继续沟通/.test(t)) return "already"; '
+                'return "ready";'
+            ) or "missing")
+        except Exception:
+            return "missing"
+
+    btn_state = _chat_btn_state()
+    if btn_state == "missing":
+        time.sleep(1.2)
+        btn_state = _chat_btn_state()
+    if btn_state == "missing":
+        decision_trace.gate(tr, "btn_missing", "rejected:btn_missing_skip")
+        _record_outcome(city, company, title, salary, keyword, score,
+                        "未找到立即沟通按钮(btn_missing_skip)", event="btn_missing_skip", trace=tr)
+        print(f"    ⏭️  沟通按钮缺失（btn_missing_skip），跳过")
+        return "skip"
+    if btn_state == "already":
         decision_trace.gate(tr, "already_chatted", "rejected:已沟通过")
         _record_outcome(city, company, title, salary, keyword, score,
                         "已沟通过", event="already_chatted", trace=tr)
-        print(f"    ⏭️  已沟通过，跳过")
+        print(f"    ⏭️  已沟通过（含继续沟通），跳过")
         return "skip"
     decision_trace.gate(tr, "already_chatted", "pass")
 
-    # 生成智能招呼语（v2.1：带模板版本标识，供归因落库）
-    greeting, template_id = generate_greeting_with_meta(title, desc, company)
+    # 生成智能招呼语（v2.1 模板标识；V5.6 双轨：五维 ≥75 且有 DEEPSEEK_API_KEY 时走
+    # LLM 定制 + provenance 双闸，未配置/未过硬闸 → 100% 退回确定性 T1/T2/T3 模板）
+    _five_total = 0
+    try:
+        _five_total = int((match_result or {}).get("total", 0) or 0)
+    except Exception:
+        _five_total = 0
+    greeting, template_id = generate_greeting_v56(title, desc, company, _five_total)
     ctx["greeting"] = greeting
     ctx["greeting_template_id"] = template_id
     print(f"    💬 招呼语[{template_id}]: {greeting[:50]}...")
@@ -1277,13 +1664,17 @@ def _execute_apply(page, search_tab, city, keyword, title, company, salary, ctx)
         if greeting_ok:
             app_status, app_decision, verified, verify_note = "APPLIED", "applied", 1, "招呼语已发送并验证"
         else:
-            app_status, app_decision, verified, verify_note = "UNCERTAIN", "uncertain", 0, "会话已打开但发送未验证"
+            # V5.6：诊断信息（send_mode/verify_state）随 verify_note 落库，事后可归因
+            _diag = f" [diag:{LAST_SEND_DIAG.get('send_mode', '')}/{LAST_SEND_DIAG.get('verify_state', '')}]"
+            app_status, app_decision, verified, verify_note = "UNCERTAIN", "uncertain", 0, "会话已打开但发送未验证" + _diag
     else:
-        # 'already'：Boss 已确认沟通（按钮变已沟通），去聊天页补发招呼语
-        sent, note = _send_greeting_via_chat(page, search_tab, company, greeting)
+        # 'already'：Boss 已确认沟通（按钮变已沟通/继续沟通），去聊天页补发招呼语
+        sent, note = _send_greeting_via_chat(page, search_tab, company, greeting, title=title)
         if sent:
             app_status, app_decision, verified, verify_note = "APPLIED", "applied", 1, note
         else:
+            if "发送未验证" in str(note):
+                note = f"{note} [diag:{LAST_SEND_DIAG.get('send_mode', '')}/{LAST_SEND_DIAG.get('verify_state', '')}]"
             app_status, app_decision, verified, verify_note = "UNCERTAIN", "uncertain", 0, note
     print(f"    {'✅' if verified else '⚠️'} {verify_note}")
 
@@ -1411,7 +1802,7 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
         try:
             search_tab.get(search_url)
         except Exception:
-            search_tab = page.new_tab(search_url)
+            search_tab = page.new_tab(search_url, background=True)  # 后台建标签：不把窗口顶到用户屏幕
         time.sleep(4)
     else:
         record_login_ok()
@@ -1888,6 +2279,7 @@ def main():
         _ck = {"done_combos": [], "last_done": "TTL_RESET", "total_applied_this_round": 0}
         reply_lock.save_checkpoint(dict(_ck))
     _lock_halt = False  # 锁触发后跳出城市外层，整轮收工
+    _lock_warned = False  # 待审回复只告警一次，不刷屏（2026-09-24）
 
     for city in cities:
         if not city.strip():
@@ -1906,8 +2298,14 @@ def main():
             if (city, keyword) in _done_combos:
                 print(f"\n  ⏭️ [断点恢复] 跳过已完成: {city}×{keyword}")
                 continue
-            # ── 回复审核锁检查（每个任务边界，最迟一个关键词后生效）──
-            if reply_lock.is_locked():
+            # ── 回复审核锁检查（2026-09-24 改：**不再暂停投递**）──
+            # 用户定稿「所有车道均可通行，不要把所有平台放在一个池子里」：
+            #   有待审 HR 回复 ≠ 停投。回复走回复的车道（人工审核→发送），
+            #   投递走投递的车道，两者互不阻塞。
+            # 旧行为 = v5 第十二条「回复优先级 > 投递」硬停。实测 9/23 19:33 入队 6 条
+            #   → 9/24 上午整轮 0 投（8:00 轮被锁挡死），代价太大，已废弃。
+            # 需要临时回到旧行为：export REPLY_LOCK_HALTS_APPLY=1
+            if reply_lock.is_locked() and os.environ.get("REPLY_LOCK_HALTS_APPLY") == "1":
                 # 已完成 = 断点已有 + 本轮已跑完的 + 当前城市里排在此关键词之前的
                 _done_now = set(_done_combos)
                 for _c in cities[:cities.index(city)]:
@@ -1922,11 +2320,16 @@ def main():
                     "total_applied_this_round": total_applied,
                 })
                 print(f"\n  🔒 [REPLY_REVIEW_LOCK] 检测到待审核 HR 回复 — "
-                      f"自动投递在 {city}×{keyword} 前暂停")
-                print(f"     回复优先级 > 投递（v5 第十二条）。断点已保存，"
-                      f"运行 python3 reply_lock.py review 审核后自动恢复")
+                      f"自动投递在 {city}×{keyword} 前暂停（REPLY_LOCK_HALTS_APPLY=1 手动开启）")
                 _lock_halt = True
                 break
+            if reply_lock.is_locked() and not _lock_warned:
+                _pending_n = len([x for x in reply_lock.pending()
+                                  if x.get("status") == "pending"])
+                print(f"\n  ⚠️ 有 {_pending_n} 条 HR 回复待审核 —— "
+                      f"按「所有车道均可通行」继续投递，不中断")
+                print(f"     回复请另行审核：python3 reply_lock.py review")
+                _lock_warned = True
             # ── 夜间禁投实时检查（跨过 22:00 就停，不恋战）──
             if in_night_window(_safety):
                 print(f"\n  🌙 已进入夜间禁投时段 ({_safety['night_ban_start']}:00-{_safety['night_ban_end']}:00)，停止今天的投递")
@@ -1971,13 +2374,16 @@ def main():
             # ── 跨进程每日硬熔断 → daily_limit_reached 层级（正常结束，不改 kill switch）──
             # 2026-08-16 A5.1：跑满上限是"正常状态机结束"，不是异常。只结束当天任务，
             # 不写 kill switch / 暂停锁，明天自动恢复。只有连续失败/风控信号才关全局开关。
-            today_total = count_applied_since(datetime.now().strftime("%Y-%m-%dT00:00:00"))
+            today_total = count_applied_since(datetime.now().strftime("%Y-%m-%dT00:00:00"),
+                                              platform="boss")
             if today_total >= SAFETY_DAILY_CAP:
                 print(f"\n  🔚 [daily_limit_reached] 今日已投 {today_total} 份 ≥ 上限 {SAFETY_DAILY_CAP}（跨进程统计）")
                 print(f"    正常结束今日任务 — kill switch 未动，明日自动恢复")
                 break
 
-            hour_count = count_applied_since(datetime.now().strftime("%Y-%m-%dT%H:00:00"))
+            # 2026-09-22：只数 Boss 自己的量（用户定稿「各平台分开算，不共用一个池子」）。
+            hour_count = count_applied_since(datetime.now().strftime("%Y-%m-%dT%H:00:00"),
+                                             platform="boss")
             # ── 单小时熔断 → hour_limit_reached 层级（暂停当前任务，不改 kill switch）──
             # 2026-08-16 A5.1：分段 sleep，可被 Ctrl+C/SIGTERM 提前打断，不阻塞退出
             if hour_count >= HOURLY_CAP:

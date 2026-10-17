@@ -61,9 +61,11 @@ class _FakePage:
     def __init__(self, tabs):
         self._tabs = list(tabs)
         self.calls = 0
+        self.background_values = []
 
-    def new_tab(self, _url):
+    def new_tab(self, _url, background=False):
         self.calls += 1
+        self.background_values.append(background)
         if not self._tabs:
             raise RuntimeError("cannot create tab")
         return self._tabs.pop(0)
@@ -92,6 +94,7 @@ class TestTabGuard(unittest.TestCase):
         got = p.ensure_tab(page, dead)
         self.assertIs(got, fresh)
         self.assertTrue(dead.closed, "旧 tab 应被关闭")
+        self.assertEqual(page.background_values, [True], "重建必须后台创建，不能抢占用户窗口")
 
     # ── 边界：tab 为 None 也要能重建（首次取 tab 的场景）──
     def test_none_tab_rebuilt(self):

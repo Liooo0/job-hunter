@@ -8,7 +8,7 @@ HR 消息自动回复 — LLM 判断 + 个性化回复
 
 用法:
     python3 hr_auto_reply.py            # 扫描 + 生成预览（不发送）
-    python3 hr_auto_reply.py --send     # 扫描 + 生成 + 自动发送（≤5条/次，30-45s间隔）
+    python3 hr_auto_reply.py --auto-send  # 扫描 + 生成 + 自动直发（用户 2026-10-08 授权；≤5条/次，75-105s 间隔）
     python3 hr_auto_reply.py --force    # 跳过 pending_replies 中已存在且未发送的
 """
 import json
@@ -28,8 +28,8 @@ SKILL_DIR = Path(__file__).parent
 # 2026-09-12 切换：opencode-go 中转余额不足（401 CreditsError），改用用户主力通道 commandcode。
 #   可用环境变量覆盖：JOBHUNTER_LLM_BASE_URL / JOBHUNTER_LLM_MODEL / JOBHUNTER_LLM_KEY_ENV
 BASE_URL = os.getenv("JOBHUNTER_LLM_BASE_URL", "https://api.commandcode.ai/provider/v1")
-MODEL = os.getenv("JOBHUNTER_LLM_MODEL", "deepseek/deepseek-v4-flash")
-MAX_TOKENS = int(os.getenv("JOBHUNTER_LLM_MAX_TOKENS", "1500"))  # deepseek-v4-flash 是推理模型，预算含 reasoning_tokens，给太小会 content 空
+MODEL = os.getenv("JOBHUNTER_LLM_MODEL", "deepseek/deepseek-v4.1-flash")
+MAX_TOKENS = int(os.getenv("JOBHUNTER_LLM_MAX_TOKENS", "1500"))  # deepseek-v4.1-flash 是推理模型，预算含 reasoning_tokens，给太小会 content 空
 MAX_TOKENS_RETRY = 4000  # 首次被 reasoning 吃光时自动加预算重试
 
 # 按优先级尝试的 key 名（前者失效自动回退）
@@ -347,7 +347,7 @@ def _find_chat_tab(page):
                 print(f"⚠️ 接管聊天 tab 失败: {e}")
                 break
     try:
-        tab = page.new_tab("https://www.zhipin.com/web/geek/chat")
+        tab = page.new_tab("https://www.zhipin.com/web/geek/chat", background=True)  # 后台建标签：不把窗口顶到用户屏幕
         _t.sleep(6)
         return tab
     except Exception as e:
@@ -466,10 +466,12 @@ def _extract_company(name_box: str) -> str:
 
 
 def main():
-    send = "--send" in sys.argv
+    # v5 第十二条（2026-08-31）曾要求「发送必须人工确认」。2026-10-08 用户授权改为
+    # 「自动直发」（用户没有精力逐条审核）——节流/事实护栏/留痕全套保留，见 auto_send_pending()。
+    auto_send = ("--auto-send" in sys.argv) or ("--send" in sys.argv)
     all_mode = "--all" in sys.argv
-    if send:
-        print("⛔ --send 已按 v5 第十二条拆除：回复必须经 reply_lock 人工确认后发送，本脚本只入审核队列。")
+    if auto_send:
+        print("📮 自动直发模式（用户 2026-10-08 授权；事实护栏照跑，≤5条/次）")
     sys.path.insert(0, str(SKILL_DIR))
 
     if all_mode:
@@ -481,6 +483,8 @@ def main():
 
     if not msgs:
         print("📭 没有新消息")
+        if auto_send:
+            auto_send_pending()
         return
 
     print(f"\n📋 {len(msgs)} 条消息，开始 LLM 分析...\n")
@@ -553,10 +557,14 @@ def main():
         print(_RL.review_text())
     else:
         print("📭 没有需要回复的消息。")
+    # 2026-10-08 用户授权自动直发（不再等人工「确认」）；本步顺带清理遗留待发条目。
+    if auto_send:
+        auto_send_pending()
     return
 
-# ── v5.2：值守自动发送模式已随 --send 一并拆除（回复必须人工确认，v5 第十二条）。
-#    值守扫描如需要，只入 reply_lock 审核队列，永不自动发送。
+# ── 2026-10-08 用户授权恢复「自动直发」：v5.2『只入队不发送』作废。
+#    护栏保留 = reply_lock 唯一发送出口 + SEND_GAP 节流 + 事实护栏 + 全程留痕。
+AUTO_BATCH = 5          # 每轮自动发送上限（条）
 SEND_BATCH = 999        # （遗留常量，仅 send_safely 兼容保留）
 SEND_GAP = (75, 105)    # 条间等待 75-105 秒
 SCAN_INTERVAL = 15 * 60  # 扫描间隔 15 分钟
@@ -796,6 +804,51 @@ def send_safely(results: list[dict], batch: int = None):
 
     print(f"\n✅ 本轮发送 {sent} 条")
     return sent
+
+
+def auto_send_pending(limit: int = None, gap: tuple = None) -> dict:
+    """自动发送 reply_lock 队列里的待发条目（用户 2026-10-08 授权：不再等人工『确认』）。
+
+    护栏保留：只处理 pending 条目；每轮 ≤ AUTO_BATCH 条；条间 75-105s；发送走
+    reply_lock.send_approved 唯一出口；失败 mark_send_failed（释放投递锁、保留草稿）；
+    全程留痕（confirmed_by=auto-cron）。
+    """
+    import time as _t
+    import random as _r
+    import reply_lock as _RL
+
+    limit = limit or AUTO_BATCH
+    gap = gap or SEND_GAP
+    todo = [s for s in _RL.pending() if s.get("status") == "pending"]
+    todo = todo[:limit]
+    if not todo:
+        print("📭 无待发送条目（队列为空）")
+        return {"sent": 0, "failed": 0}
+    print(f"🚀 自动发送 {len(todo)} 条（用户授权直发；≤{limit} 条/次，条间 {gap[0]}-{gap[1]}s）")
+    sent = fail = 0
+    for i, s in enumerate(todo):
+        ok, msg = _RL.auto_approve(s["id"])
+        if not ok:
+            print(f"   ⚠️ {msg}")
+            continue
+        ok2, msg2 = _RL.send_approved(s["id"])
+        if ok2:
+            sent += 1
+            print(f"   ✅ [{s['id']}] {(s.get('company') or '')[:16]} · {msg2}")
+        else:
+            fail += 1
+            _RL.mark_send_failed(s["id"], msg2)
+            print(f"   ⚠️ [{s['id']}] 发送失败：{msg2}（已释放锁，留待人工）")
+        if i < len(todo) - 1:
+            w = _r.uniform(*gap)
+            print(f"   ⏳ 等待 {w:.0f}s ...")
+            _t.sleep(w)
+    _RL.release_if_empty()
+    left = [s for s in _RL.pending() if s.get("status") in ("pending", "edited", "approved")]
+    if left:
+        print(f"⚠️ 队列还有 {len(left)} 条未发（本轮上限/失败），下轮继续")
+    print(f"✅ 自动发送完成：成功 {sent} / 失败 {fail}")
+    return {"sent": sent, "failed": fail}
 
 
 if __name__ == "__main__":

@@ -19,12 +19,39 @@ def http(path, method="GET", timeout=15):
 
 
 def open_tab(url):
-    try:
-        return json.loads(http(f"/json/new?{urllib.parse.quote(url, safe='')}", method="PUT"))
-    except Exception:
-        # 老版本 Chrome 用 GET
-        raw = http(f"/json/new?{urllib.parse.quote(url, safe='')}")
-        return json.loads(raw)
+    """后台新建标签（不顶窗口）。
+
+    2026-09-28：原实现用 PUT /json/new —— 属「前台建标签」，会把最小化
+    窗口顶回可见（见 ~/.hermes/scripts/bg_new_tab.py 2026-09-23 实测）。
+    按全局约定（所有自动化建标签都应走 bg_new_tab）改为调用该助手脚本
+    （Target.createTarget background=True），再从 /json/list 取回目标信息。
+    返回值形状与旧实现一致（含 id / webSocketDebuggerUrl）。
+    """
+    import os
+    import subprocess
+    helper = os.path.expanduser("~/.hermes/scripts/bg_new_tab.py")
+    r = subprocess.run([sys.executable, helper, str(PORT), url],
+                       capture_output=True, text=True, timeout=30)
+    if r.returncode != 0:
+        raise RuntimeError(
+            f"bg_new_tab 建标签失败 rc={r.returncode} | out={r.stdout[-150:]} | err={r.stderr[-150:]}")
+    m = re.search(r"target ([0-9A-Fa-f]+)", r.stdout or "")
+    tid = m.group(1) if m else None
+    end = time.time() + 6
+    while time.time() < end:
+        try:
+            tabs = json.loads(http("/json/list", timeout=10))
+        except Exception:
+            tabs = []
+        for t in tabs:
+            if t.get("type") != "page":
+                continue
+            id_hit = tid and str(t.get("id", "")).lower() == tid.lower()
+            url_hit = (not tid) and str(t.get("url", "")).startswith(url[:90])
+            if id_hit or url_hit:
+                return t
+        time.sleep(0.5)
+    raise RuntimeError("bg_new_tab 已报告建标签成功，但 /json/list 未在 6s 内出现该目标")
 
 
 def close_tab(tid):

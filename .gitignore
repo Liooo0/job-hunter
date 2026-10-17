@@ -75,6 +75,31 @@ BRIEF_*.md
 # 告警凭据（不进公开仓库）
 .env.local
 
+# 本地 UI / 登录态探测脚本（可能读取平台真实数据）
+check_boss_state.py
+check_liepin_login.py
+peek_boss*.py
+peek_liepin.py
+ui_probe*.py
+probe_notify*.py
+snapshot_click_flow.py
+scripts/probe_*.py
+scripts/peek_*.py
+scripts/dump*.py
+scripts/find_51job_*.py
+scripts/inspect_*.py
+scripts/test51_*.py
+scripts/try_51job_*.py
+scripts/edit51_*.py
+scripts/fix51_*.py
+scripts/apply51_*.py
+
 # SQLite WAL 模式产生的临时文件
 *.db-wal
 *.db-shm
+
+# Agent 审计状态目录（永不入库）
+.agent-state/
+
+# 本地私有测试样本（禁止入库）
+tests/test_mail_filter_0922.py

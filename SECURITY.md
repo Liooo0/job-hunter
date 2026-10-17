@@ -43,13 +43,15 @@
 **为什么物理分离比 .gitignore 可靠**：`git add -A` 根本扫不到仓库外的目录。
 `.gitignore` 靠人记得维护，物理分离不靠人。
 
-## 三、四层防线（L1→L4）
+## 三、六层纵深防线（L1→L6）
 
 ```
 L1 文件级  路径类别直接判违规（数据库/备份/日志/导出/凭据/运行数据目录/本机服务定义）
-L2 内容级  PII / 密钥 / 本机绝对路径（staged diff 的新增行）
-L3 历史级  全 refs / 全历史 blob（HEAD 干净 ≠ 历史干净）
-L4 流程级  pre-commit(UX) → CI(边界) → branch protection(强制) → 发布审计
+L2 内容级  PII / 密钥 / 本机绝对路径（staged diff 的新增行与文本代码）
+L3 历史级  全 refs / 全历史 blob 增量与快照扫描（HEAD 干净 ≠ 历史干净）
+L4 身份级  Git Author / Committer 身份审查（杜绝真名、私人邮箱与 *.local 主机名泄露）
+L5 媒体级  多媒体 EXIF 审计（严禁 GPS 经纬度，公开作品清理机身/镜头硬件序列号）
+L6 暴露级  远端引用暴露面核查（GitHub refs/pull 只读残留与合并冗余分支）
 ```
 
 **架构约束：任何调用方不得自写正则。** 所有模式（staged / worktree / tree / refs /
@@ -77,11 +79,14 @@ extra_allow_content）必须显式写在声明文件里并说明理由，可被 
 `.github/workflows/security.yml` 在 push / PR 时跑全量与全历史扫描。
 个人项目也值得这么做——CI 是唯一不依赖「本机配好了」的检查。
 
-### 闸门 3：发布前审计（人工触发）
+### 闸门 3：发布前门禁（必须通过）
 ```bash
-PYTHONPATH="" python3 scripts/public_repo_guard.py --all       # 全部被追踪文件
-PYTHONPATH="" python3 scripts/public_repo_guard.py --history   # 全历史
+public_repo_guard --mode=release
 ```
+**退出码契约**：
+- `0`: PASS / PASS WITH NOTES（门禁通过，允许进入人工发布流程）
+- `1`: FAIL（检测到高危 PII/密钥/GPS/违规文件，严禁 Push）
+- `2`: REVIEW REQUIRED（检测到需人工核验的低敏项或只读引用）
 **公开仓库、发版、投递作品集之前必跑。**
 
 ## 四、「删除文件」不等于「删除泄露」

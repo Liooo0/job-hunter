@@ -250,7 +250,8 @@ class FakePage:
     def get_tab(self, tid):
         return self._tabs[tid]
 
-    def new_tab(self, url):
+    def new_tab(self, url, **kwargs):
+        # v5.6（2026-10-17）：生产调用带 background=True（后台建标签纪律），桩对齐签名
         return self._new
 
 
@@ -293,7 +294,8 @@ def test_fill_and_send_none_safe():
 
 
 def test_send_greeting_via_chat():
-    with mock.patch("boss_apply.time.sleep"):
+    with mock.patch("boss_apply.time.sleep"), \
+         mock.patch("boss_apply._cdp_target_pages", return_value=[]):
         # 找到会话 + 发送成功 → True
         chat_tab = FakeTab([None, None, None, "clicked", "SENT_CLICKED", "cleared"])
         page = FakePage({"a": FakeTab([])}, new_tab=chat_tab)

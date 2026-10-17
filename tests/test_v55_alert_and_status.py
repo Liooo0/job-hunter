@@ -144,8 +144,11 @@ class TestPlatformStatusContract(unittest.TestCase):
         锚点随实现更新，但校验的成功分支语义不变。
         """
         src = self._source("platform_liepin.py")
-        guard = 'if "已申请" in state or "已投递" in state or state.startswith("CLICKED"):'
+        # V5.6（2026-10-17）：成功回执锚点收紧为 'CLICKED:' —— 该前缀只在点击后经
+        # 二次确认（页面出现「已投递/已沟通」）才返回；'CLICKED_UNCONFIRMED' 落失败分支。
+        guard = 'if "已申请" in state or "已投递" in state or state.startswith("CLICKED:"):'
         self.assertIn(guard, src)
+        self.assertIn("CLICKED_UNCONFIRMED", src)
         branch = self._strip_comments(src.rsplit(guard, 1)[1][:1500])
         self.assertIn('status="APPLIED"', branch, "猎聘成功分支必须写 APPLIED")
         self.assertIn("verified=1", branch)
@@ -162,7 +165,7 @@ class TestPlatformStatusContract(unittest.TestCase):
     def test_alerts_wired_into_entrypoints(self):
         for name, keys in (
             ("boss_apply.py", ("boss_risk", "boss_login", "slowdown_stop", "kill_switch")),
-            ("platform_51job.py", ("login", "chrome_down", "tab_lost")),
+            ("platform_51job.py", ("51job:login", "51job:chrome_down", "51job:tab_lost")),
         ):
             src = self._source(name)
             for k in keys:
@@ -194,15 +197,24 @@ class TestGuardsWiring(unittest.TestCase):
 
 
 class TestWeixinChannel(unittest.TestCase):
-    """微信（iLink）通道：默认走它，失败自动降级到 wxpusher。"""
+    """微信（iLink）通道：作为飞书不可用时的备用通道，再降级到 WxPusher。"""
 
     def setUp(self):
-        for k in ("JOBHUNTER_ALERT_CHANNEL", "JOBHUNTER_WEIXIN_TARGET",
-                  "JOBHUNTER_ALERT_DISABLED", "JOBHUNTER_HERMES_BIN"):
+        for k in ("JOBHUNTER_ALERT_CHANNEL", "JOBHUNTER_FEISHU_TARGET",
+                  "JOBHUNTER_WEIXIN_TARGET", "JOBHUNTER_ALERT_DISABLED",
+                  "JOBHUNTER_HERMES_BIN", "JOBHUNTER_LARK_BIN"):
             os.environ.pop(k, None)
         self.addCleanup(lambda: [os.environ.pop(k, None) for k in (
-            "JOBHUNTER_ALERT_CHANNEL", "JOBHUNTER_WEIXIN_TARGET",
-            "JOBHUNTER_ALERT_DISABLED", "JOBHUNTER_HERMES_BIN")])
+            "JOBHUNTER_ALERT_CHANNEL", "JOBHUNTER_FEISHU_TARGET",
+            "JOBHUNTER_WEIXIN_TARGET", "JOBHUNTER_ALERT_DISABLED",
+            "JOBHUNTER_HERMES_BIN", "JOBHUNTER_LARK_BIN")])
+        # Repository tests must not inherit the developer's private machine identity.
+        self._identity = mock.patch.object(notify, "FEISHU_IDENTITY_FILE", Path("/nonexistent/feishu-identity.json"))
+        self._identity.start()
+        self.addCleanup(self._identity.stop)
+        self._hermes_env = mock.patch.object(notify, "HERMES_ENV", Path("/nonexistent/hermes.env"))
+        self._hermes_env.start()
+        self.addCleanup(self._hermes_env.stop)
         import tempfile
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -210,6 +222,12 @@ class TestWeixinChannel(unittest.TestCase):
             p = mock.patch.object(notify, name, Path(self._tmp.name) / attr)
             p.start()
             self.addCleanup(p.stop)
+        # Verify Hermes env fallback with a synthetic fixture, not private machine config.
+        hermes_env_patch = mock.patch.object(
+            notify, "HERMES_ENV", Path(self._tmp.name) / "hermes.env"
+        )
+        hermes_env_patch.start()
+        self.addCleanup(hermes_env_patch.stop)
 
     def test_target_prefers_env_then_hermes_env(self):
         os.environ["JOBHUNTER_WEIXIN_TARGET"] = "o9cq123@im.wechat"

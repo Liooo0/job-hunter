@@ -77,7 +77,11 @@ class _Tab:
 
     def run_js(self, js, *a, **k):
         self.js_calls.append(js)
-        return None       # 点卡片/查按钮：这条链上不需要返回值
+        # V5.6：沟通按钮三态检查（missing/already/ready）—— 这条链上模拟「按钮就绪」，
+        # 不然后续链路会被 btn_missing_skip 提前拦下（该桩不需要真的 DOM）。
+        if ".op-btn-chat" in js:
+            return "ready"
+        return None       # 点卡片/其它：这条链上不需要返回值
 
     def ele(self, sel):
         return _El(self._desc) if self._desc else None
