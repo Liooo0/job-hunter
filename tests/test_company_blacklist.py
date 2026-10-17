@@ -105,5 +105,37 @@ class TestExistingRedlinesStillWork(unittest.TestCase):
         self.assertIn("珍岛", jd.COMPANY_BLACKLIST)
 
 
+class TestIndustryRedlines(unittest.TestCase):
+    """2026-10-17 用户定稿：教育（教培/培训/学校类）与保险行业拉黑。"""
+
+    def test_education_industry_rejected(self):
+        for name in ["梵绘教育", "某某教育培训有限公司", "深圳市XX职业技能培训学校",
+                     "广州XX教育科技有限公司"]:
+            with self.subTest(company=name):
+                d = _decide(name, title="AI 培训师", salary="8千-1.2万")
+                self.assertEqual(_action(d), "REJECT", f"{name} 未被拦：{d}")
+                self.assertIn("主体红线", _reason(d))
+
+    def test_insurance_industry_rejected(self):
+        for name in ["广州人寿新伙伴信息科技", "中国人寿保险股份有限公司",
+                     "某某财产保险有限公司", "平安人寿"]:
+            with self.subTest(company=name):
+                d = _decide(name, title="AI 应用工程师", salary="1-1.5万")
+                self.assertEqual(_action(d), "REJECT", f"{name} 未被拦：{d}")
+                self.assertIn("主体红线", _reason(d))
+
+
+class TestIndustryRedlinesDoNotOverreach(unittest.TestCase):
+    """反向保护：不得把正常科技公司误伤。"""
+
+    def test_normal_companies_pass_industry_gate(self):
+        for name in ["腾讯科技（深圳）有限公司", "字节跳动", "华为技术有限公司",
+                     "慧博云通科技股份有限公司"]:
+            with self.subTest(company=name):
+                d = _decide(name, title="AI 应用工程师", salary="1.5-2.5万")
+                self.assertNotIn("教育", _reason(d))
+                self.assertNotIn("保险", _reason(d))
+
+
 if __name__ == "__main__":
     unittest.main()
