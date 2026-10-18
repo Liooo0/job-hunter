@@ -426,6 +426,8 @@ def main():
     if not LIEPIN_ENABLED:
         print("⏭️ 猎聘通道已熔断（LIEPIN_ENABLED=False），本轮不投递")
         return
+    from shared import install_stdout_tee   # V5.8：熔断过后才装 stdout 留档
+    install_stdout_tee("liepin")            #（保持「熔断是 main 第一句」不变量）
 
     args = sys.argv[1:]
     cities = ["深圳", "广州", "杭州", "成都"]

@@ -22,13 +22,14 @@ from typing import Optional
 import decision_trace
 import risk_slowdown
 from notify import alert
-from shared import load_config, score_jd, smart_filter, get_chrome_opts, kill_switch_check, kill_switch_off, kill_switch_on, kill_switch_status, CITY_CODES
+from shared import load_config, score_jd, smart_filter, get_chrome_opts, kill_switch_check, kill_switch_off, kill_switch_on, kill_switch_status, install_stdout_tee, CITY_CODES
 from store import (
     ensure_migrated, migrate_legacy_logs, list_city_titles, company_applied_recently,
     record_application, count_applied_since,
 )
 from deep_filter import deep_filter, is_filtered, run_company_background_check
 from match_engine import explain_match
+import candidates  # V5.8 候选清单半自动模式（纯标准库）
 from report import print_terminal_summary, generate_html
 
 # ═══════════════════════════════════════════════════════════════
@@ -537,6 +538,12 @@ def parse_args(cfg: dict):
         "--dry-run",
         action="store_true",
         help="演练模式：只搜索/评分/过滤，绝不投递，输出待投递计划",
+    )
+    p.add_argument(
+        "--candidates-only",
+        action="store_true",
+        help="候选清单模式（V5.8）：完整执行搜索/资格/五维评分/破冰语（过 provenance 双闸），"
+             "但不执行点击沟通；达标岗位按分数排序写入 data/candidates/，供人工复核点投",
     )
     p.add_argument(
         "--report",
@@ -1243,6 +1250,11 @@ def _send_greeting_via_chat(page, search_tab, company: str, greeting: str, title
 # ── V5.6 发送链路诊断（与 _fill_and_send 配套；未验证时随 verify_note 落库）──
 LAST_SEND_DIAG = {"send_mode": "", "verify_state": ""}
 
+# ── V5.8 候选清单半自动模式（2026-10-18）：只登记不点击 ──
+_CANDIDATES_ONLY = {"on": False}    # --candidates-only 置位
+_CANDIDATE_RECORDS: list = []       # 本轮候选（跨城市×关键词累计）
+_CANDIDATE_SESSION_TS = {"ts": ""}  # 候选清单文件名时间戳
+
 
 def _fill_and_send(tab, greeting: str) -> bool:
     """填充招呼语并发送，验证输入框清空/会话关闭。返回 True=已验证发出。
@@ -1537,6 +1549,13 @@ def _prepare_job_context(search_tab, city, keyword, title, company, salary,
               f"技术{md['technical']['weighted']:.0f}/30 方向{md['direction']['weighted']:.0f}/30 "
               f"经验{md['experience']['weighted']:.0f}/15 文化{md['culture']['weighted']:.0f}/15 "
               f"地点{md['location']['weighted']:.0f}/10")
+        # V5.8：五维明细细表入上下文（候选清单落盘 / 复盘使用）
+        ctx["five_dim"] = {
+            "total": match_result["total"], "verdict": match_result["verdict"],
+            "dimensions": {k: {"score": v.get("score"), "weight": v.get("weight"),
+                               "weighted": v.get("weighted")}
+                           for k, v in md.items()},
+        }
     except Exception as me:
         match_result = None
         print(f"  [⚠️五维评估异常(不拦截)] {str(me)[:60]}")
@@ -1617,6 +1636,10 @@ def _prepare_job_context(search_tab, city, keyword, title, company, salary,
 
     # ── v5 额度：点击前预留（UNCERTAIN 占额度不扣完成数；明确失败回血）。
     #    拿不到额度 = 今日预算耗尽 → 确定性 skip，不突破预算（验收标准5/6）──
+    # V5.8：候选清单模式不点击 → 不占用配额度（额度只服务真投递）
+    if _CANDIDATES_ONLY["on"]:
+        decision_trace.gate(tr, "quota", "skip", detail="candidates_only:不占额度")
+        return "proceed"
     if not _quota_acquire(city, company, title, ctx.get("plan_slot", "")):
         decision_trace.gate(tr, "quota", "rejected:今日额度已耗尽")
         print(f"    ⏸️ 额度耗尽，停止消耗（{city} {company[:12]}）")
@@ -1747,6 +1770,7 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
     applied_count = 0
     skipped_count = 0
     failed_count = 0
+    cand_count = 0  # V5.8 候选清单模式：本组合已登记候选数
 
     # ── v2.1 风控阶梯降速：本轮尝试事件序列（只作用于异常路径；正常节奏一行不动）──
     _sd = get_safety(cfg)
@@ -1892,16 +1916,20 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
                     if (n && n.textContent.trim() === {json.dumps(title)}) {{
                         var co = c.querySelector(".boss-name");
                         var sa = c.querySelector(".job-salary");
+                        var a = (n.closest && n.closest("a")) || c.querySelector("a[href]");
                         return {{company: co ? co.textContent.trim() : "",
-                                salary: sa ? sa.textContent.trim() : ""}};
+                                salary: sa ? sa.textContent.trim() : "",
+                                href: a ? (a.getAttribute("href") || "") : ""}};
                     }}
                 }}
-                return {{company: "", salary: ""}};
+                return {{company: "", salary: "", href: ""}};
             """) or {}
             if not isinstance(_info, dict):
                 _info = {}
             company = _info.get("company") or ""
             salary = _info.get("salary") or ""
+            _href = _info.get("href") or ""
+            _cand_url = ("https://www.zhipin.com" + _href) if _href.startswith("/") else _href
 
             # ── 同公司去重（2026-08-16：防跨关键词重复投同公司触发风控）──
             _ddays = (cfg.get("safety") or {}).get("dedup_days", 7)
@@ -1931,6 +1959,28 @@ def run_single_cycle(page, search_tab, city: str, keyword: str, count: int, min_
                     # v5：今日预算耗尽 → 整轮收工（确定性，不突破预算）
                     print("  ⏹️ 额度账本：今日预算已耗尽，本轮收工")
                     return applied_count, skipped_count, failed_count
+
+                # ── V5.8 候选清单模式：登记后跳过点击沟通（绝不发消息；额度未预留）──
+                if _CANDIDATES_ONLY["on"]:
+                    try:
+                        _CANDIDATE_RECORDS.append(candidates.make_record(
+                            city=city, keyword=keyword, company=company, title=title,
+                            salary=salary, score=ctx.get("score", 0),
+                            five_dim=ctx.get("five_dim"),
+                            value_score=ctx.get("value_score"),
+                            value_tier=ctx.get("value_tier"),
+                            greeting=ctx.get("greeting", ""),
+                            template_id=ctx.get("greeting_template_id", ""),
+                            url=_cand_url, plan_slot=ctx.get("plan_slot", ""),
+                            reason=ctx.get("reason", "")))
+                        cand_count += 1
+                        print(f"    📝 候选登记（未点击）：{ctx.get('score')}分 "
+                              f"{company[:15]} | {title[:25]}")
+                    except Exception as _ce:
+                        print(f"    ⚠️ 候选登记失败（不影响继续）: {str(_ce)[:60]}")
+                    if cand_count >= count:
+                        return applied_count, skipped_count, failed_count
+                    continue
 
                 result = _execute_apply(page, search_tab, city, keyword, title,
                                         company, salary, ctx)
@@ -2031,8 +2081,15 @@ def _resolve_keywords(cfg):
 
 
 def main():
+    install_stdout_tee("boss")   # V5.8：所有运行模式 stdout 自动留档（data/logs/）
     cfg = load_config()
     args = parse_args(cfg)
+
+    # ── V5.8 候选清单模式（2026-10-18）：只评分登记（含破冰语过闸），绝不点击沟通 ──
+    if args.candidates_only:
+        _CANDIDATES_ONLY["on"] = True
+        _CANDIDATE_SESSION_TS["ts"] = datetime.now().strftime("%Y%m%d_%H%M%S")
+        print("📝 候选清单模式：登记达标岗位（含破冰语），本轮不执行任何点击沟通")
 
     # ── v5.2 本轮时间窗（战报口径）：所有落库记录带 applied_at ISO，
     #    汇总/HTML 用这个时刻过滤，杜绝"把全库历史当本轮战报"的假警报 ──
@@ -2091,7 +2148,7 @@ def main():
 
     # ── 启动自检：如果已暂停，直接退出不触发任何操作 ──
     # (dry-run 不投递不碰账号，跳过暂停锁，允许离线验证筛选配置)
-    if is_paused() and not args.dry_run:
+    if is_paused() and not args.dry_run and not args.candidates_only:
         reason = "未知"
         try:
             reason = json.loads(PAUSE_FILE.read_text()).get("reason", "未知")
@@ -2105,7 +2162,7 @@ def main():
     # ── GUARDRAILS 固定校验（v1.0, 2026-08-31）：安全配置被改松 → 拒绝启动 ──
     # 不依赖模型自觉：薪资线/双休词/实习过滤/夜禁/日限/时限全部下沉为代码强制。
     # dry-run 不投递不碰账号，跳过；真实投递路径必过。
-    if not args.dry_run:
+    if not args.dry_run and not args.candidates_only:
         _gr_viol = GR.run_all(cfg)
         if _gr_viol:
             print("🛑  GUARDRAILS 校验失败，投递被拒绝（安全配置被改松）")
@@ -2357,6 +2414,14 @@ def main():
                     "last_done": f"{city}×{keyword}",
                     "total_applied_this_round": total_applied,
                 })
+                # V5.8：候选清单模式每完成一个组合即落盘（崩溃不丢已登记候选）
+                if _CANDIDATES_ONLY["on"] and _CANDIDATE_RECORDS:
+                    try:
+                        candidates.write_session(
+                            _CANDIDATE_RECORDS,
+                            session_ts=_CANDIDATE_SESSION_TS["ts"] or None)
+                    except Exception as _cwe:
+                        print(f"  ⚠️ 候选清单落盘失败: {str(_cwe)[:60]}")
 
             # ── 熔断器：连续失败达到阈值 → risk_triggered 层级（异常，关全局开关）──
             if consecutive_failures >= CIRCUIT_BREAK_THRESHOLD:
@@ -2427,6 +2492,18 @@ def main():
     print_terminal_summary(since_iso=ROUND_START_ISO or None)
     report_path = generate_html()
     print(f"\n📄 报告已生成: {report_path}")
+
+    # ── V5.8 候选清单收尾落盘（按分数排序，JSON + 人读版 Markdown）──
+    if _CANDIDATES_ONLY["on"]:
+        if _CANDIDATE_RECORDS:
+            jp, mp = candidates.write_session(
+                _CANDIDATE_RECORDS, session_ts=_CANDIDATE_SESSION_TS["ts"] or None)
+            print(f"\n📝 候选清单 {len(_CANDIDATE_RECORDS)} 条 → {jp}")
+            print(f"   人读版: {mp}")
+            for r in candidates.sort_records(_CANDIDATE_RECORDS)[:5]:
+                print(f"   · [{r['score']}分] {r['company'][:16]} | {r['title'][:26]}")
+        else:
+            print("\n📝 候选清单为空（本轮无达标岗位）")
 
 
 if __name__ == "__main__":

@@ -751,6 +751,8 @@ def run_city_keyword(page, tab, city, keyword, count, seen, today_applied, direc
 
 
 def main():
+    from shared import install_stdout_tee   # V5.8：所有运行模式 stdout 自动留档
+    install_stdout_tee("51job")
     global HOURLY_CAP
     args = sys.argv[1:]
     cities = ["深圳", "广州", "杭州", "成都"]
