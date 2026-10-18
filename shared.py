@@ -569,3 +569,62 @@ def format_salary(raw: str) -> str:
 def ensure_dir(p: Path):
     """确保目录存在。"""
     p.mkdir(parents=True, exist_ok=True)
+
+
+# ═══════════════════════════════════════════════════════════════
+#  stdout 留档（V5.8 第一批，2026-10-18）
+#  所有运行模式的控制台输出自动落盘 data/logs/<name>_<ts>.log —— 每轮一份，
+#  进程内幂等（已安装则返回已有路径，不重复包）。stderr 一并抄送（traceback 也留档）。
+# ═══════════════════════════════════════════════════════════════
+def install_stdout_tee(name: str, log_dir: Optional[Path] = None):
+    """把 stdout/stderr 同步抄送到 data/logs/<name>_<ts>.log，返回日志路径。
+
+    只做留档，不改变控制台行为；幂等（同进程重复调用返回同一路径）。
+    """
+    import sys as _sys
+    cur = getattr(_sys, "stdout", None)
+    if getattr(cur, "_jh_tee", False):
+        return Path(getattr(cur, "_jh_log_path"))
+    root = Path(__file__).parent
+    log_dir = Path(log_dir) if log_dir else (root / "data" / "logs")
+    log_dir.mkdir(parents=True, exist_ok=True)
+    lp = log_dir / f"{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    fh = open(lp, "a", encoding="utf-8", buffering=1)
+
+    class _Tee:
+        _jh_tee = True
+        _jh_log_path = str(lp)
+
+        def __init__(self, stream, log_fh):
+            self._stream = stream
+            self._fh = log_fh
+
+        def write(self, s):
+            try:
+                self._fh.write(s)
+            except Exception:
+                pass
+            try:
+                return self._stream.write(s)
+            except Exception:
+                return len(s or "")
+
+        def flush(self):
+            for t in (self._fh, self._stream):
+                try:
+                    t.flush()
+                except Exception:
+                    pass
+
+        def isatty(self):
+            try:
+                return self._stream.isatty()
+            except Exception:
+                return False
+
+        def __getattr__(self, item):
+            return getattr(self._stream, item)
+
+    _sys.stdout = _Tee(_sys.stdout, fh)
+    _sys.stderr = _Tee(_sys.stderr, fh)
+    return lp

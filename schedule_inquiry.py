@@ -199,6 +199,33 @@ def is_substantive(msg: str) -> bool:
             or invites_to_interview(t))
 
 
+def classify_signal(msg: str) -> str:
+    """识别「约面 / 索要简历」信号，供投后简报接线（post_signal）使用。
+
+    返回 "interview" / "resume" / ""。判定沿用本模块的前置守卫链：
+    系统消息、推荐推送、纯打招呼、自动招呼、婉拒一律不算信号 ——
+    与 is_substantive 同源，避免两处各写一套规则漂移。
+    """
+    t = _clean(msg)
+    if len(t) < 2:
+        return ""
+    if any(m in t for m in SYSTEM_MARKERS):
+        return ""
+    if any(m in t for m in RECOMMEND_MARKERS):
+        return ""
+    if GREETING_ONLY_RE.match(t):
+        return ""
+    if looks_like_auto_greeting(t):
+        return ""
+    if any(m in t for m in REJECT_MARKERS):
+        return ""
+    if invites_to_interview(t):
+        return "interview"
+    if asks_for_full_resume(t):
+        return "resume"
+    return ""
+
+
 # ── "已问过" 持久化 ──
 
 def _key(company: str, hr_name: str) -> str:

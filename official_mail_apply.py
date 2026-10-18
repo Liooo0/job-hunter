@@ -31,6 +31,7 @@
 import argparse
 import hashlib
 import json
+import os
 import random
 import re
 import smtplib
@@ -474,6 +475,93 @@ def extract_emails(raw: str) -> list:
     return out
 
 
+# ── V5.8（2026-10-18）：9224 端口 Chrome 只读渲染兜底 ─────────────────────────
+_CHROME_PORT = int(os.environ.get("JH_ENRICH_CDP_PORT", "9224"))
+_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+       "(KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36")
+
+
+def chrome_fetch(url: str, port: int = None, wait: float = 3.0):
+    """9224 端口 Chrome 只读渲染兜底（curl 被 WAF 拦 / SPA 空壳时用）。
+
+    只做「开新页 → 读 HTML → 关页」，不点击、不输入、不写任何东西。
+    返回 (ok, html, why)。
+    """
+    port = int(port or _CHROME_PORT)
+    try:
+        from DrissionPage import ChromiumPage, ChromiumOptions
+    except Exception as e:
+        return False, "", f"DrissionPage 不可用: {type(e).__name__}"
+    tab = None
+    try:
+        page = ChromiumPage(ChromiumOptions().set_local_port(port))
+        tab = page.new_tab(url)
+        time.sleep(wait)
+        html = getattr(tab, "html", "") or ""
+        return True, html[:500_000], ""
+    except Exception as e:
+        return False, "", f"Chrome({port}) 渲染失败: {type(e).__name__}"
+    finally:
+        try:
+            if tab is not None:
+                tab.close()
+        except Exception:
+            pass
+
+
+def _looks_like_spa_shell(body: str) -> bool:
+    """页面像 JS 空壳：可见文本极少、脚本块却不少（curl 拿不到真实内容）。"""
+    if not body:
+        return True
+    if len(body) < 400:
+        return True
+    visible = re.sub(r"<script[\s\S]*?</script>|<style[\s\S]*?</style>|<[^>]+>", " ", body)
+    visible = re.sub(r"\s+", " ", visible).strip()
+    return len(visible) < 60 and body.lower().count("<script") >= 2
+
+
+def probe_with_fallback(link: str, probe_mod=None):
+    """抓一条链接：curl 优先；403/000/空壳时切 Chrome 只读渲染兜底。
+
+    返回 (emails, note, channel)：channel = "curl" / "chrome" / ""（都未成）。
+    """
+    if not link:
+        return [], "条目无链接", ""
+    probe_mod = probe_mod if probe_mod is not None else _probe()
+    code, body, need_browser = "", "", False
+    note = ""
+    if probe_mod:
+        try:
+            code, body = probe_mod.fetch(link)
+        except Exception:
+            code, body = "", ""
+        if str(code).startswith("2") and body:
+            emails = extract_emails(body)
+            if emails:
+                return emails, f"来自 {link}", "curl"
+            need_browser = _looks_like_spa_shell(body)
+            note = f"页面可读（HTTP {code}）但未见公开邮箱" + ("（空壳页）" if need_browser else "")
+        else:
+            need_browser = True
+            note = f"只读探针失败（HTTP {code}）"
+    else:
+        need_browser = True
+        note = "探针模块不可用"
+    if need_browser:
+        ok, html, why = chrome_fetch(link)
+        if ok and html:
+            emails = extract_emails(html)
+            if emails:
+                return emails, f"来自 {link}（浏览器渲染兜底）", "chrome"
+            base = note or f"HTTP {code}"
+            note = f"{base}；浏览器渲染兜底未检出邮箱"
+        elif note:
+            note = f"{note}；浏览器兜底失败：{why or '未成功'}"
+        else:
+            note = f"浏览器兜底失败：{why or '未成功'}"
+    return [], note, ""
+
+
 def _promote_email(it: dict) -> dict:
     """批准语义 = 人工确认该收件地址可用；探针发现的邮箱在批准时转正。"""
     if not it.get("hr_email") and it.get("discovered_email"):
@@ -501,21 +589,14 @@ def enrich_all() -> int:
             skipped += 1
             continue
         link = it.get("link") or ""
-        emails, note = [], ""
-        if probe and link:
-            code, body = probe.fetch(link)
-            if str(code).startswith("2") and body:
-                emails = extract_emails(body)
-                if not emails:
-                    note = f"页面可读（HTTP {code}）但未见公开邮箱"
-            else:
-                note = f"只读探针失败（HTTP {code}）"
-        else:
-            note = "条目无链接"
+        # V5.8：curl 优先 + 9224 浏览器只读渲染兜底（403/000/SPA 空壳自动切换）
+        emails, note, _channel = probe_with_fallback(link, probe_mod=probe)
         if emails:
             it["discovered_email"] = emails[0]
             it["email_source_url"] = link
-            it["enrich_note"] = f"来自 {link}"
+            it["enrich_note"] = note or f"来自 {link}"
+            if _channel == "chrome":
+                it["email_probe_channel"] = "chrome_render"
             found += 1
             flag = "📧"
         elif note.startswith("只读探针失败"):
@@ -553,6 +634,178 @@ def enrich_all() -> int:
     return 0
 
 
+# ── V5.8（2026-10-18）：IMAP 退信回读（PostMaster → status=bounced）──────────
+BOUNCE_STATE = SKILL_DIR / "data" / "mail_bounce_state.json"
+
+_BOUNCE_HINT = ("退信", "returned mail", "mail delivery", "delivery status",
+                "delivery failure", "undeliver", "投递失败", "无法投递", "failure notice")
+_DIAG_RE = re.compile(
+    r"Diagnostic-Code:\s*(?:smtp;\s*)?([^\n\r]{5,200})", re.I)
+_STATUS_RE = re.compile(r"\bStatus:\s*(\d+\.\d+\.\d+)", re.I)
+_RCPT_RE = re.compile(r"Final-Recipient:\s*rfc822;\s*([^\s;]+)", re.I)
+_MID_RE = re.compile(r"(?:Original-)?Message-ID:\s*(<[^>]+>)", re.I)
+
+
+def parse_bounce(raw: bytes):
+    """解析一封退信 → dict（尽力而为，提取不到即留空）。
+
+    兼容标准 DSN（multipart/report + delivery-status）与 QQ 中文退信。
+    返回 None 表示这不是退信。
+    """
+    import email as _email
+    from email.header import decode_header as _dh
+
+    def _dec(s):
+        try:
+            out = []
+            for txt, enc in _dh(s or ""):
+                out.append(txt.decode(enc or "utf-8", "replace")
+                           if isinstance(txt, bytes) else txt)
+            return "".join(out)
+        except Exception:
+            return s or ""
+
+    try:
+        msg = _email.message_from_bytes(raw)
+    except Exception:
+        return None
+    subj = _dec(msg.get("Subject", ""))
+    chunks = []
+    for part in msg.walk():
+        try:
+            pl = part.get_payload()
+            # message/delivery-status 与内嵌 message/rfc822：载荷是子 Message 列表
+            if isinstance(pl, list):
+                for sub in pl:
+                    try:
+                        chunks.append(str(sub))
+                    except Exception:
+                        pass
+                continue
+            payload = part.get_payload(decode=True)
+            if payload:
+                chunks.append(payload.decode(part.get_content_charset() or "utf-8",
+                                             "replace"))
+            elif isinstance(pl, str):
+                chunks.append(pl)
+        except Exception:
+            continue
+    text = "\n".join(chunks)
+    if not any(h in (subj + text).lower() for h in _BOUNCE_HINT):
+        return None
+    m = _MID_RE.search(text) or _MID_RE.search(subj)
+    rcpt = _RCPT_RE.search(text)
+    diag = _DIAG_RE.search(text)
+    reason = (diag.group(1).strip() if diag else "")
+    if not reason:
+        st = _STATUS_RE.search(text)
+        reason = st.group(1) if st else ""
+    if not reason:
+        for ln in text.splitlines():
+            l = ln.strip()
+            if any(k in l for k in ("5.7.0", "552", "550", "554", "451", "421",
+                                    "rejected", "spam", "denied", "blocked")):
+                reason = l[:200]
+                break
+    return {
+        "bounce_subject": subj[:160],
+        "orig_message_id": (m.group(1).strip() if m else ""),
+        "recipient": (rcpt.group(1).strip() if rcpt else ""),
+        "reason": reason[:220],
+    }
+
+
+def apply_bounce(parsed: dict, queue_dir: Path = None) -> str:
+    """把退信落到队列条目：status=bounced + 原因摘要。返回命中条目 id（未命中 ""）。"""
+    if not parsed:
+        return ""
+    qdir = Path(queue_dir) if queue_dir else QUEUE_DIR
+    mid = parsed.get("orig_message_id") or ""
+    subj = parsed.get("bounce_subject") or ""
+    reason = parsed.get("reason") or "未提取到原因"
+    for qf in sorted(qdir.glob("M*.json")):
+        try:
+            it = json.loads(qf.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        hit = False
+        if mid and it.get("message_id") == mid:
+            hit = True
+        elif it.get("id") and it.get("id") in (subj + reason):
+            hit = True
+        elif subj and it.get("subject") and str(it["subject"])[:24] in subj:
+            hit = True
+        if hit:
+            it["status"] = "bounced"
+            it["bounced_at"] = datetime.now().isoformat(timespec="seconds")
+            it["bounce_reason"] = reason
+            if parsed.get("recipient"):
+                it["bounce_recipient"] = parsed["recipient"]
+            qf.write_text(json.dumps(it, ensure_ascii=False, indent=2), encoding="utf-8")
+            return it["id"]
+    return ""
+
+
+def check_bounces() -> int:
+    """IMAP 回读退信：命中即更新队列为 status=bounced。返回命中更新条数。"""
+    import imaplib
+    env = {}
+    if QQ_ENV_FILE.exists():
+        for line in QQ_ENV_FILE.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                env[k.strip()] = v.strip()
+    user = env.get("QQ_EMAIL_USER") or ""
+    pwd = env.get("QQ_EMAIL_PASSWORD") or ""
+    if not user or not pwd:
+        print("❌ 未找到 QQ_EMAIL_USER / QQ_EMAIL_PASSWORD（~/.gamebanana-monitor.env）")
+        return 0
+    state = {"seen": []}
+    try:
+        if BOUNCE_STATE.exists():
+            state.update(json.loads(BOUNCE_STATE.read_text(encoding="utf-8")))
+    except Exception:
+        pass
+    seen = set(state.get("seen", []))
+    handled = 0
+    try:
+        M = imaplib.IMAP4_SSL("imap.qq.com", 993, timeout=30)
+        M.login(user, pwd)
+        M.select("INBOX", readonly=True)
+        typ, data = M.search(None, "ALL")
+        ids = data[0].split()[-400:]
+        for i in ids[::-1]:
+            key = i.decode()
+            if key in seen:
+                continue
+            typ, md = M.fetch(i, "(RFC822)")
+            if not md or not md[0]:
+                continue
+            parsed = parse_bounce(md[0][1])
+            seen.add(key)          # 非退信也登记，避免每轮重扫
+            if not parsed:
+                continue
+            hit_id = apply_bounce(parsed)
+            if hit_id:
+                handled += 1
+                print(f"  ↩️ 退信命中 {hit_id}：{parsed.get('reason', '')[:80]}")
+            else:
+                print(f"  ↩️ 退信未命中队列（{parsed.get('bounce_subject', '')[:60]}）")
+        M.logout()
+    except Exception as e:
+        print(f"❌ 退信回读失败: {type(e).__name__}: {str(e)[:120]}")
+        return handled
+    try:
+        state["seen"] = sorted(seen)[-800:]
+        state["last_run"] = datetime.now().isoformat(timespec="seconds")
+        BOUNCE_STATE.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+    print(f"📭 退信回读完成：命中并更新 {handled} 条")
+    return handled
+
+
 def send_all() -> int:
     ident = load_identity()
     if not ident:
@@ -586,6 +839,8 @@ def send_all() -> int:
 
 
 def main() -> int:
+    from shared import install_stdout_tee   # V5.8：所有运行模式 stdout 自动留档
+    install_stdout_tee("direct_mail")
     ap = argparse.ArgumentParser(description="官网/外企/管培 邮件直投管线（三阶段）")
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--draft", action="store_true", help="解析清单 → 路由简历 → 生成求职信 → 过双闸 → 写队列")
@@ -593,11 +848,16 @@ def main() -> int:
     g.add_argument("--send", action="store_true", help="发送已批准且带邮箱的条目")
     g.add_argument("--list", action="store_true", help="查看队列状态")
     g.add_argument("--enrich", action="store_true", help="只读探针补邮箱（A轨）+ 纯网申分流汇总（B轨）")
+    g.add_argument("--bounces", action="store_true",
+                   help="IMAP 回读退信：命中即把队列条目更新为 status=bounced")
     args = ap.parse_args()
     if args.draft:
         return draft_all()
     if args.enrich:
         return enrich_all()
+    if args.bounces:
+        check_bounces()
+        return 0
     if args.approve is not None:
         return approve(args.approve)
     if args.send:

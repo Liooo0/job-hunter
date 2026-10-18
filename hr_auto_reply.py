@@ -536,6 +536,21 @@ def main():
                     _draft = f"{_draft}\n{_q}"
                     print(f"   🩺 制度问询已附上（{m.get('company','')[:14]} · "
                           f"{m.get('name','')}）：{_q}")
+            # ── V5.8 投后接线（2026-10-18）：约面 / 要简历信号 → 本地生成
+            #    【面试准备 + 存活核查】简报（只写 data/reports，不触碰主流程）。──
+            try:
+                from post_signal import on_signal as _on_signal
+                _sig_p = _on_signal(
+                    company=m.get("company", ""),
+                    role=(m.get("job_context") or {}).get("job_title", ""),
+                    msg=m.get("message", ""),
+                    jd=(m.get("job_context") or {}).get("jd_text", "")
+                       or (m.get("job_context") or {}).get("jd", ""),
+                    source="boss_msg")
+                if _sig_p:
+                    print(f"   🧭 投后简报已生成（{m.get('company','')[:14]}）：{_sig_p.name}")
+            except Exception as _pse:
+                print(f"   ⚠️ 投后简报生成失败（不影响主流程）: {str(_pse)[:70]}")
             sessions.append({
                 "id": _sid,
                 "company": m.get("company", ""), "hr_name": m.get("name", ""),
