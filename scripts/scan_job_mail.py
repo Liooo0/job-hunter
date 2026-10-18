@@ -318,6 +318,28 @@ def main():
         print(f"  {f['body'][:500]}")
         print()
 
+    # ── V5.8 投后接线（2026-10-18）：招聘邮件里的「约面 / 要简历」信号 →
+    #    本地生成【面试准备 + 存活核查】简报（只写 data/reports，不发任何内容）。──
+    _briefs = []
+    try:
+        sys.path.insert(0, str(BASE))
+        from post_signal import on_signal as _on_signal
+        for f in found:
+            try:
+                p = _on_signal(company="", role=f.get('subject', '')[:40],
+                               msg=f"{f.get('subject', '')}\n{f.get('body', '')}",
+                               source="mail")
+                if p:
+                    _briefs.append(p)
+            except Exception:
+                continue
+    except Exception as _bse:
+        print(f"  ⚠️ 投后简报接线失败（不影响分拣）: {str(_bse)[:70]}")
+    if _briefs:
+        print(f"🧭 已生成投后简报 {len(_briefs)} 份：")
+        for p in _briefs:
+            print(f"   · {p}")
+
     # 记录已报（cron 静默用）
     seen.update(f['id'] for f in found)
     state['seen_ids'] = sorted(seen)[-500:]

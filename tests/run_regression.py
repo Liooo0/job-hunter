@@ -38,6 +38,9 @@ CATEGORIES = [
     ("salary_ceiling",   "30K 薪资上限 (Salary Ceiling)"),
     ("boss_last_mile",   "Boss 最后一公里 (Boss Last Mile)"),
     ("skip_reason",      "跳过原因埋点 (Skip Reason)"),
+    ("official_mail",    "直投邮件管道 (Direct Mail)"),
+    ("candidates",       "候选清单半自动 (Candidates)"),
+    ("post_signal",      "投后简报接线 (Post Signal)"),
 ]
 _LABEL_W = 39
 _SEP = "=" * 48
