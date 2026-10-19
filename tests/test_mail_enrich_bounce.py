@@ -170,5 +170,32 @@ class TestBounce(unittest.TestCase):
         self.assertIn("email_probe_channel", src)
 
 
+class TestBounceGuards(unittest.TestCase):
+    """V5.8-fix：退信判定收口 + Header 头健壮性。"""
+
+    JH_CATEGORY = "official_mail"
+    JH_NEW = True
+
+    def test_thread_email_not_treated_as_bounce(self):
+        # 普通往来邮件（正文/引用里含"退信""无法投递"字样）不得误判
+        raw = (f"From: someone{_AT}example.org\nTo: me{_AT}qq.com\n"
+               "Subject: Re: Hermes Project Dump\n\n"
+               "你好，退信核查已完成，结果如下。\n"
+               "> 无法投递的条目已标注为 bounced\n").encode("utf-8")
+        self.assertIsNone(OMA.parse_bounce(raw))
+
+    def test_header_object_subject_safe(self):
+        from email.header import Header
+        s = OMA._dec_hdr(Header("退信通知", "utf-8"))
+        self.assertIsInstance(s, str)
+        self.assertIn("退信", s)
+
+    def test_postmaster_with_hint_still_bounce(self):
+        raw = (f"From: postmaster{_AT}qq.com\nTo: me{_AT}qq.com\n"
+               "Subject: 系统信\n\n投递失败：无法投递\n550 rejected\n").encode("utf-8")
+        p = OMA.parse_bounce(raw)
+        self.assertIsNotNone(p)
+
+
 if __name__ == "__main__":
     unittest.main()

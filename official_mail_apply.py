@@ -639,6 +639,40 @@ BOUNCE_STATE = SKILL_DIR / "data" / "mail_bounce_state.json"
 
 _BOUNCE_HINT = ("退信", "returned mail", "mail delivery", "delivery status",
                 "delivery failure", "undeliver", "投递失败", "无法投递", "failure notice")
+# 主题级特征（收口误报：正文里提到"退信"字样的普通往来邮件不得误判为退信）
+_BOUNCE_SUBJ = ("退信", "undelivered", "undeliverable", "returned mail", "delivery status",
+                "delivery fail", "failure notice", "无法投递", "投递失败", "returned to sender")
+
+
+def _dec_hdr(s) -> str:
+    """头字段安全解码：str / bytes / email.header.Header / None 一律返回 str。
+
+    V5.8-fix：QQ 系统退信的主题在部分邮件里以 Header 对象返回（非 8bit 清理过的
+    原始头），旧的局部解码会原样返回该对象，随后字符串拼接抛 TypeError。
+    """
+    from email.header import decode_header
+    if s is None:
+        return ""
+    if not isinstance(s, (str, bytes)):
+        try:
+            s = str(s)
+        except Exception:
+            return ""
+    try:
+        out = []
+        for txt, enc in decode_header(s):
+            if isinstance(txt, bytes):
+                try:
+                    out.append(txt.decode(enc or "utf-8", "replace"))
+                except LookupError:  # 如 QQ 退信头的 charset=unknown-8bit
+                    out.append(txt.decode("utf-8", "replace"))
+            else:
+                out.append(txt)
+        return "".join(out)
+    except Exception:
+        return s.decode("utf-8", "replace") if isinstance(s, bytes) else s
+
+
 _DIAG_RE = re.compile(
     r"Diagnostic-Code:\s*(?:smtp;\s*)?([^\n\r]{5,200})", re.I)
 _STATUS_RE = re.compile(r"\bStatus:\s*(\d+\.\d+\.\d+)", re.I)
@@ -653,23 +687,12 @@ def parse_bounce(raw: bytes):
     返回 None 表示这不是退信。
     """
     import email as _email
-    from email.header import decode_header as _dh
-
-    def _dec(s):
-        try:
-            out = []
-            for txt, enc in _dh(s or ""):
-                out.append(txt.decode(enc or "utf-8", "replace")
-                           if isinstance(txt, bytes) else txt)
-            return "".join(out)
-        except Exception:
-            return s or ""
 
     try:
         msg = _email.message_from_bytes(raw)
     except Exception:
         return None
-    subj = _dec(msg.get("Subject", ""))
+    subj = _dec_hdr(msg.get("Subject", ""))
     chunks = []
     for part in msg.walk():
         try:
@@ -691,7 +714,18 @@ def parse_bounce(raw: bytes):
         except Exception:
             continue
     text = "\n".join(chunks)
-    if not any(h in (subj + text).lower() for h in _BOUNCE_HINT):
+    frm_l = _dec_hdr(msg.get("From", "")).lower()
+    types = set()
+    for _p in msg.walk():
+        try:
+            types.add(_p.get_content_type())
+        except Exception:
+            continue
+    struct_ok = "message/delivery-status" in types
+    subj_ok = any(k in subj.lower() for k in _BOUNCE_SUBJ)
+    sender_ok = any(k in frm_l for k in ("mailer-daemon", "postmaster"))
+    if not (struct_ok or subj_ok
+            or (sender_ok and any(h in (subj.lower() + text.lower()) for h in _BOUNCE_HINT))):
         return None
     m = _MID_RE.search(text) or _MID_RE.search(subj)
     rcpt = _RCPT_RE.search(text)
