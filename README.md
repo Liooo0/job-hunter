@@ -8,7 +8,7 @@
   &nbsp;•&nbsp;
   <b>🎯 Job Hunter (规则引擎/精准拟真投递)</b>
   &nbsp;•&nbsp;
-  <a href="https://github.com/Liooo0/jobintel-dashboard">📊 决策仪表盘 (3万+投递数据复盘)</a>
+  <a href="https://github.com/Liooo0/jobintel-dashboard">📊 决策仪表盘 (4.7 万条岗位判定记录)</a>
 </p>
 
 <p align="center">
@@ -32,7 +32,7 @@
 | 这是干什么的？ | 本地跑的求职工作流：按你的简历和底线给每个 JD 打分排序，只投达标的岗位，每次投递的五维评估结论落库可复盘 |
 | 它和"群发爬虫"差在哪？ | ① 打分是**纯 Python 规则引擎，不走 LLM、0 token**，同一个 JD 昨天今天分数一致，每个分数都能解释到具体命中词；② 投递节奏贴近人工、带熔断和急停开关；③ 拒绝/已读不回等失败原因结构化入库，用来反哺筛选规则 |
 | 谁做决定？ | 规则层只决定"够不够格"，投不投、聊什么、接不接 offer 都是人 |
-| 靠谱吗？ | 作者自用跑过 **6,100+ 真实投递、34,000+ 条规则过滤、覆盖 2,700+ 家公司**（截至 2026-08 本机 SQLite 统计；本仓库不含任何个人投递数据） |
+| 靠谱吗？ | 作者自用跑过 **近 2,000 次有效投递、3.9 万条规则过滤、覆盖 1,300+ 家公司**（截至 2026-10 本机 SQLite 统计，已剔除历史批量导入；本仓库不含任何个人投递数据） |
 
 ## 全链路工作流
 
@@ -49,7 +49,7 @@ flowchart LR
         Engine["⚙️ 确定性规则引擎<br/>(零Token / 纯Python / 毫秒级)"]
         FiveD["📊 五维加权打分<br/>(技术30% 方向30% 经验15% 文化15% 地点10%)"]
         Gate{"达到投递门槛?<br/>(默认 >= 80)"}
-        Bot["🤖 拟真慢投递<br/>(DrissionPage / 防风控 / 熔断)"]
+        Bot["🤖 慢速投递<br>(DrissionPage / 限速 / 熔断)"]
         Skip["🏷️ 归类跳过/失败原因<br/>(23种失败原因枚举)"]
 
         JD --> Engine
@@ -61,7 +61,7 @@ flowchart LR
 
     subgraph S3 ["3. 数据回流与决策复盘"]
         DB[("🗄️ 本地 SQLite 实验库<br/>(ab_experiment.db)")]
-        Dash["📊 JobIntel Dashboard<br/>(3万+ 投递记录只读分析)"]
+        Dash["📊 JobIntel Dashboard<br/>(4.7 万条岗位记录只读分析)"]
 
         Bot --> DB
         Skip --> DB
@@ -146,7 +146,7 @@ PYTHONPATH="" python3 boss_apply.py --cities "深圳,广州" --jobs "AI应用工
 >
 > ```bash
 > python3 tests/regression.py          # 25 个真实 JD 回归案例
-> PYTHONPATH="" python3 -m unittest discover -s tests -p "test_*.py" -t .   # 468 个单元测试
+> PYTHONPATH="" python3 -m unittest discover -s tests -p "test_*.py" -t .   # 627 个单元测试
 > ```
 
 ## 配置说明
@@ -195,7 +195,7 @@ PYTHONPATH="" python3 boss_apply.py --cities "深圳,广州" --jobs "AI应用工
 - **投递验证状态机**：点击"立即沟通"后验证会话真实打开、消息真实发出，结果分为 `APPLIED` / `UNCERTAIN`（需人工复核）/ `FAILED`，杜绝"假发送"
 - **风控防护**：kill switch 全局急停、跨进程日/小时双熔断、夜间禁投、公司去重——这是被平台封号两次换来的教训清单
 - **确定性优先**：所有打分/过滤都是本地规则，LLM 只用于可选的 HR 消息草拟；同一输入永远同一输出
-- **回归测试**：25 个真实 JD 案例回归集 + 468 个单元测试，GitHub Actions 每次 push 跑语法检查
+- **回归测试**：25 个真实 JD 案例回归集 + 627 个单元测试，GitHub Actions 每次 push 跑语法检查
 
 ## Token 消耗预估
 
