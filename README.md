@@ -15,7 +15,7 @@
   <a href="https://github.com/Liooo0/job-hunter/actions/workflows/ci.yml"><img src="https://github.com/Liooo0/job-hunter/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/Liooo0/job-hunter/actions/workflows/security.yml"><img src="https://github.com/Liooo0/job-hunter/actions/workflows/security.yml/badge.svg" alt="Security Scan"></a>
   <img src="https://img.shields.io/badge/Suite-Job_Intelligence-6366f1?style=flat-square" alt="Suite">
-  <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/Python-3.9+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/Engine-Zero--LLM_Rule_Based-10b981?style=flat-square" alt="Rule Engine">
   <img src="https://img.shields.io/badge/Automation-DrissionPage-ff69b4?style=flat-square" alt="DrissionPage">
   <img src="https://img.shields.io/badge/License-MIT-orange?style=flat-square" alt="License">
@@ -155,6 +155,10 @@ PYTHONPATH="" python3 boss_apply.py --cities "深圳,广州" --jobs "AI应用工
 可以把评分引擎单独装成 Python 包：零第三方依赖，装完即有 `jobhunter-score` 命令。
 
 ```bash
+# 推荐装固定 tag（v1.0.0 是首个可安装发布，已实测装完即用）
+pip install "git+https://github.com/Liooo0/job-hunter.git@v1.0.0"
+
+# 或者跟 main（会拿到打 tag 之后的新提交）
 pip install git+https://github.com/Liooo0/job-hunter.git
 
 # 命令行打分（参数与 match_engine.py 完全一致）
