@@ -103,3 +103,25 @@ scripts/apply51_*.py
 
 # 本地私有测试样本（禁止入库）
 tests/test_mail_filter_0922.py
+
+# ===== 打包产物（pyproject.toml 引入 pip install 能力后新增）=====
+# 改配置/改代码前的临场备份，命名带时间戳（如 job_decision.py.bak-1021-7k）：
+# 注意现有 `*.bak` / `*.bak.*` 两条规则只匹配 ".bak" 或 ".bak.xxx"，
+# 匹配不到 "-7k" 这种后缀，所以 `*.bak-*` 必须单独写。
+*.bak-*
+dist/
+build/
+*.egg-info/
+venv/
+
+# ===== 测试/覆盖率缓存 =====
+# 原先 .pytest_cache/ 只是被 pytest 自己写的 .pytest_cache/.gitignore 内部规则挡住的，
+# 仓库级根本没有这条规则——换个工具或不带那个文件，缓存就会整目录进 Git。
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# ===== 本地 SQLite =====
+# jobintel.db 是运行期用的空占位/本地库，不进仓库。
+jobintel.db

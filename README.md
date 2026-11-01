@@ -149,6 +149,67 @@ PYTHONPATH="" python3 boss_apply.py --cities "深圳,广州" --jobs "AI应用工
 > PYTHONPATH="" python3 -m unittest discover -s tests -p "test_*.py" -t .   # 627 个单元测试
 > ```
 
+## 作为库 / 命令行使用
+
+只想用这套**打分规则**、不想 clone 整个仓库（也不需要浏览器 / 自动投递依赖）时，
+可以把评分引擎单独装成 Python 包：零第三方依赖，装完即有 `jobhunter-score` 命令。
+
+```bash
+pip install git+https://github.com/Liooo0/job-hunter.git
+
+# 命令行打分（参数与 match_engine.py 完全一致）
+jobhunter-score "AI应用工程师" \
+  --desc "负责RAG知识库与Agent工作流开发，Python/FastAPI" \
+  --company "某某科技" --salary "18-30K" --city 深圳
+
+# 机器可读输出 / 读长 JD 文件 / 指定自己的配置
+jobhunter-score "AI应用工程师" --desc-file jd.txt --json
+jobhunter-score "AI应用工程师" --desc "..." --config ~/my-config.json
+```
+
+实测输出（在仓库目录之外运行，如 `/tmp`）：
+
+```
+┌─ 岗位匹配报告 ──────────────────────────────────
+│ 总分: 88/100 → 🚀 强烈推荐 (strong_apply)
+├─ 五维明细 ───────────────────────────────────
+│ 技术匹配 ██████████ 100 ×30% →  30.0   技能命中: Python/RAG/Agent/知识库/工作流/FastAPI; 加分词+15: Agent/RAG/工作流/知识库/AI
+│ 职业方向 █████████░  90 ×30% →  27.0   S级方向: AI应用工程师
+│ 经验匹配 ███████░░░  70 ×15% →  10.5   无明显经验表述
+│ 文化匹配 ███████░░░  75 ×15% →  11.2   无文化风险/加分信号(默认75)
+│ 地点通勤 █████████░  90 ×10% →   9.0   深圳=primary城市
+├─ 技能命中: Python、RAG、Agent、知识库、工作流、FastAPI、AI
+└─ 备注: target_roles 缺失，已从 job_pools.keywords 兜底映射 | 关键词层得分=40(技能匹配:Python/RAG/Agent、Agent) | 加权原始值=87.70
+```
+
+作为库调用（返回结构化 dict，`dimensions` 里每维都带 score / weight / evidence，
+分数都能解释到具体命中词）：
+
+```python
+from match_engine import explain_match, format_report
+
+result = explain_match(
+    "AI应用工程师",
+    "负责RAG知识库与Agent工作流开发，Python/FastAPI",
+    company="某某科技", salary="18-30K", city="深圳",
+)
+print(result["total"], result["verdict"])        # 88 strong_apply
+print(result["dimensions"]["technical"]["evidence"])
+print(format_report(result))                     # 渲染成上面那份 ASCII 报告
+```
+
+发布包只含三个纯标准库模块（`match_engine` + 它依赖的 `deep_filter` / `shared`），
+`requires-python = ">=3.9"`，`pip install` 不会拉 DrissionPage / httpx 等浏览器依赖。
+
+> ⚠️ **配置回退**：安装态下 `load_config()` 找的是「`shared.py` 同目录的 config.json」，
+> 也就是 site-packages 里那份（不存在）——所以装成包后**内置兜底词表/薪资线/岗位池会自动生效**，
+> 但你仓库里那份个人 `config.json` 不会被自动读到。要用自己的配置，显式传
+> `--config ./config.json`，或代码里 `explain_match(..., cfg=json.load(open("config.json")))`。
+
+> 📦 **构建前提**：本包用 PEP 621 `pyproject.toml`（setuptools>=61）。`pip install` 默认
+> 开 build isolation 会自动装好构建依赖；若你用 `--no-build-isolation`，需先自行把
+> `setuptools` 升到 61 以上，否则会静默产出一个没有代码的 `UNKNOWN-0.0.0` 空包。
+
 ## 配置说明
 
 `config.json` 缺失时程序用内置兜底配置运行；想要个性化，改这些键：
