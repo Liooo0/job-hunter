@@ -1,0 +1,52 @@
+# 让评分引擎脱离「必须先 clone 仓库」这一步：
+#   pip install git+https://github.com/Liooo0/job-hunter.git
+#   jobhunter-score "AI应用工程师" --desc "..." --city 深圳
+#
+# 只打包三个纯标准库模块（match_engine 引擎本体 + 它依赖的 deep_filter / shared），
+# 明确用 py-modules 白名单，不走 setuptools 的自动发现——否则扁平仓根里几十个
+# 业务脚本会被一股脑当成顶层模块，既装不快也容易把本机私有脚本带出去。
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jobhunter-engine"
+version = "1.0.0"
+description = "零依赖、零 LLM 的确定性岗位匹配打分引擎：五维加权评分 + 可解释报告"
+readme = "README.md"
+requires-python = ">=3.9"
+# 引擎本体不用任何第三方库；DrissionPage / httpx / PyYAML 只有自动投递链路才需要，
+# 所以这里 dependencies 必须保持为空，pip install 时不该拉浏览器依赖。
+dependencies = []
+license = { text = "MIT" }
+authors = [{ name = "Liooo0" }]
+keywords = ["job", "matching", "recruit", "rule-engine", "explainable", "zero-dependency"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Office/Business",
+    "Topic :: Text Processing :: Linguistic",
+]
+
+[project.urls]
+Homepage = "https://github.com/Liooo0/job-hunter"
+Repository = "https://github.com/Liooo0/job-hunter"
+Issues = "https://github.com/Liooo0/job-hunter/issues"
+
+[project.scripts]
+jobhunter-score = "match_engine:main"
+
+[tool.setuptools]
+# 白名单三项：装完直接 `import match_engine` 就能打分。
+# 用白名单而非自动发现：仓根还有几十个业务脚本（boss_apply 等），自动发现会把它们
+# 一起当成顶层模块打进 wheel，既装得慢也容易把本机私有脚本带出去。
+py-modules = ["match_engine", "deep_filter", "shared"]
+
+# 引擎的兜底配置写在 shared.FALLBACK_CONFIG 里（无 config.json 也能跑），
+# 所以没有需要额外打包的数据文件；本机个性化 config.json 不在包内，
+# 想用自己那份就用 `--config /path/to/config.json` 或 explain_match(cfg=...)。
