@@ -41,17 +41,24 @@ jobs:
             --desc "负责RAG知识库与Agent工作流开发，Python/FastAPI" \
             --company "示例科技" --salary "18-30K" --city 深圳
 
-      # 覆盖率只作**可观测**，不接 codecov、不生成静态 badge（假数字比没有数字更糟）。
-      # 发布口径是「跑完把真实数字写进 Job Summary」，所以这里不设 --fail-under：
-      # 阈值要基于一串真实 CI 基线再定，拍脑袋定一个只会制造 flaky 红。
+      # 覆盖率：既是**可观测**（真实数字写 Job Summary），也是**门槛**。
+      # 门槛只挂在「被打包发布出去的那三个模块」上（--fail-under=60）：它们才是
+      # `pip install jobhunter-engine` 真正交付的东西。基线实测：引擎三模块 71%
+      # （留 11pp 余量，不会因为无关脚本的抖动变成 flaky 红）。
+      # 全仓（含几十个业务脚本，基线 64%）只记录不设门槛——那部分覆盖率由本机
+      # 私有脚本和 CI 里跑不了的浏览器链路组成，设阈值只会制造假红。
       # ⚠️ 用 coverage run 再复跑一遍套件（本地约 +10s），它会把测试的非 0 退出码
       # 透传出来，因此这一步不会把测试失败"盖"成绿。
-      - name: 覆盖率（coverage run/report → $GITHUB_STEP_SUMMARY）
+      - name: 覆盖率（coverage run/report → $GITHUB_STEP_SUMMARY，引擎门槛 60%）
         run: |
           python -m pip install --quiet coverage
           coverage run --source=. -m unittest discover -s tests
           coverage report -m > coverage-full.txt
-          coverage report -m --include='match_engine.py,deep_filter.py,shared.py' > coverage-engine.txt
+          # 引擎三模块：跌破 60% 直接让 CI 变红（重定向而不是管道，保住退出码）
+          coverage report -m --include='match_engine.py,deep_filter.py,shared.py' --fail-under=60 > coverage-engine.txt
+          cat coverage-engine.txt
+          echo '---- 全仓汇总（仅记录，不设门槛）----'
+          grep -E '^TOTAL' coverage-full.txt
           {
             echo '## 测试覆盖率'
             echo ''
