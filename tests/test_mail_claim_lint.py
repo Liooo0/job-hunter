@@ -67,9 +67,18 @@ class TestLintEntry(unittest.TestCase):
         return {"cover": cover, "subject": "测试主题", "sources": sources or []}
 
     def test_denylist_hits(self):
-        e = self._entry("我做的是屏幕级自动化")
-        codes = [c for _, _, c in ml.lint_entry(e)]
-        self.assertIn("DENYLIST", codes)
+        # 禁用词表 data/mail_denylist.json 是本地文件（gitignore），fresh clone 上不存在，
+        # 所以夹具自带词表并临时指过去，保证 CI（fresh clone）可复现。
+        with TemporaryDirectory() as td:
+            orig = ml.DENYLIST
+            ml.DENYLIST = Path(td) / "denylist.json"
+            ml.DENYLIST.write_text(json.dumps({"words": ["屏幕级"]}), encoding="utf-8")
+            try:
+                e = self._entry("我做的是屏幕级自动化")
+                codes = [c for _, _, c in ml.lint_entry(e)]
+                self.assertIn("DENYLIST", codes)
+            finally:
+                ml.DENYLIST = orig
 
     def test_private_source_satisfies_token(self):
         with TemporaryDirectory() as td:
