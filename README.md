@@ -202,6 +202,9 @@ jobhunter-score "AI应用工程师" --desc-file jd.txt --json
 jobhunter-score "AI应用工程师" --desc "..." --config ~/my-config.json
 ```
 
+只想贴简历 + JD 拿一份匹配报告？最小入口是 [job-fit-skill](https://github.com/Liooo0/job-fit-skill)：
+把它装进 agent（Claude Code 等），由 agent 从简历抽画像、调本引擎打分，并解读缺口、生成面试追问。
+
 实测输出（在仓库目录之外运行，如 `/tmp`）：
 
 ```
