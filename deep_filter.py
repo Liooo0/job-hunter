@@ -236,6 +236,11 @@ RISK_COMPANY_WORDS = ["人力资源", "劳务派遣", "人才服务", "外包", 
                       "教育科技", "信息科技服务", "技术服务有限", "派遣"]
 # 公司名出现这些词且岗位是 AI 类 → 高风险降级
 RISK_COMPANY_STRONG = ["人力资源", "劳务", "派遣", "代招", "猎头"]
+# 主体与岗位错配词（2026-10-19 加固）：这些主体挂牌招「技术开发岗」= 招转培/卖课前台高发特征
+# 专治 51job/猎聘 正文字段为空、正文层扫不到的盲区
+MISMATCH_COMPANY_WORDS = ["管理咨询", "信息咨询", "教育咨询", "人才服务", "实训基地"]
+TECH_ROLE_WORDS = ["工程师", "开发", "研发", "算法", "技术", "全栈", "后端", "前端",
+                   "测试", "运维", "数据", "ai", "人工智能", "智能体"]
 
 # CITY_CODES 已统一到 shared.py（P2-T6）。原本地副本唯一使用方 _fetch_company_jobs
 # 是 NotImplementedError 死代码，已一并删除，故本文件不再需要城市代码。
@@ -286,10 +291,11 @@ def profile_company(jobs: list) -> dict:
 
 # 决策优先级（从高到低，一旦命中立即截断返回，不可被后续规则覆盖）
 # 1. clickbait  2. internship salary trap  3. AI washing  4. AI-wrapped operations
-# 5. role creep  6. company profile  7. company-name risk  8. preserve incoming score
+# 5. role creep  6. company profile  7. company-name risk  7.5 company-role mismatch  8. preserve
 DECISION_PRIORITY = [
     "clickbait", "internship_salary_trap", "ai_washing", "ai_wrapped_operations",
-    "role_creep", "company_profile", "company_name_risk", "preserve",
+    "role_creep", "company_profile", "company_name_risk", "company_role_mismatch",
+    "preserve",
 ]
 
 
@@ -341,6 +347,14 @@ def deep_filter(company: str, title: str, desc: str, salary: str,
     for kw in RISK_COMPANY_STRONG:
         if kw in comp_lower:
             return 0, f"公司名含「{kw}」→人力中介/代招风险"
+
+    # Priority 7.5: 主体-岗位错配（本地）：咨询/人才服务/实训基地主体挂牌招「技术开发岗」
+    # = 招转培/卖课前台高发特征。只拦「错配」组合——咨询主体招销售岗不套用本条
+    # （其余规则照跑），正常科技公司不受影响。
+    if any(kw in comp_lower for kw in MISMATCH_COMPANY_WORDS) and \
+            any(kw in (title or "").lower() for kw in TECH_ROLE_WORDS):
+        kw = next(kw for kw in MISMATCH_COMPANY_WORDS if kw in comp_lower)
+        return 0, f"主体岗位错配:公司名含「{kw}」却招技术岗→招转培风险"
 
     # Priority 8: 无命中风险项 → **原样返回传入的 score**
     # ⚠️ 注意这里返回的是入参 score，不是常量 100：调用方若传进来 0 分（例如
